@@ -10,7 +10,7 @@
 - **Changes 2026-10-24 → 2026-10-25:**
   - CLI amended to a full-screen, ratatui-style terminal UI (TUI): keyboard only, moves typed (no board cursor), no mouse, 80×24 minimum, terminal always restored, plain line-oriented mode for screen readers and pipes, scripted runs headless (CLI-1..4, UI-2, UI-4; Q38–Q40).
   - PLAT-3 strengthened: desktop app, web page, and CLI are fully usable offline in v1, including first launch, with no run-time Internet fetches and explicit offline tests.
-  - Architecture inputs resolved (Rust backend, TypeScript UI, Tauri, one shared core); the architecture lives in [architecture.md](architecture.md).
+  - Architecture inputs resolved (Rust backend, TypeScript UI, Tauri, one shared core); all architecture decisions are AGREED in [architecture.md](architecture.md), including the GUI board (chessground + our keyboard/accessibility layer, which delivers GUI-2 and UI-4).
 - Decisions are logged in the Decision Log. Update this file as decisions are made.
 
 Each requirement has: ID, statement, status, and **Verification** (test cases). Overall approach is in [test-strategy.md](test-strategy.md).

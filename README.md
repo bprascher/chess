@@ -2,7 +2,7 @@
 
 An offline, single-machine chess application for macOS with three front-ends (terminal UI, local web UI, desktop app) on top of one shared Rust core, using Stockfish as the engine.
 
-> **Status: design phase (2026-10-25).** No code is implemented yet. This repository holds the agreed requirements, the test strategy, and the architecture, whose decisions are all agreed except D-4 (the GUI board component). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced so far.
+> **Status: design phase (2026-10-25).** No code is implemented yet. This repository holds the agreed requirements, the test strategy, and the architecture, with all decisions agreed, plus the trade studies behind the GUI board choice. See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced so far.
 
 ## Planned features
 
@@ -31,7 +31,7 @@ An offline, single-machine chess application for macOS with three front-ends (te
 | Front-end ↔ core | One serializable protocol: in-process (CLI), Tauri IPC (desktop), localhost WebSocket (web); TypeScript types generated with `ts-rs` |
 | Processes | Each entry point embeds the core; they coordinate through the shared SQLite file. The web server is started with `chess serve`. |
 | License | GPL-3.0-or-later |
-| GUI board | To be decided (D-4): own React + SVG board recommended |
+| GUI board | `@lichess-org/chessground` for visuals and mouse/touch, plus our own accessible keyboard overlay (ARIA grid) and selection reducer; fallback react-chessboard |
 
 ## Documentation
 
@@ -40,6 +40,8 @@ An offline, single-machine chess application for macOS with three front-ends (te
 | [docs/requirements.md](docs/requirements.md) | All requirements (every one AGREED), each with verification test cases, plus out-of-scope list and decision log |
 | [docs/test-strategy.md](docs/test-strategy.md) | Test levels, focus areas, determinism, quality gates |
 | [docs/architecture.md](docs/architecture.md) | Architecture: principles, code organisation, core, protocol, front-ends, persistence, offline operation, decisions and decision log, risks, next steps |
+| [docs/trade-study-gui-board.md](docs/trade-study-gui-board.md) | First-pass trade study of GUI board options (kept for the record) |
+| [docs/trade-study-gui-board-refined.md](docs/trade-study-gui-board-refined.md) | Refined trade study, chessground vs. react-chessboard, that decided D-4 |
 | [RELEASE_NOTES.md](RELEASE_NOTES.md) | Changes by release |
 
 ## Out of scope for v1

@@ -2,7 +2,7 @@
 
 Per-requirement test cases live under each requirement in [requirements.md](requirements.md). This file covers the overall approach; the concrete tools and where each test level lives are mapped onto the design in [architecture.md §9](architecture.md).
 
-**Status:** updated 2026-10-25 to match the agreed requirements. Changes this revision: terminal-UI testing (TUI screen snapshots at fixed sizes, PTY sessions parsed into a virtual screen, key bindings never swallowing move characters, terminal restore after quit/Ctrl-C/panic, plain mode) and offline testing (offline E2E for desktop, web, and CLI; CI scan of the GUI bundle for remote resources).
+**Status:** updated 2026-10-25 to match the agreed requirements. Changes this revision: GUI board testing (selection-sync sequences between chessground and our reducer, overlay alignment, axe on the `aria-hidden` board), terminal-UI testing (TUI screen snapshots at fixed sizes, PTY sessions parsed into a virtual screen, key bindings never swallowing move characters, terminal restore after quit/Ctrl-C/panic, plain mode) and offline testing (offline E2E for desktop, web, and CLI; CI scan of the GUI bundle for remote resources).
 
 ## Principles
 1. **Rules logic is pure and heavily unit-tested.** Move generation, SAN parse/format, Elo, clocks, PGN/FEN, mode policy, and computer-Player generation take data in and return data out — no I/O, no UI.
@@ -38,6 +38,7 @@ These cross-cutting behaviours came out of the requirements and need explicit co
 | Stats | Any Player (human or computer) viewable; aggregates match seeded data; archived Players keep history; Computer Players screen (UI-2, UI-5) |
 | Persistence | Shared store across CLI/web/desktop; crash-safe; migrations; export/import round-trip; per-move evaluations computed after the game, never during play (DAT-1/2/3) |
 | Notation and input | SAN + coordinate form, case-insensitive, helpful errors (CLI-3); TUI key bindings never swallow move characters (CLI-4); mouse, keyboard, typed, tap input produce identical state (GUI-2) |
+| GUI board | One selection state across mouse, drag, touch, keyboard, and typed input: chessground's `api.state.selected` equals `BoardModel.selected` after every step of scripted mixed-input sequences; overlay ARIA grid aligned with the visual board (both orientations, several sizes); visual board `aria-hidden` and axe-clean; rejected pointer moves revert (GUI-2, UI-4, D-4) |
 | Terminal UI | Layout at minimum size and on resize; terminal restored after quit, Ctrl-C, and panic; plain mode selected when not a TTY; screen-reader use via plain mode (CLI-1, UI-4) |
 | Computer–computer | Only started by an explicit human choice with two computer Player selections (may be the same); pause, step, delay, abort (PLY-1, GAME-2) |
 

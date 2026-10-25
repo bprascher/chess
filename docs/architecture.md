@@ -1,11 +1,12 @@
 # Chess Application — Architecture
 
-**Status (2026-10-25):** decisions D-1–D-3 and D-5–D-11 AGREED; **D-4 (GUI board) awaiting decision** (§11.1). Nothing here is implemented yet.
+**Status (2026-10-25):** all decisions D-1–D-11 AGREED. D-4: chessground plus our own keyboard/accessibility layer (§6.2, §11.1). Nothing here is implemented yet.
 **Changes 2026-10-24 → 2026-10-25:**
 - First draft created from the requirements and the user's stack choices.
 - CLI changed to a full-screen ratatui TUI, keyboard only with typed moves and no mouse, plus plain and headless modes (§6.1, D-6).
 - Offline operation for desktop, web, and CLI made explicit, with enforcement and tests (§8.1).
-- Section 11 decisions recorded (§11.2); D-4 options compared in detail (§11.1).
+- Section 11 decisions recorded (§11.2).
+- D-4 decided after two trade studies ([first pass](trade-study-gui-board.md), [refined](trade-study-gui-board-refined.md)): chessground + shared keyboard/accessibility overlay, with react-chessboard (patched) as the fallback (§6.2, §11.1).
 **Anchors:** [requirements.md](requirements.md) (all AGREED) and [test-strategy.md](test-strategy.md).
 **Status legend:** `AGREED` = confirmed by user · `PROPOSED` = suggested by Claude, awaiting decision.
 
@@ -109,7 +110,8 @@ chess/
 │   └── src/
 │       ├── protocol/          # generated TS types (do not edit)
 │       ├── transport/         # CoreClient interface + ws.ts + tauri.ts
-│       ├── board/             # SVG board component (mouse, keyboard, typed, tap)
+│       ├── board/             # Board contract, BoardModel reducer, AccessibleOverlay,
+│       │                      #   chessground adapter + Reconciler, PromotionPicker
 │       ├── screens/           # setup, play, analysis, stats, players, settings
 │       └── themes/            # ≥10 board themes, ≥5 piece sets
 ├── e2e/
@@ -515,7 +517,7 @@ flowchart LR
 flowchart TB
     subgraph ui["ui/ (TypeScript, Vite, React)"]
         screens["Screens<br/>Register · New Game · Play · Watch (c–c) ·<br/>Analysis · Stats · Computer Players · Settings"]
-        board["Board component (SVG)<br/>click · drag · tap · keyboard cursor · typed SAN<br/>ARIA grid labels per square/piece"]
+        board["Board component<br/>chessground (visuals, mouse/touch, aria-hidden)<br/>+ AccessibleOverlay (ARIA grid, keyboard)<br/>+ BoardModel reducer (one selection state)"]
         store["Client state<br/>game snapshot + local view cursor (rewind)<br/>+ local clock countdown"]
         client["CoreClient interface"]
         ws["WebSocketCoreClient"]
@@ -534,7 +536,7 @@ flowchart TB
 ```
 
 - **Framework:** React + TypeScript + Vite (AGREED, D-5): the largest ecosystem, mature testing tools (Testing Library, Playwright, axe), and good accessibility support.
-- **Board:** our own SVG component (PROPOSED, D-4 — under review; options compared in §11.1). The keyboard model in GUI-2 (arrow cursor, Space to select, Enter to confirm, Esc to cancel, keyboard promotion picker) and the screen-reader labels in UI-4 are core requirements, and owning the component makes them straightforward. Themes are CSS custom properties for squares plus SVG piece sets; contrast ratios are checked by a unit test.
+- **Board (AGREED, D-4):** `@lichess-org/chessground` (pinned 10.x, GPL-3.0-or-later) renders the board and handles mouse, touch, and animation, wrapped by our own React component. Our shared layer adds the keyboard model (GUI-2) and screen-reader support (UI-4): a transparent ARIA-grid overlay and a `BoardModel` reducer that owns the one selection state. Full design in §11.1. Themes are chessground CSS classes for boards plus license-audited SVG piece sets; contrast ratios are checked by a unit test.
 - **Rewind** is a local view cursor over the snapshot's ply list. While rewound, move input is disabled. The "live position has changed" badge appears when a `MoveApplied` arrives with the cursor behind live (GAME-3).
 - **Elo chart:** a small charting dependency or hand-built SVG (decided at implementation time).
 
@@ -774,7 +776,7 @@ The same scenario format (`e2e/scenarios/*.yaml`: setup, inputs, expected PGN/re
 | D-1 | How the desktop app reaches the core | Link `chess-app` in-process; Tauri IPC with the same envelope as the WebSocket | Desktop starts the embedded axum server and loads `http://127.0.0.1:<port>`: one transport everywhere and identical E2E paths, but it opens a port and is less idiomatic Tauri | AGREED 2026-10-25 |
 | D-2 | Process topology | Each entry point embeds the core; coordination through SQLite leases | A single background daemon (launchd) that all front-ends talk to: one engine pool and live cross-process updates, but more moving parts and a daemon lifecycle to manage | AGREED 2026-10-25 |
 | D-3 | Move generation | Wrap `shakmaty` + `pgn-reader` (GPL-3.0, mature, fast, perft-verified) | Write our own in `chess-rules`: full control and a learning exercise, but weeks of work and the risk of subtle rule bugs; perft tests still apply either way | AGREED 2026-10-25 |
-| D-4 | GUI board | Own SVG board component, for full control of keyboard and a11y | `chessground` (Lichess, GPL-3.0), used directly or with our own keyboard/a11y layer on top. Full comparison in §11.1 | PROPOSED — under review |
+| D-4 | GUI board | `@lichess-org/chessground` + our shared keyboard/accessibility layer (overlay ARIA grid + `BoardModel` reducer); own board ruled out for v1 | Fallback: react-chessboard + same layer, patched (D1). Studies: [first pass](trade-study-gui-board.md), [refined](trade-study-gui-board-refined.md) | AGREED 2026-10-25 |
 | D-5 | UI framework | React + TypeScript + Vite | Svelte or SolidJS: smaller and faster, with a smaller testing/a11y ecosystem | AGREED 2026-10-25 |
 | D-6 | CLI style | Full-screen TUI with `ratatui` + `crossterm`, Elm-style update/render; plain mode for screen readers and pipes; headless for scripts | — (decided by the user; requirements CLI-1 amended) | AGREED 2026-10-24 |
 | D-7 | Rust ↔ TS type sharing | `ts-rs` | `specta` / `tauri-specta`: tighter Tauri integration, but less useful on the WebSocket path | AGREED 2026-10-25 |
@@ -783,43 +785,56 @@ The same scenario format (`e2e/scenarios/*.yaml`: setup, inputs, expected PGN/re
 | D-10 | Project license | GPL-3.0-or-later | Required only if builds are distributed; local-only use doesn't trigger GPL obligations, but choosing now avoids relicensing | AGREED 2026-10-25 |
 | D-11 | Legal-move lookups for what-if branches | Ask the core (`LegalMoves{fen}` query; localhost round trip ≪ 1 ms) | Compile `chess-rules` to WASM for the UI: no server round trip, but a second build target and logic in two places | AGREED 2026-10-25 |
 
-### 11.1 D-4 in detail: the GUI board component
+### 11.1 D-4: the GUI board component (AGREED 2026-10-25)
 
-**What the board must do (from AGREED requirements).**
-- Mouse click-to-move and drag-and-drop, plus touch tap-to-move on the web (GUI-2).
-- Keyboard: arrow-key cursor, Space to select, arrows to choose a destination, Enter to confirm, Esc to cancel, a keyboard-operable promotion picker. Selection without legal moves gives feedback (GUI-2).
-- **Mixed input mid-move:** select with the mouse and confirm with Enter, or the reverse (GUI-2 verification). This means mouse, touch, and keyboard must share **one** selection state.
-- Typed algebraic input next to the board (GUI-2c).
-- Highlights for last move, check, and legal destinations; coordinates toggle; flip (GUI-3/4).
-- Screen-reader labels for squares, pieces, and moves; visible focus; contrast-checked themes (UI-4), verified with axe and a VoiceOver walk-through.
-- ≥10 board themes and ≥5 piece sets including high-contrast (UI-3), with screenshot tests.
-- Read-only display while rewound, and an analysis/what-if board (GAME-3, ANA-2).
+**Decision.** chessground plus our own shared keyboard and accessibility layer (Option C in the [refined trade study](trade-study-gui-board-refined.md)). The user ruled out building our own board for v1. The [first-pass study](trade-study-gui-board.md) is kept for the record. **Fallback:** react-chessboard with the same layer and a small patch removing its built-in keyboard drag (Option D1), if the spike below fails.
 
-**The options.**
+**Why.** C and D1 scored nearly level (88.8 vs. 87.4). C was chosen because:
+- the main reason for using a library is mature pointer interaction, and chessground's is proven on Lichess;
+- C's weak spot (selection reconciliation) is our own testable code, while D1's (a carried patch, a single maintainer, a pending drag-engine migration) are external;
+- chessground is inert to focus and assistive technology as shipped, so it needs no modification.
 
-**A. Our own React + SVG board.** The board is a React component that renders an 8×8 SVG (or CSS-grid) layout directly from the `GameSnapshot` and a small local `BoardState` (cursor, selection, drag). Each square is a focusable cell in an ARIA grid.
+**Design.**
 
-**B. `chessground` used directly.** [chessground](https://github.com/lichess-org/chessground) is the board library from Lichess: TypeScript, GPL-3.0-or-later, framework-agnostic (it manages its own DOM inside an element you give it). It handles drag-and-drop, click-to-move, touch, animations, premoves, arrows/circles, coordinates, orientation, and highlights. You configure it with `Chessground(el, config)` and update it with `cg.set({...})`.
+```mermaid
+flowchart TB
+    props["BoardProps<br/>(fen, orientation, legalMoves, interactive,<br/>lastMove, check, arrows, theme, onMove)"]
+    model["BoardModel reducer (pure TS)<br/>cursor · selected · pendingPromotion · announcement"]
+    overlay["AccessibleOverlay<br/>transparent CSS grid over the board<br/>role=grid · 64 labelled gridcells · roving tabindex<br/>visible focus ring · pointer-events: none"]
+    live["LiveRegion (aria-live)"]
+    picker["PromotionPicker"]
+    subgraph adapter["chessground adapter"]
+        map["toConfig(props, model)<br/>fen · orientation · movable.dests · lastMove · check ·<br/>selected · drawable.autoShapes · viewOnly · jsHover"]
+        cg["chessground instance<br/>(aria-hidden=true)"]
+        rec["Reconciler<br/>events.select → PointerSelect<br/>events.change → read api.state.selected<br/>movable.events.after → PointerMove"]
+    end
+    props --> model
+    props --> map
+    model --> map --> cg
+    cg --> rec --> model
+    overlay -- "keys" --> model
+    model --> overlay
+    model --> live
+    model --> picker
+    model -- "move complete" --> onMove["onMove → MakeMove{ply,…}"]
+```
 
-**C. Hybrid: `chessground` for visuals and pointer input, plus our own keyboard and accessibility layer.** chessground renders and handles mouse/touch. We add a keyboard cursor (drawn with chessground's shape API or a CSS overlay) that drives chessground through `selectSquare`/`move`, and a visually hidden ARIA grid that mirrors the position for screen readers.
+- **`Board` contract.** Screens use the board only through `BoardProps` (refined study §5, first-pass §5.0), so the fallback replaces just the adapter.
+- **One selection state.** `BoardModel` is the source of truth. Its selection is pushed into chessground with the `selected` config value. chessground's own changes come back through `events.select` (including drag start). Silent unselects, which fire no event, are caught on `events.change` by reading `api.state.selected`.
+- **Accessibility overlay.** A transparent ARIA grid sized from chessground's `---cg-width`/`---cg-height` CSS variables sits exactly over the squares.
+  - Keyboard focus and the VoiceOver cursor land on the real squares.
+  - Mouse and touch pass through to chessground.
+  - The chessground board is `aria-hidden="true"`, which is axe-clean because chessground has no focusable elements.
+- **Moves.** Pointer moves are applied optimistically by chessground and confirmed by the core's next snapshot. A rejected move (e.g., `StalePosition`) is reverted by re-setting `fen`. Keyboard moves go through `onMove` and are animated when the snapshot's `fen` arrives.
+- **Read-only.** `viewOnly` while rewound (GAME-3), on computer turns, and in computer–computer games.
+- **Spike (2 days, first GUI task).** The exit criteria are:
+  1. `BoardModel.selected` equals `api.state.selected` after every step of scripted mixed mouse/keyboard sequences: click→Enter, Space→click, drag→Esc, click elsewhere, rejected-move revert, and promotion by mouse and by keyboard.
+  2. axe is clean.
+  3. The overlay aligns in both orientations at three sizes.
+  4. Drag works in Chrome, Safari, Firefox, and the Tauri WKWebView.
 
-| | **A. Own React + SVG** | **B. chessground directly** | **C. Hybrid** |
-|---|---|---|---|
-| Drag-and-drop, touch, animation polish | Must build it: pointer events with pointer capture, a ghost piece, snap-back, piece-slide animation. Achievable, but this is where most of the effort and the "feels cheap" risk sit. | Excellent and battle-tested on millions of Lichess games. | Excellent (from chessground). |
-| Keyboard model of GUI-2 | Built exactly to spec. | **Not provided.** chessground has no keyboard cursor or focus model. (Lichess offers keyboard input as a separate text box, and blind users get a separate non-visual UI rather than the board.) Fails GUI-2b as is. | Built by us on top, but it must stay in sync with chessground's internal selection. |
-| Mixed mouse + keyboard in one move | Natural: one React selection state that every input method updates. | Not possible without the keyboard layer. | Possible, but there are two sources of truth: chessground's internal `selected` square and our cursor state. Every event must be mirrored both ways. This is the main source of subtle bugs. |
-| Screen readers (UI-4) | Squares are real ARIA grid cells with labels ("e4, white pawn, legal destination"); live region announces moves. Native and testable with axe. | Pieces are generic DOM elements without ARIA roles or labels. Fails UI-4 as is. | A hidden ARIA grid parallel to the visual board. It works, but it is two boards to keep consistent, and focus is on the hidden grid while sighted keyboard users look at the visual one. |
-| Fit with React and our data flow | Declarative: render(snapshot) → board. No imperative sync; rewind and analysis boards are just different props. | Imperative: a `useEffect` wrapper calls `cg.set` on every change. Community React wrappers exist but are thinly maintained. State lives in two places (our snapshot and chessground). | Same imperative wrapper as B, plus the keyboard layer. |
-| Legal moves and promotion | We already have legal moves in the snapshot; we draw destinations and a promotion picker (needed for keyboard anyway). | Takes legal destinations via `movable.dests` (easy from our snapshot). **No promotion picker** — we build it regardless. | Same as B. |
-| Themes (UI-3) | CSS variables for squares, swappable SVG piece sets. Full control. | Themeable through CSS and piece CSS classes; Lichess uses it with many themes. Fine. | Same as B. |
-| Testability (Playwright, axe, screenshots) | Stable, semantic selectors (`role=gridcell[name="e4…"]`); axe runs cleanly. | Drag tests need synthetic mouse events on chessground's DOM; axe will flag the unlabeled board. | Two DOMs to assert against; drag tests as in B. |
-| Licence | Ours (GPL-3.0-or-later per D-10). | GPL-3.0-or-later: compatible with D-10. | Same as B. |
-| Dependency risk | None beyond React. | One well-maintained dependency, tied to Lichess's priorities and release cycle. | Same as B, plus coupling to chessground internals (`selected`, shapes) that may change between versions. |
-| Rough effort (board only) | Highest initial effort: roughly 1–2 weeks for drag, touch, and animation polish on top of the keyboard/a11y work every option needs. | Lowest to get a pretty board, but it doesn't meet GUI-2b/UI-4, so it is not acceptable alone. | Middle: chessground's polish, but the keyboard and a11y work is about the same as in A, plus sync logic. |
-
-**What every option needs anyway.** Piece-set and board-theme assets with compatible licences (several Lichess piece sets have different licences, so each set gets a licence audit), a promotion picker, the typed-SAN input box, and keyboard/a11y E2E tests.
-
-**Recommendation: A (own React + SVG board).** The agreed keyboard model, mixed-input requirement, and screen-reader requirement are where options B and C are weakest, and those requirements have explicit E2E and axe tests. With A, the keyboard and accessibility come built in rather than layered on top, there is one selection state, and the board is a pure function of the snapshot. The cost is building drag-and-drop and animation polish ourselves. To contain that risk, build the board early, behind a `Board` props interface, with its own Playwright and axe tests. If the drag polish turns out poor, switching that layer to C stays possible without touching the rest of the UI.
+  If criterion 1 can't be met reliably, switch the adapter to D1 (about 3–4 days; the shared layer carries over).
+- **Upstream.** Propose a configurable sensor list to react-chessboard, to keep the fallback patch-free.
 
 ### 11.2 Decision log
 
@@ -830,6 +845,8 @@ The same scenario format (`e2e/scenarios/*.yaml`: setup, inputs, expected PGN/re
 | 2026-10-25 | Accepted recommendations: in-process core with Tauri IPC (D-1); each entry point embeds the core, coordination via SQLite (D-2); `shakmaty` + `pgn-reader` (D-3); `ts-rs` (D-7); `chess serve` started by the user (D-8); pinned, bundled Stockfish downloaded at build time (D-9); GPL-3.0-or-later (D-10); legal-move lookups via the core (D-11). | D-1–D-3, D-7–D-11 |
 | 2026-10-25 | React + TypeScript + Vite for the GUI. | D-5 |
 | 2026-10-25 | Offline operation for desktop, web, and CLI made an explicit, tested v1 requirement; architecture confirmed to have no run-time network dependency (§8.1). | PLAT-3 |
+| 2026-10-25 | v1 will not build its own board component (user decision after the first-pass trade study). | D-4 |
+| 2026-10-25 | GUI board = chessground + shared keyboard/accessibility layer, gated by a 2-day spike; fallback react-chessboard + layer (patched). | D-4 |
 
 ## 12. Risks
 
@@ -842,8 +859,10 @@ The same scenario format (`e2e/scenarios/*.yaml`: setup, inputs, expected PGN/re
 | R-5 | Localhost web server reachable by other local apps or malicious web pages. | Loopback bind, strict Host/Origin checks, no CORS. Optional per-launch token in the URL if we want more. |
 | R-6 | Full-screen TUIs read poorly with screen readers, and terminal state can be left broken on crashes. | Plain mode is a first-class, tested mode (automatic off-TTY); restore guard + panic hook + signal handling, each covered by a PTY test. |
 | R-7 | Unicode chess glyph widths vary across terminal fonts, which can misalign the board. | Fixed cell width per square with padding; plain ASCII style always available; snapshot tests per style; manual check in Terminal.app and iTerm2. |
+| R-8 | chessground's internal selection drifts from `BoardModel` in an unanticipated input sequence (it fires no event on unselect). | Single Reconciler module; reconciliation on `events.select`/`events.change`/`after`; scripted mixed-input Playwright suite; spike exit criterion; fallback to react-chessboard (D1) behind the same `Board` contract. |
 
 ## 13. Next steps
 
-1. Decide D-4 (§11.1).
-2. Then: workspace skeleton, `chess-rules` + `chess-domain` with their unit tests first (the test-first core), followed by `chess-store`, `chess-engine`, `chess-app`, the CLI, and finally the GUI and shells.
+1. Workspace skeleton, then `chess-rules` + `chess-domain` with their unit tests first (the test-first core).
+2. `chess-store`, `chess-engine`, `chess-app`, then the CLI (TUI, plain, headless).
+3. GUI: start with the 2-day board spike (§11.1) against the `Board` contract, then screens, transports, and the Tauri shell.

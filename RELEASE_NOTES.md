@@ -1,5 +1,40 @@
 # Release Notes
 
+## Design baseline v0.4: 2026-10-25
+
+Documentation-only release. No application code exists yet. **All architecture decisions are now agreed.**
+
+### Added
+- **docs/trade-study-gui-board.md** (first pass, kept for the record). Four GUI board options scored against a requirements gate and ten weighted criteria, using research from the published source of chessground 10.5.0 and react-chessboard 5.12.1:
+  - A: own React + SVG board with dnd-kit (91.0);
+  - B: chessground as is (56.4, fails the gate);
+  - C: chessground + our keyboard/accessibility layer (68.2);
+  - D: react-chessboard + that layer (72.4).
+
+  After it, the user ruled out building our own board for v1.
+- **docs/trade-study-gui-board-refined.md**: refined study of C vs. D, with twelve criteria focused on how well each library hosts our keyboard/accessibility layer.
+  - New design ideas: a transparent ARIA-grid overlay aligned over the visual board, instead of a hidden copy; and controlled selection for chessground.
+  - D split into D1 (patched) and D2 (run-time workaround).
+  - Scores: C 88.8, D1 87.4, D2 78.2, with sensitivity analysis showing C and D1 effectively tied.
+  - Recommendation: C, decided by tie-breakers (mature pointer interaction; risk that sits in our own code; no library modification), gated by a 2-day spike.
+
+### Changed
+**docs/architecture.md**
+- **D-4 AGREED:** `@lichess-org/chessground` for visuals and mouse/touch, plus our shared layer: a `BoardModel` reducer owning the one selection state, a transparent `AccessibleOverlay` ARIA grid (keyboard focus, screen-reader labels, visible focus on the real squares), a live region, a promotion picker, and a Reconciler that keeps chessground's selection in step. Fallback: react-chessboard + the same layer, patched (D1).
+- §11.1 rewritten as the decided board design, with the spike's exit criteria; §6.2 GUI section and diagram updated; repository layout updated for `ui/src/board/`.
+- New risk R-8 (selection drift between chessground and our reducer) with mitigations.
+- §13 next steps reordered: core crates, then the CLI, then the GUI starting with the board spike.
+- Header status: all decisions D-1–D-11 AGREED. Decision-log entries added.
+
+**docs/test-strategy.md**
+- New focus area **GUI board**: selection-sync sequences across mouse, drag, touch, keyboard, and typed input; overlay alignment; axe on the `aria-hidden` board; rejected pointer moves revert. Header updated.
+
+**docs/requirements.md**
+- Header notes that all architecture decisions are agreed, including the board that delivers GUI-2 and UI-4. No requirement changed.
+
+**README.md**
+- Status, GUI board technology row, and documentation index (both trade studies) updated.
+
 ## Design baseline v0.3: 2026-10-25
 
 Documentation-only release. No application code exists yet.
