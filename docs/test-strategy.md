@@ -12,10 +12,10 @@ Per-requirement test cases live under each requirement in [requirements.md](requ
 ## Levels
 | Level | Scope | Examples |
 |---|---|---|
-| Unit | Pure logic | perft counts, SAN parser tables, Elo calc (K=40→32 switch, no clamping, self-play/c–c/Training exclusions), draw detection, clock logic with fake time, mode-policy table, class-band mapping, roster generation determinism, variation tree, ASCII renderer snapshots |
+| Unit | Pure logic | perft counts, SAN parser tables, Elo calc (K=40→32 switch, no clamping, self-play/c–c/Training exclusions), draw detection, clock logic with fake time, mode-policy table, class-band mapping, roster generation determinism, variation tree, board renderer snapshots, TUI screen snapshots at fixed terminal sizes |
 | Property / fuzz | Invariants | random legal playouts never reach an illegal state; `parse(format(move)) == move`; arbitrary CLI input never crashes; rewind/live round-trips preserve game state |
 | Integration | Component + real dependency | engine via UCI, data store with a real DB file, migrations, concurrent access from CLI + web server + desktop, engine-failure recovery |
-| End-to-end | Whole app per front-end | PTY-driven CLI sessions; browser tests; desktop shell smoke; new-game setup combinations (GAME-1) |
+| End-to-end | Whole app per front-end | PTY-driven CLI sessions (TUI screen parsed by a terminal emulator; plain mode as a transcript); browser tests; desktop shell smoke; new-game setup combinations (GAME-1) |
 | Visual regression | GUI themes | screenshot diffs per board/piece theme (≥10 board, ≥5 piece sets), light/dark |
 | Calibration / strength (slow, nightly) | Engine classes | head-to-head matches show class ordering; measured Elo per class within tolerance of the assigned Elo, including the low-skill Beginner/Novice handicaps; 1000-game computer–computer soak |
 | Manual | Judgment calls | VoiceOver, clean-Mac install, look-and-feel of themes |
@@ -35,7 +35,8 @@ These cross-cutting behaviours came out of the requirements and need explicit co
 | Self-play | Allowed for human–human and computer–computer; unrated; excluded from W/L/D aggregates; present in history (PLY-1, ELO-1, UI-2) |
 | Stats | Any Player (human or computer) viewable; aggregates match seeded data; archived Players keep history; Computer Players screen (UI-2, UI-5) |
 | Persistence | Shared store across CLI/web/desktop; crash-safe; migrations; export/import round-trip; per-move evaluations computed after the game, never during play (DAT-1/2/3) |
-| Notation and input | SAN + coordinate form, case-insensitive, helpful errors (CLI-3); mouse, keyboard, typed, tap input produce identical state (GUI-2) |
+| Notation and input | SAN + coordinate form, case-insensitive, helpful errors (CLI-3); TUI key bindings never swallow move characters (CLI-4); mouse, keyboard, typed, tap input produce identical state (GUI-2) |
+| Terminal UI | Layout at minimum size and on resize; terminal restored after quit, Ctrl-C, and panic; plain mode selected when not a TTY; screen-reader use via plain mode (CLI-1, UI-4) |
 | Computer–computer | Only started by an explicit human choice with two computer Player selections (may be the same); pause, step, delay, abort (PLY-1, GAME-2) |
 
 ## Reference data

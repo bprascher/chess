@@ -4,10 +4,10 @@
 
 **Current state (2026-10-24):**
 - Sections 1–10 have been reviewed and marked AGREED by the user. Where an AGREED requirement still contains "proposed" wording, that wording is treated as accepted unless listed under Open Questions.
-- All requirements are AGREED; no requirements questions remain open.
+- All requirements are AGREED, including the CLI terminal-UI details (Q38–Q40 resolved 2026-10-24); no requirements questions remain open.
 - Section 11 (Non-Functional) and the Out-of-Scope list are AGREED (2026-10-24).
 - Key settled decisions: local shared data file; local web server; Stockfish; computer Players in five classes with varied parameters and static Elo; only human Elo changes (start 400 / 600 / 1200 / 2200 / 2500 from self-assessment, no cap, K 40 for first 30 games then 32); Training mode (human vs. computer, unrated, untimed, with takeback and in-game analysis) vs. Strict mode (default, rated, clocks, no in-game analysis, post-game analysis only); read-only rewind in both; human-chosen matchup; hot-seat human–human; self-play never rated and excluded from W/L/D stats; clocks in v1 with presets + custom, Strict mode only; game time persisted.
-- No requirements questions are open; decisions are logged in the Decision Log. Update this file as decisions are made.
+- CLI amended 2026-10-24: the CLI is a full-screen, ratatui-style terminal UI (TUI), with a plain line-oriented mode kept for screen readers and scripting. Decisions are logged in the Decision Log. Update this file as decisions are made.
 
 Each requirement has: ID, statement, status, and **Verification** (test cases). Overall approach is in [test-strategy.md](test-strategy.md).
 Test levels: **U** = unit, **I** = integration, **E** = end-to-end, **M** = manual.
@@ -240,7 +240,7 @@ User can configure: default opponent class (pre-selected in new-game setup), boa
 
 ### UI-2 (AGREED) Statistics views
 User can view statistics over time: W/L/D totals, by color, by difficulty/opponent, Elo-over-time chart, game history list with replay, average game length. Self-play games appear in the game history list but are excluded from W/L/D totals and other aggregates.
-- CLI: text table + ASCII sparkline/chart of Elo.
+- CLI: a TUI statistics screen with tables and an Elo-over-time chart; plain mode prints a text table + ASCII sparkline of Elo.
 - **Verification**
   - I: seeded store with known games → displayed numbers equal expected aggregates.
   - E: Elo chart point count and last value match stored history.
@@ -251,7 +251,7 @@ At least 10 board themes and 5 piece sets in GUI (incl. high-contrast). CLI supp
 - **Verification:** E: screenshot/visual-regression per theme (GUI); U: ASCII renderer snapshot tests per style.
 
 ### UI-4 (AGREED) Accessibility
-GUI keyboard-operable, screen-reader labels for squares/pieces/moves, sufficient color contrast; CLI works with `NO_COLOR` and screen readers (plain text board option).
+GUI keyboard-operable, screen-reader labels for squares/pieces/moves, sufficient color contrast; CLI works with `NO_COLOR` and screen readers via plain mode (CLI-1), since full-screen TUIs are not reliably readable by screen readers.
 - **Verification:** automated a11y audit (axe) on web; M: VoiceOver walk-through; U: contrast ratio checks for themes.
 
 ### UI-5 (AGREED 2026-10-24) Viewing stats for any Player
@@ -287,25 +287,38 @@ After every game (any mode), the user is offered analysis of the entire game: st
 
 ## 9. Command-Line Interface
 
-### CLI-1 (AGREED) ASCII board
-Board and pieces rendered as ASCII art during play, redrawn after every move.
-- **Verification:** U: renderer snapshot tests (start position, mid-game, check, promotion, flipped for black) per style; E: PTY-driven session asserts board output after each input.
+### CLI-1 (AGREED 2026-10-24, amended) Full-screen terminal UI
+The CLI is a full-screen, ratatui-style terminal user interface (TUI). During play it shows the board, drawn with ASCII/Unicode art, in a board panel next to panels for the players and status, the clocks, the move list (SAN), and a command/move input line. The screen updates in place on every state change (move, clock tick, engine thinking, rewind, result) without scrolling.
+- **AGREED 2026-10-24 — screens:** the other CLI flows are also TUI screens, navigated by keyboard: registration, new-game setup (GAME-1), play, watching computer–computer games (GAME-2), post-game analysis and what-if (ANA-2/3), statistics (UI-2/5), Computer Players, and settings.
+- **AGREED 2026-10-24 — terminal size:** minimum 80×24. Below that, the TUI shows an "enlarge the terminal" message instead of a broken layout. Resizing reflows the layout immediately.
+- **AGREED 2026-10-24 — terminal hygiene:** the terminal is always restored (cursor, echo, main screen) on quit, Ctrl-C, panic, or crash. Ctrl-Z suspends and `fg` redraws the screen.
+- **AGREED 2026-10-24 — no mouse:** the TUI has no mouse support in v1; it is operated entirely from the keyboard.
+- **AGREED 2026-10-24 — plain mode:** a line-oriented mode (`--plain`) prints the board and prompt after each move, as a scrolling transcript. It is selected automatically when stdin/stdout is not a terminal. It serves screen readers (UI-4) and piping. Non-interactive scripted runs (CLI-4) never start the TUI.
+- **Verification**
+  - U: TUI render snapshots at fixed terminal sizes (start position, mid-game, check, promotion prompt, flipped for Black, rewound with "live position has changed" indicator, game result) for each board style.
+  - U: board renderer snapshot tests per style (shared by TUI and plain mode).
+  - E: PTY-driven session with a terminal-emulator screen parser asserts the visible screen after each input.
+  - E: resize to below 80×24 shows the enlarge message; resizing back restores the layout.
+  - E: after `quit`, Ctrl-C, and an injected panic, the terminal is restored (main screen, echo on, cursor visible).
+  - E: plain mode via PTY and via pipe shows the board and prompt after each move.
 
 ### CLI-2 (AGREED) Coordinates
-Board shows file labels A–H and rank labels 1–8 on all sides needed; orientation flips when Black is at the bottom.
+In the board panel (and in plain mode), the board shows file labels A–H and rank labels 1–8 on all sides needed; orientation flips when Black is at the bottom.
 - Note: display uppercase A–H per spec; input accepts either case (Q8).
 - **Verification:** U: snapshot includes labels in both orientations.
 
 ### CLI-3 (AGREED) Algebraic notation input
-Player must enter moves in algebraic notation; game record kept in algebraic notation (SAN). Proposed accepted forms: SAN (`e4`, `Nf3`, `exd5`, `O-O`, `e8=Q`) and coordinate form (`e2e4`) as a convenience; case-insensitive file letters; trailing `+`/`#`/`x` optional.
+Player must enter moves in algebraic notation, typed in the TUI input line (or at the plain-mode prompt); game record kept in algebraic notation (SAN). Invalid input shows an error in the TUI status area and leaves the typed text editable. **AGREED 2026-10-24:** typing is the only way to move in the CLI; there is no keyboard board cursor (unlike GUI-2), so the arrow keys stay free for rewind (CLI-4). Proposed accepted forms: SAN (`e4`, `Nf3`, `exd5`, `O-O`, `e8=Q`) and coordinate form (`e2e4`) as a convenience; case-insensitive file letters; trailing `+`/`#`/`x` optional.
 - **Verification**
   - U: parser table tests: valid (all piece types, captures, castling both sides incl. `0-0`, promotion, en passant, disambiguation `Nbd2`, `R1a3`), invalid (garbage, ambiguous, illegal, off-board) with helpful error messages.
   - E: re-prompt on bad input without losing turn; game never crashes on arbitrary input (fuzz).
   - U: move list output equals SAN for the played game.
 
 ### CLI-4 (AGREED) Command set
-In-game commands distinct from moves: `help`, `resign`, `draw`, `undo` (Training only), `analyze` (Training during play; any mode post-game), `back` / `forward` / `live` (rewind view, GAME-3), `save`, `flip`, `moves` (list legal), `history`, `quit`. Non-interactive flags for scripting (e.g., `chess --matchup cvc --mode strict --white <computer-player> --black <computer-player> --clock 5+0 --no-color`).
-- **Verification:** E: each command via PTY; U: command vs. SAN ambiguity (e.g., a move can't collide with a command word).
+In-game commands distinct from moves, typed in the input line: `help`, `resign`, `draw`, `undo` (Training only), `analyze` (Training during play; any mode post-game), `back` / `forward` / `live` (rewind view, GAME-3), `save`, `flip`, `moves` (list legal), `history`, `quit`. Non-interactive flags for scripting (e.g., `chess --matchup cvc --mode strict --white <computer-player> --black <computer-player> --clock 5+0 --no-color`); scripted runs do not start the TUI.
+- **AGREED 2026-10-24 — key bindings:** frequent actions also have keys that can never begin a move, so typing a move is never intercepted: ←/→ = back/forward, End = live, PgUp/PgDn = scroll move list, F1 = help, Tab = switch panel focus, Esc = cancel/clear input. Letters, digits, and `-`/`=` always go to the input line. Commands that the mode policy disallows (PLY-5) are shown as unavailable and their keys do nothing but explain why.
+- **AGREED 2026-10-24 — c–c watch keys (GAME-2):** the watch screen has no move input, so plain keys are used: Space = pause/resume, `s` = step one move while paused, `+`/`-` = move delay, `a` = abort (with confirmation).
+- **Verification:** E: each command and key binding via PTY; U: command vs. SAN ambiguity (e.g., a move can't collide with a command word); U: no key binding consumes a character that can start a SAN or coordinate move; E: disallowed commands are visibly unavailable in each mode.
 
 ---
 
@@ -349,10 +362,12 @@ Highlight last move, check, legal moves; move list panel (SAN); captured pieces;
 
 ## Open Questions
 
-None open for requirements. Architecture-phase inputs still needed from the user: language/stack preferences, desktop shell (Electron vs. Tauri; Q14), and how front-ends reach Stockfish and the data store.
+Architecture inputs resolved 2026-10-24: Rust backend, TypeScript UI, Tauri desktop shell, one shared core (see [architecture.md](architecture.md)).
+
+None open for requirements.
 
 ### Resolved
-Q1–Q37 (see Decision Log). Removed from scope by decision: Strict-mode analysis during play (Q15).
+Q1–Q40 (see Decision Log). Removed from scope by decision: Strict-mode analysis during play (Q15).
 
 ## Out of Scope (AGREED 2026-10-24, v1)
 Online play, matchmaking, accounts with passwords, chess variants (960, etc.), opening-book trainers, mobile native apps, Windows/Linux packaging.
@@ -390,3 +405,5 @@ Online play, matchmaking, accounts with passwords, chess variants (960, etc.), o
 | 2026-10-24 | Clocks / time controls are in v1. | RULE-4 |
 | 2026-10-24 | RULE-3 (takeback) and ELO-1 agreed as written. | RULE-3, ELO-1 |
 | 2026-10-24 | Two play modes: Training (analysis + takeback, unrated) and Strict (restricted analysis of past positions only, no takeback, rated). Post-game full analysis offered after every game. | PLY-5, RULE-3, ELO-2, ANA-1, ANA-3 |
+| 2026-10-24 | CLI amended to a full-screen ratatui-style TUI; plain line-oriented mode kept for screen readers and scripting. TUI details PROPOSED (Q38–Q40). | CLI-1..4, UI-2, UI-4 |
+| 2026-10-24 | Q38: TUI details accepted (screens, 80×24 minimum, terminal hygiene, plain mode, key bindings). Q39: no keyboard board cursor in the CLI; moves are typed only. Q40: no mouse support in the TUI. | CLI-1, CLI-3, CLI-4 |
