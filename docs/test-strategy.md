@@ -1,6 +1,8 @@
-# Test Strategy (technology-neutral until architecture is chosen)
+# Test Strategy
 
-Per-requirement test cases live under each requirement in [requirements.md](requirements.md). This file covers the overall approach. Status: updated 2026-10-24 to match the agreed requirements.
+Per-requirement test cases live under each requirement in [requirements.md](requirements.md). This file covers the overall approach; the concrete tools and where each test level lives are mapped onto the design in [architecture.md §9](architecture.md).
+
+**Status:** updated 2026-10-25 to match the agreed requirements. Changes this revision: terminal-UI testing (TUI screen snapshots at fixed sizes, PTY sessions parsed into a virtual screen, key bindings never swallowing move characters, terminal restore after quit/Ctrl-C/panic, plain mode) and offline testing (offline E2E for desktop, web, and CLI; CI scan of the GUI bundle for remote resources).
 
 ## Principles
 1. **Rules logic is pure and heavily unit-tested.** Move generation, SAN parse/format, Elo, clocks, PGN/FEN, mode policy, and computer-Player generation take data in and return data out — no I/O, no UI.
@@ -58,4 +60,4 @@ These cross-cutting behaviours came out of the requirements and need explicit co
 - License audit (Stockfish GPLv3 compliance, dependency licenses) and lint in CI.
 
 ## Non-functional checks
-Startup and engine-latency benchmarks (NFR-1, ENG-3), crash-safety fault injection on the data store (NFR-2), illegal-state fuzzing (NFR-3), network-capture test for no telemetry (NFR-4), fresh-machine install walkthrough (NFR-5), license audit (NFR-6).
+Startup and engine-latency benchmarks (NFR-1, ENG-3), crash-safety fault injection on the data store (NFR-2), illegal-state fuzzing (NFR-3), network-capture test for no telemetry (NFR-4), offline E2E for desktop, web, and CLI with non-loopback networking blocked plus a CI scan of the GUI bundle for remote resource references (PLAT-3), fresh-machine install walkthrough (NFR-5), license audit (NFR-6).

@@ -1,6 +1,11 @@
 # Chess Application — Architecture
 
-**Status:** DRAFT for iteration (2026-10-24). Nothing here is implemented yet. Amended 2026-10-24: the CLI is a full-screen ratatui TUI (§6.1, D-6).
+**Status (2026-10-25):** decisions D-1–D-3 and D-5–D-11 AGREED; **D-4 (GUI board) awaiting decision** (§11.1). Nothing here is implemented yet.
+**Changes 2026-10-24 → 2026-10-25:**
+- First draft created from the requirements and the user's stack choices.
+- CLI changed to a full-screen ratatui TUI, keyboard only with typed moves and no mouse, plus plain and headless modes (§6.1, D-6).
+- Offline operation for desktop, web, and CLI made explicit, with enforcement and tests (§8.1).
+- Section 11 decisions recorded (§11.2); D-4 options compared in detail (§11.1).
 **Anchors:** [requirements.md](requirements.md) (all AGREED) and [test-strategy.md](test-strategy.md).
 **Status legend:** `AGREED` = confirmed by user · `PROPOSED` = suggested by Claude, awaiting decision.
 
@@ -26,7 +31,7 @@
 
 ## 2. System context and deployment
 
-Everything runs on the user's Mac. There is no network dependency (PLAT-3) and no outbound traffic (NFR-4).
+Everything runs on the user's Mac. The desktop app, the web page, and the CLI all work with no Internet connection, including first launch (PLAT-3, §8.1), and nothing makes outbound connections (NFR-4).
 
 ```mermaid
 flowchart LR
@@ -528,8 +533,8 @@ flowchart TB
     tc -- "Tauri IPC" --> tauri["src-tauri"]
 ```
 
-- **Framework:** React + TypeScript + Vite (PROPOSED, D-5): the largest ecosystem, mature testing tools (Testing Library, Playwright, axe), and good accessibility support.
-- **Board:** our own SVG component (PROPOSED, D-4). The keyboard model in GUI-2 (arrow cursor, Space to select, Enter to confirm, Esc to cancel, keyboard promotion picker) and the screen-reader labels in UI-4 are core requirements, and owning the component makes them straightforward. Themes are CSS custom properties for squares plus SVG piece sets; contrast ratios are checked by a unit test.
+- **Framework:** React + TypeScript + Vite (AGREED, D-5): the largest ecosystem, mature testing tools (Testing Library, Playwright, axe), and good accessibility support.
+- **Board:** our own SVG component (PROPOSED, D-4 — under review; options compared in §11.1). The keyboard model in GUI-2 (arrow cursor, Space to select, Enter to confirm, Esc to cancel, keyboard promotion picker) and the screen-reader labels in UI-4 are core requirements, and owning the component makes them straightforward. Themes are CSS custom properties for squares plus SVG piece sets; contrast ratios are checked by a unit test.
 - **Rewind** is a local view cursor over the snapshot's ply list. While rewound, move input is disabled. The "live position has changed" badge appears when a `MoveApplied` arrives with the cursor behind live (GAME-3).
 - **Elo chart:** a small charting dependency or hand-built SVG (decided at implementation time).
 
@@ -690,6 +695,7 @@ The CLI, web server, and desktop app can all be open at once against the same fi
 |---|---|---|
 | Error handling | Rust: `thiserror` per crate, mapped at the protocol boundary to `{code, message, details}`. Front-ends show `message` and branch on `code` (e.g., `IllegalMove`, `StalePosition`, `Denied{reason}`, `EngineUnavailable`). | CLI-3, ENG-1 |
 | Logging | `tracing` to a rotating file in the data dir. Off-device telemetry: none. | NFR-4 |
+| Offline | No run-time Internet access anywhere; everything bundled; CSP enforces it. Details in §8.1. | PLAT-3 |
 | Privacy / network | The web server binds to loopback only. A test runs a full session under a network-capture harness and asserts zero outbound connections. | NFR-4 |
 | Determinism | `TimeSource` and `Rng` are injected everywhere. Engine tests use `Threads=1`, a fixed hash size, and fixed depth. | test-strategy |
 | Licensing | Project licensed **GPL-3.0-or-later** (needed for distributed builds that bundle Stockfish; compatible with `shakmaty`). `cargo-deny` and an npm license checker in CI. Stockfish `COPYING` + source offer shipped in every artifact. | ENG-1, NFR-6 |
@@ -697,6 +703,29 @@ The CLI, web server, and desktop app can all be open at once against the same fi
 | Accessibility | GUI: ARIA grid board, live region announcing moves, focus ring, axe in E2E. CLI: the full-screen TUI is not reliably screen-reader friendly, so plain mode (`--plain`, automatic off-TTY) is the accessible path; `NO_COLOR` honoured in both. | UI-4 |
 
 ---
+
+### 8.1 Offline operation (PLAT-3)
+
+All three entry points must be fully usable with no Internet connection, from first launch. The architecture has no component that needs the network at run time. The table below lists every run-time dependency and how it is satisfied locally.
+
+| Run-time dependency | How it is satisfied offline |
+|---|---|
+| Chess rules, game logic, Elo, clocks | Compiled into the Rust binaries (`chess`, `Chess.app`). |
+| Engine (Stockfish) | Native binary bundled next to `chess` and inside `Chess.app` (D-9). Official Stockfish builds embed their NNUE network file, so no network file is downloaded. The pinned build is verified to start with networking disabled. |
+| Data store | Local SQLite file in `~/Library/Application Support/Chess/`. Created on first launch; roster generated from a fixed seed. No account or server. |
+| GUI code, styles, fonts | Vite builds a self-contained bundle: all JS/CSS, fonts (self-hosted, no Google Fonts), board themes, and SVG piece sets. Embedded into the `chess` binary (`rust-embed`) for the web, and bundled into `Chess.app` for desktop. No CDN references. |
+| Web page transport | `chess serve` serves the bundle and the WebSocket on `127.0.0.1`. Works with Wi-Fi off, because loopback never leaves the machine. |
+| Desktop transport | Tauri IPC in-process (D-1); no socket at all. |
+| Help / documentation | Rendered from files shipped with the app (TUI help screen, GUI help page). External links (e.g., Stockfish source offer) are shown as text and never fetched automatically. |
+| Updates, telemetry, crash reporting, license checks | None. The Tauri updater plugin is not included. |
+| macOS launch checks | The desktop app is a locally built, unsigned build (PLAT-1). Built on the same Mac, it carries no quarantine attribute, so Gatekeeper's online check doesn't apply. |
+
+**Enforcement, so offline can't silently regress:**
+- **Content-Security-Policy** `default-src 'self'; connect-src 'self' ws://127.0.0.1:*` (web) and the equivalent Tauri `csp` config (desktop). Any accidental remote script, font, or image fails to load, and the E2E suite catches it.
+- **Bundle scan in CI:** fails if the built GUI contains `http(s)://` resource references outside an allow-list (license texts, documentation links shown as text).
+- **Offline E2E:** the PLAT-3 scenario (clean profile → register → timed game vs. a computer → post-game analysis → stats → export) runs for desktop, web (three browsers), and CLI with non-loopback networking blocked, under the NFR-4 network-capture harness.
+
+**Build vs. run:** building from source needs the Internet once (crates, npm packages, the pinned Stockfish download in D-9). Running never does. If fully offline builds are wanted later, `cargo vendor`, an npm offline mirror, and a cached Stockfish archive cover that without architectural change.
 
 ## 9. Testing architecture (mapping test-strategy onto this design)
 
@@ -738,27 +767,75 @@ The same scenario format (`e2e/scenarios/*.yaml`: setup, inputs, expected PGN/re
 
 ---
 
-## 11. Decisions to make (iterate here)
+## 11. Decisions
 
 | ID | Decision | Recommendation | Alternatives / trade-off | Status |
 |---|---|---|---|---|
-| D-1 | How the desktop app reaches the core | Link `chess-app` in-process; Tauri IPC with the same envelope as the WebSocket | Desktop starts the embedded axum server and loads `http://127.0.0.1:<port>`: one transport everywhere and identical E2E paths, but it opens a port and is less idiomatic Tauri | PROPOSED |
-| D-2 | Process topology | Each entry point embeds the core; coordination through SQLite leases | A single background daemon (launchd) that all front-ends talk to: one engine pool and live cross-process updates, but more moving parts and a daemon lifecycle to manage | PROPOSED |
-| D-3 | Move generation | Wrap `shakmaty` + `pgn-reader` (GPL-3.0, mature, fast, perft-verified) | Write our own in `chess-rules`: full control and a learning exercise, but weeks of work and the risk of subtle rule bugs; perft tests still apply either way | PROPOSED |
-| D-4 | GUI board | Own SVG board component, for full control of keyboard and a11y | `chessground` (Lichess, GPL-3.0): polished drag/animation, but its keyboard and screen-reader model doesn't match GUI-2/UI-4 and would need wrapping | PROPOSED |
-| D-5 | UI framework | React + Vite | Svelte or SolidJS: smaller and faster, with a smaller testing/a11y ecosystem | PROPOSED |
+| D-1 | How the desktop app reaches the core | Link `chess-app` in-process; Tauri IPC with the same envelope as the WebSocket | Desktop starts the embedded axum server and loads `http://127.0.0.1:<port>`: one transport everywhere and identical E2E paths, but it opens a port and is less idiomatic Tauri | AGREED 2026-10-25 |
+| D-2 | Process topology | Each entry point embeds the core; coordination through SQLite leases | A single background daemon (launchd) that all front-ends talk to: one engine pool and live cross-process updates, but more moving parts and a daemon lifecycle to manage | AGREED 2026-10-25 |
+| D-3 | Move generation | Wrap `shakmaty` + `pgn-reader` (GPL-3.0, mature, fast, perft-verified) | Write our own in `chess-rules`: full control and a learning exercise, but weeks of work and the risk of subtle rule bugs; perft tests still apply either way | AGREED 2026-10-25 |
+| D-4 | GUI board | Own SVG board component, for full control of keyboard and a11y | `chessground` (Lichess, GPL-3.0), used directly or with our own keyboard/a11y layer on top. Full comparison in §11.1 | PROPOSED — under review |
+| D-5 | UI framework | React + TypeScript + Vite | Svelte or SolidJS: smaller and faster, with a smaller testing/a11y ecosystem | AGREED 2026-10-25 |
 | D-6 | CLI style | Full-screen TUI with `ratatui` + `crossterm`, Elm-style update/render; plain mode for screen readers and pipes; headless for scripts | — (decided by the user; requirements CLI-1 amended) | AGREED 2026-10-24 |
-| D-7 | Rust ↔ TS type sharing | `ts-rs` | `specta` / `tauri-specta`: tighter Tauri integration, but less useful on the WebSocket path | PROPOSED |
-| D-8 | Web server lifecycle | `chess serve` started by the user (prints and opens URL) | A launchd agent that is always running, so the URL "just works" | PROPOSED |
-| D-9 | Stockfish acquisition | Pin one release; a build script downloads and checksums it at build time and bundles it | Require `brew install stockfish` and find it on `PATH`: simpler builds, worse install story | PROPOSED |
-| D-10 | Project license | GPL-3.0-or-later | Required only if builds are distributed; local-only use doesn't trigger GPL obligations, but choosing now avoids relicensing | PROPOSED |
-| D-11 | Legal-move lookups for what-if branches | Ask the core (`LegalMoves{fen}` query; localhost round trip ≪ 1 ms) | Compile `chess-rules` to WASM for the UI: instant and offline-in-browser, but a second build target and logic in two places | PROPOSED |
+| D-7 | Rust ↔ TS type sharing | `ts-rs` | `specta` / `tauri-specta`: tighter Tauri integration, but less useful on the WebSocket path | AGREED 2026-10-25 |
+| D-8 | Web server lifecycle | `chess serve` started by the user (prints and opens URL) | A launchd agent that is always running, so the URL "just works" | AGREED 2026-10-25 |
+| D-9 | Stockfish acquisition | Pin one release; a build script downloads and checksums it at build time and bundles it (run time stays offline, §8.1) | Require `brew install stockfish` and find it on `PATH`: simpler builds, worse install story | AGREED 2026-10-25 |
+| D-10 | Project license | GPL-3.0-or-later | Required only if builds are distributed; local-only use doesn't trigger GPL obligations, but choosing now avoids relicensing | AGREED 2026-10-25 |
+| D-11 | Legal-move lookups for what-if branches | Ask the core (`LegalMoves{fen}` query; localhost round trip ≪ 1 ms) | Compile `chess-rules` to WASM for the UI: no server round trip, but a second build target and logic in two places | AGREED 2026-10-25 |
+
+### 11.1 D-4 in detail: the GUI board component
+
+**What the board must do (from AGREED requirements).**
+- Mouse click-to-move and drag-and-drop, plus touch tap-to-move on the web (GUI-2).
+- Keyboard: arrow-key cursor, Space to select, arrows to choose a destination, Enter to confirm, Esc to cancel, a keyboard-operable promotion picker. Selection without legal moves gives feedback (GUI-2).
+- **Mixed input mid-move:** select with the mouse and confirm with Enter, or the reverse (GUI-2 verification). This means mouse, touch, and keyboard must share **one** selection state.
+- Typed algebraic input next to the board (GUI-2c).
+- Highlights for last move, check, and legal destinations; coordinates toggle; flip (GUI-3/4).
+- Screen-reader labels for squares, pieces, and moves; visible focus; contrast-checked themes (UI-4), verified with axe and a VoiceOver walk-through.
+- ≥10 board themes and ≥5 piece sets including high-contrast (UI-3), with screenshot tests.
+- Read-only display while rewound, and an analysis/what-if board (GAME-3, ANA-2).
+
+**The options.**
+
+**A. Our own React + SVG board.** The board is a React component that renders an 8×8 SVG (or CSS-grid) layout directly from the `GameSnapshot` and a small local `BoardState` (cursor, selection, drag). Each square is a focusable cell in an ARIA grid.
+
+**B. `chessground` used directly.** [chessground](https://github.com/lichess-org/chessground) is the board library from Lichess: TypeScript, GPL-3.0-or-later, framework-agnostic (it manages its own DOM inside an element you give it). It handles drag-and-drop, click-to-move, touch, animations, premoves, arrows/circles, coordinates, orientation, and highlights. You configure it with `Chessground(el, config)` and update it with `cg.set({...})`.
+
+**C. Hybrid: `chessground` for visuals and pointer input, plus our own keyboard and accessibility layer.** chessground renders and handles mouse/touch. We add a keyboard cursor (drawn with chessground's shape API or a CSS overlay) that drives chessground through `selectSquare`/`move`, and a visually hidden ARIA grid that mirrors the position for screen readers.
+
+| | **A. Own React + SVG** | **B. chessground directly** | **C. Hybrid** |
+|---|---|---|---|
+| Drag-and-drop, touch, animation polish | Must build it: pointer events with pointer capture, a ghost piece, snap-back, piece-slide animation. Achievable, but this is where most of the effort and the "feels cheap" risk sit. | Excellent and battle-tested on millions of Lichess games. | Excellent (from chessground). |
+| Keyboard model of GUI-2 | Built exactly to spec. | **Not provided.** chessground has no keyboard cursor or focus model. (Lichess offers keyboard input as a separate text box, and blind users get a separate non-visual UI rather than the board.) Fails GUI-2b as is. | Built by us on top, but it must stay in sync with chessground's internal selection. |
+| Mixed mouse + keyboard in one move | Natural: one React selection state that every input method updates. | Not possible without the keyboard layer. | Possible, but there are two sources of truth: chessground's internal `selected` square and our cursor state. Every event must be mirrored both ways. This is the main source of subtle bugs. |
+| Screen readers (UI-4) | Squares are real ARIA grid cells with labels ("e4, white pawn, legal destination"); live region announces moves. Native and testable with axe. | Pieces are generic DOM elements without ARIA roles or labels. Fails UI-4 as is. | A hidden ARIA grid parallel to the visual board. It works, but it is two boards to keep consistent, and focus is on the hidden grid while sighted keyboard users look at the visual one. |
+| Fit with React and our data flow | Declarative: render(snapshot) → board. No imperative sync; rewind and analysis boards are just different props. | Imperative: a `useEffect` wrapper calls `cg.set` on every change. Community React wrappers exist but are thinly maintained. State lives in two places (our snapshot and chessground). | Same imperative wrapper as B, plus the keyboard layer. |
+| Legal moves and promotion | We already have legal moves in the snapshot; we draw destinations and a promotion picker (needed for keyboard anyway). | Takes legal destinations via `movable.dests` (easy from our snapshot). **No promotion picker** — we build it regardless. | Same as B. |
+| Themes (UI-3) | CSS variables for squares, swappable SVG piece sets. Full control. | Themeable through CSS and piece CSS classes; Lichess uses it with many themes. Fine. | Same as B. |
+| Testability (Playwright, axe, screenshots) | Stable, semantic selectors (`role=gridcell[name="e4…"]`); axe runs cleanly. | Drag tests need synthetic mouse events on chessground's DOM; axe will flag the unlabeled board. | Two DOMs to assert against; drag tests as in B. |
+| Licence | Ours (GPL-3.0-or-later per D-10). | GPL-3.0-or-later: compatible with D-10. | Same as B. |
+| Dependency risk | None beyond React. | One well-maintained dependency, tied to Lichess's priorities and release cycle. | Same as B, plus coupling to chessground internals (`selected`, shapes) that may change between versions. |
+| Rough effort (board only) | Highest initial effort: roughly 1–2 weeks for drag, touch, and animation polish on top of the keyboard/a11y work every option needs. | Lowest to get a pretty board, but it doesn't meet GUI-2b/UI-4, so it is not acceptable alone. | Middle: chessground's polish, but the keyboard and a11y work is about the same as in A, plus sync logic. |
+
+**What every option needs anyway.** Piece-set and board-theme assets with compatible licences (several Lichess piece sets have different licences, so each set gets a licence audit), a promotion picker, the typed-SAN input box, and keyboard/a11y E2E tests.
+
+**Recommendation: A (own React + SVG board).** The agreed keyboard model, mixed-input requirement, and screen-reader requirement are where options B and C are weakest, and those requirements have explicit E2E and axe tests. With A, the keyboard and accessibility come built in rather than layered on top, there is one selection state, and the board is a pure function of the snapshot. The cost is building drag-and-drop and animation polish ourselves. To contain that risk, build the board early, behind a `Board` props interface, with its own Playwright and axe tests. If the drag polish turns out poor, switching that layer to C stays possible without touching the rest of the UI.
+
+### 11.2 Decision log
+
+| Date | Decision | IDs |
+|---|---|---|
+| 2026-10-24 | Rust backend, TypeScript UI, Tauri desktop, one shared core. | inputs |
+| 2026-10-24 | CLI is a full-screen ratatui TUI, keyboard only, with plain and headless modes. | D-6 |
+| 2026-10-25 | Accepted recommendations: in-process core with Tauri IPC (D-1); each entry point embeds the core, coordination via SQLite (D-2); `shakmaty` + `pgn-reader` (D-3); `ts-rs` (D-7); `chess serve` started by the user (D-8); pinned, bundled Stockfish downloaded at build time (D-9); GPL-3.0-or-later (D-10); legal-move lookups via the core (D-11). | D-1–D-3, D-7–D-11 |
+| 2026-10-25 | React + TypeScript + Vite for the GUI. | D-5 |
+| 2026-10-25 | Offline operation for desktop, web, and CLI made an explicit, tested v1 requirement; architecture confirmed to have no run-time network dependency (§8.1). | PLAT-3 |
 
 ## 12. Risks
 
 | ID | Risk | Mitigation |
 |---|---|---|
-| R-1 | **`tauri-driver` (WebDriver) does not support macOS**, so "same E2E suite against the desktop shell" (GUI-1) can't use the standard Tauri E2E path on our only platform. | Run the full GUI suite in Playwright **WebKit** (same engine family as WKWebView) using the Tauri transport against a test harness, plus a scripted smoke test of the real `.app`. With D-1's alternative, the desktop app could be driven exactly like the web app. Revisit if Tauri adds macOS WebDriver support. |
+| R-1 | **`tauri-driver` (WebDriver) does not support macOS**, so "same E2E suite against the desktop shell" (GUI-1) can't use the standard Tauri E2E path on our only platform. | Run the full GUI suite in Playwright **WebKit** (same engine family as WKWebView) using the Tauri transport against a test harness, plus a scripted smoke test of the real `.app`. (D-1's rejected alternative — loading the UI from the local server — would have let the desktop app be driven exactly like the web app.) Revisit if Tauri adds macOS WebDriver support. |
 | R-2 | Beginner/Novice strength (400/600) is below Stockfish's limiter; calibration may take several iterations. | Personality parameters live in data, not code; `chess calibrate` runs nightly; bands are adjusted without schema changes. |
 | R-3 | Concurrent writers across three processes. | Short transactions, WAL, `busy_timeout`, leases; concurrency integration test in CI. |
 | R-4 | GPL obligations if the app is ever distributed. | Choose GPL-3.0-or-later now (D-10); license audit in CI. |
@@ -768,6 +845,5 @@ The same scenario format (`e2e/scenarios/*.yaml`: setup, inputs, expected PGN/re
 
 ## 13. Next steps
 
-1. Review this document. Accept, change, or reject D-1 … D-11.
-2. Once decisions are AGREED, record them in a decision log here and add an "Architecture inputs resolved" entry to requirements.md.
-3. Then: workspace skeleton, `chess-rules` + `chess-domain` with their unit tests first (the test-first core), followed by `chess-store`, `chess-engine`, `chess-app`, the CLI, and finally the GUI and shells.
+1. Decide D-4 (§11.1).
+2. Then: workspace skeleton, `chess-rules` + `chess-domain` with their unit tests first (the test-first core), followed by `chess-store`, `chess-engine`, `chess-app`, the CLI, and finally the GUI and shells.

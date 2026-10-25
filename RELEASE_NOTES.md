@@ -1,5 +1,42 @@
 # Release Notes
 
+## Design baseline v0.3: 2026-10-25
+
+Documentation-only release. No application code exists yet.
+
+### Changed: architecture decisions recorded
+**docs/architecture.md**
+- Section 11 renamed "Decisions". D-1–D-3 and D-5–D-11 are AGREED:
+  - D-1: the desktop app links the core in-process and talks to it over Tauri IPC.
+  - D-2: each entry point embeds the core; they coordinate through the SQLite file.
+  - D-3: chess rules wrap `shakmaty` + `pgn-reader`.
+  - D-5: React + TypeScript + Vite for the GUI.
+  - D-6: full-screen ratatui TUI (agreed in v0.2).
+  - D-7: Rust → TypeScript types with `ts-rs`.
+  - D-8: the web server is started by the user with `chess serve`.
+  - D-9: Stockfish pinned, downloaded and checksummed at build time, bundled with the app.
+  - D-10: project license GPL-3.0-or-later.
+  - D-11: legal-move lookups for what-if branches go through the core.
+- **D-4 (GUI board) remains open.** New §11.1 compares three options in detail: our own React + SVG board (recommended), chessground used directly, and chessground with our own keyboard/accessibility layer.
+- New §11.2 decision log.
+- New §8.1 **Offline operation**: every run-time dependency and how it is met locally, enforcement through Content-Security-Policy and a CI bundle scan, offline E2E tests, and the build-vs-run distinction.
+- §6.1 records that the TUI is keyboard only: moves typed, no board cursor, mouse capture never enabled.
+- Header rewritten with current status and a change summary.
+
+### Changed: offline operation is an explicit v1 requirement
+**docs/requirements.md**
+- **PLAT-3** strengthened: the desktop app, web page, and CLI are fully usable with no Internet connection, including first launch. Nothing is fetched at run time (no CDN scripts, web fonts, update checks, license checks, or telemetry). Building from source may download dependencies; running never does. New verification: offline E2E for each entry point with non-loopback networking blocked, a network-capture check, a CI scan of the GUI bundle for remote resources, a Content-Security-Policy in both the local server and the desktop app, and a check that the bundled Stockfish runs with no network.
+- **CLI-1/3/4**: TUI details (Q38), typed-only moves (Q39), and no mouse (Q40) marked AGREED.
+- Header "Current state" updated to 2026-10-25 with a change summary. Decision Log entries added.
+
+**docs/test-strategy.md**
+- Title no longer says "technology-neutral"; it points to architecture.md §9 for tools.
+- Header status updated to 2026-10-25 with a change summary.
+- Non-functional checks add offline E2E for desktop, web, and CLI, plus the GUI bundle scan (PLAT-3).
+
+**README.md**
+- Status, offline feature description, technology decisions table, and documentation index updated.
+
 ## Design baseline v0.2: 2026-10-24
 
 Documentation-only release. No application code exists yet.

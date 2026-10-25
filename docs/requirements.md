@@ -2,12 +2,16 @@
 
 **Status legend:** `AGREED` = confirmed by user · `PROPOSED` = suggested by Claude, awaiting decision · `DRAFT` = user's original wording, wording/details still open
 
-**Current state (2026-10-24):**
+**Current state (2026-10-25):**
 - Sections 1–10 have been reviewed and marked AGREED by the user. Where an AGREED requirement still contains "proposed" wording, that wording is treated as accepted unless listed under Open Questions.
 - All requirements are AGREED, including the CLI terminal-UI details (Q38–Q40 resolved 2026-10-24); no requirements questions remain open.
 - Section 11 (Non-Functional) and the Out-of-Scope list are AGREED (2026-10-24).
-- Key settled decisions: local shared data file; local web server; Stockfish; computer Players in five classes with varied parameters and static Elo; only human Elo changes (start 400 / 600 / 1200 / 2200 / 2500 from self-assessment, no cap, K 40 for first 30 games then 32); Training mode (human vs. computer, unrated, untimed, with takeback and in-game analysis) vs. Strict mode (default, rated, clocks, no in-game analysis, post-game analysis only); read-only rewind in both; human-chosen matchup; hot-seat human–human; self-play never rated and excluded from W/L/D stats; clocks in v1 with presets + custom, Strict mode only; game time persisted.
-- CLI amended 2026-10-24: the CLI is a full-screen, ratatui-style terminal UI (TUI), with a plain line-oriented mode kept for screen readers and scripting. Decisions are logged in the Decision Log. Update this file as decisions are made.
+- Key settled decisions: fully offline operation for desktop, web, and CLI (PLAT-3); local shared data file; local web server; Stockfish; computer Players in five classes with varied parameters and static Elo; only human Elo changes (start 400 / 600 / 1200 / 2200 / 2500 from self-assessment, no cap, K 40 for first 30 games then 32); Training mode (human vs. computer, unrated, untimed, with takeback and in-game analysis) vs. Strict mode (default, rated, clocks, no in-game analysis, post-game analysis only); read-only rewind in both; human-chosen matchup; hot-seat human–human; self-play never rated and excluded from W/L/D stats; clocks in v1 with presets + custom, Strict mode only; game time persisted.
+- **Changes 2026-10-24 → 2026-10-25:**
+  - CLI amended to a full-screen, ratatui-style terminal UI (TUI): keyboard only, moves typed (no board cursor), no mouse, 80×24 minimum, terminal always restored, plain line-oriented mode for screen readers and pipes, scripted runs headless (CLI-1..4, UI-2, UI-4; Q38–Q40).
+  - PLAT-3 strengthened: desktop app, web page, and CLI are fully usable offline in v1, including first launch, with no run-time Internet fetches and explicit offline tests.
+  - Architecture inputs resolved (Rust backend, TypeScript UI, Tauri, one shared core); the architecture lives in [architecture.md](architecture.md).
+- Decisions are logged in the Decision Log. Update this file as decisions are made.
 
 Each requirement has: ID, statement, status, and **Verification** (test cases). Overall approach is in [test-strategy.md](test-strategy.md).
 Test levels: **U** = unit, **I** = integration, **E** = end-to-end, **M** = manual.
@@ -29,9 +33,17 @@ The Game shall be runnable via (a) a web interface, (b) a command line, (c) a de
 Desktop app and CLI support macOS (Apple Silicon at minimum). Web supports current Chrome, Safari, Firefox. Linux/Windows out of scope for v1 unless you say otherwise.
 - **Verification:** M: smoke test on macOS (arm64); E: web suite on Chromium/WebKit/Firefox.
 
-### PLAT-3 (AGREED) Offline operation
-Desktop and CLI work with no network. Web works with no internet because it is served locally (DAT-1).
-- **Verification:** E: run with network disabled; full game vs computer completes.
+### PLAT-3 (AGREED; strengthened 2026-10-25) Offline operation
+All three entry points — desktop app, web page, and CLI — are fully usable with no Internet connection, in v1. Every feature works offline: registration, all matchups and modes, computer play, clocks, analysis (live and post-game), statistics, themes, settings, import/export, and help.
+- Nothing is fetched from the Internet at run time: no CDN scripts, web fonts, remote images, update checks, license checks, or telemetry. The GUI bundle, piece and board themes, fonts, the Stockfish engine (including its neural-network file), and documentation ship with the app.
+- The web page is served by the local server (`localhost`), so it needs no Internet; it must also work with Wi-Fi off and no network interface other than loopback.
+- First launch after install is also offline: nothing (registration, roster generation, database creation) requires a connection.
+- Building from source may download dependencies; running never does.
+- **Verification**
+  - E: with all network interfaces except loopback disabled, for each of desktop, web (Chromium, WebKit, Firefox), and CLI: first launch on a clean profile → register → full game vs. a computer Player in Strict with a clock → post-game analysis → stats view → PGN export.
+  - E: network-capture harness during the above records zero non-loopback connections (shared with NFR-4).
+  - U/CI: the built GUI bundle contains no `http(s)://` resource references outside an allow-list (license texts, documentation links that are never fetched); the Content-Security-Policy (`default-src 'self'`) is set by both the local server and the desktop app, so any accidental remote load fails in tests.
+  - I: the bundled Stockfish runs with no network and no external network file.
 
 ---
 
@@ -407,3 +419,4 @@ Online play, matchmaking, accounts with passwords, chess variants (960, etc.), o
 | 2026-10-24 | Two play modes: Training (analysis + takeback, unrated) and Strict (restricted analysis of past positions only, no takeback, rated). Post-game full analysis offered after every game. | PLY-5, RULE-3, ELO-2, ANA-1, ANA-3 |
 | 2026-10-24 | CLI amended to a full-screen ratatui-style TUI; plain line-oriented mode kept for screen readers and scripting. TUI details PROPOSED (Q38–Q40). | CLI-1..4, UI-2, UI-4 |
 | 2026-10-24 | Q38: TUI details accepted (screens, 80×24 minimum, terminal hygiene, plain mode, key bindings). Q39: no keyboard board cursor in the CLI; moves are typed only. Q40: no mouse support in the TUI. | CLI-1, CLI-3, CLI-4 |
+| 2026-10-25 | PLAT-3 strengthened: desktop, web page, and CLI are fully usable offline in v1, including first launch; no run-time Internet fetches of any kind; explicit offline verification. | PLAT-3, NFR-4 |
