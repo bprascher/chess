@@ -2,21 +2,29 @@
 
 An offline, single-machine chess application for macOS with three front-ends (terminal UI, local web UI, desktop app) on top of one shared Rust core, using Stockfish as the engine.
 
-> **Status: design phase (2026-10-25).** No code is implemented yet. This repository holds the agreed requirements, the test strategy, and the architecture, with all decisions agreed, plus the trade studies behind the GUI board choice. See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced so far.
+> **Status: requirements and architecture baselined as v1.0 (2026-10-26).** No code is implemented yet. This repository holds the requirements, the test strategy, and the architecture, plus the trade studies behind the GUI board choice. Every requirement and every architecture decision is agreed, except the GUI Elo chart library, which is deferred to implementation. What remains open needs measurement or a check during implementation, not a user decision (see the TBD register in [docs/requirements.md](docs/requirements.md) and §14 of [docs/architecture.md](docs/architecture.md)). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced so far.
 
 ## Planned features
 
-- **Three ways to run**: a full-screen terminal UI (ratatui-style, with a plain line-oriented mode for screen readers and scripting), a local web UI, and a Tauri desktop app. All share one data store and one core.
-- **Full FIDE rules**, takeback, save/resume, PGN import/export, optional clocks (presets and custom).
-- **Players**: registered humans and computer Players in five strength classes, with static Elo for computers.
+- **Three ways to run**: a full-screen terminal UI (ratatui-style, minimum 80×24, with a plain line-oriented mode for screen readers and scripting), a local web UI started with `chess serve`, and a Tauri desktop app. All three share one data store and one core, and they ship together as one bundle, so they are always the same version.
+- **Full FIDE rules**, takeback (Training), PGN import/export (including multi-game files), and optional clocks (presets and custom, Strict only).
+- **Players and profiles**: at launch you choose a registered Player or register a new one. Names can be up to 128 characters and are unique, and Players are identified internally by a UUID. Computer Players come in five strength classes, and their engine settings never change.
 - **Two play modes**:
-  - *Training*: human vs. computer, unrated and untimed, with takeback and in-game analysis.
-  - *Strict* (default): rated, clocks, no in-game analysis; full-game analysis after the game.
-- **Elo for humans** only, starting at 400 / 600 / 1200 / 2200 / 2500 from a self-assessment, K = 40 for the first 30 games and 32 after.
-- **Statistics**: W/L/D totals, by color and opponent, Elo over time, game history with replay.
-- **Analysis**: post-game analysis of every game, what-if scenarios, read-only rewind in both modes.
-- **Themes and accessibility**: at least 10 board themes and 5 piece sets (including high-contrast), keyboard operation, screen-reader labels.
-- **Offline**: the desktop app, web page, and terminal UI are all fully usable with no Internet connection, including first launch; nothing is fetched at run time and there is no outbound traffic.
+  - *Training*: human vs. computer, untimed, with takeback and in-game analysis. It has its own Training Elo.
+  - *Strict* (default): clocks, no in-game analysis, and full-game analysis after the game. It has its own Strict Elo.
+- **Elo for every Player, human and computer**, on two separate tracks (Training and Strict). Both start at the category baseline: 400 / 600 / 1200 / 2200 / 2500 for Beginner / Novice / Intermediate / Master / Grand Master. Humans pick their category at registration; a computer gets its category when it is created. K = 40 for the first 30 rated games on a track, then 32, counted separately for each track. Computers have a Training Elo too, which changes in Training games. A computer's category label follows its current Strict rating. Computer-vs-computer games between different computers are rated. Self-play and games from a custom start position are never rated.
+- **Unfinished games**: games save automatically, and each human Player can have one unfinished game per mode. A computer is limited only in computer-vs-computer games (one unfinished at a time), so you can always play any computer, even one that is in another unfinished game. Crashes, power loss, and a closed browser tab pause the game (the clock freezes at its last recorded value). No completed move is ever lost, and an interruption never counts as a result. A human ends a game early only by resigning, which counts as a loss. Only a watcher of a computer-vs-computer game can abort it, and that changes nothing.
+- **Statistics**: W/L/D totals (Training and Strict), by color and opponent, Elo over time for each track, game history with replay, and average game length in moves and time. A human Player's data can be reset after confirmation: everything except their Elo ratings is cleared from that Player's own views. Nothing is deleted, so their old games stay in their opponents' history and stats.
+- **Analysis**: post-game analysis of every game (including aborted computer-vs-computer games), what-if scenarios, and read-only rewind in both modes.
+- **Themes and accessibility**: at least 10 board themes and 5 piece sets, and app colour themes including light and dark that follow the system appearance. Every theme meets WCAG AA contrast. Keyboard operation, screen-reader labels, and English-only text in v1. No sound effects in v1.
+- **Data**: full-data export as one archive (a PGN of all games plus JSON for Players, ratings, and settings) and a merging import that asks how to handle each conflict.
+- **Offline**: the desktop app, web page, and terminal UI are all fully usable with no Internet connection, including first launch. Nothing is fetched at run time and there is no outbound traffic. Network play is a possible future enhancement and is not in v1.
+
+## Platforms
+
+- macOS Tahoe and every later release, as a universal build: any Apple silicon Mac (M1 and newer), and Intel Macs for as long as Apple's macOS supports them.
+- Browsers: Safari, Chrome, Firefox, and Edge releases from the last 3 years.
+- Terminals: Terminal.app and iTerm2.
 
 ## Technology decisions
 
@@ -26,10 +34,11 @@ An offline, single-machine chess application for macOS with three front-ends (te
 | GUI | TypeScript, React + Vite |
 | Desktop shell | Tauri |
 | Chess rules | `shakmaty` + `pgn-reader`, wrapped in a `chess-rules` crate |
-| Engine | Stockfish, pinned and bundled with the app, run only inside the Rust process |
-| Storage | SQLite (WAL mode) |
+| Engine | Stockfish, pinned and bundled with the app (universal arm64 + x86_64), run only inside the Rust process |
+| Storage | SQLite (WAL mode, fully synced), plus a per-game move journal flushed to disk before each move is acknowledged |
 | Front-end ↔ core | One serializable protocol: in-process (CLI), Tauri IPC (desktop), localhost WebSocket (web); TypeScript types generated with `ts-rs` |
-| Processes | Each entry point embeds the core; they coordinate through the shared SQLite file. The web server is started with `chess serve`. |
+| Processes | Each entry point embeds the core; they coordinate through the shared data directory. The web server is started with `chess serve`. Its port comes from the `--port` flag, then the config file, then the default |
+| Packaging | One `Chess.app` bundle containing the desktop app, the `chess` CLI, and Stockfish; `chess` is put on `PATH` with a symlink |
 | License | GPL-3.0-or-later |
 | GUI board | `@lichess-org/chessground` for visuals and mouse/touch, plus our own accessible keyboard overlay (ARIA grid) and selection reducer; fallback react-chessboard |
 
@@ -37,16 +46,16 @@ An offline, single-machine chess application for macOS with three front-ends (te
 
 | Document | Contents |
 |---|---|
-| [docs/requirements.md](docs/requirements.md) | All requirements (every one AGREED), each with verification test cases, plus out-of-scope list and decision log |
+| [docs/requirements.md](docs/requirements.md) | Requirements (baseline v1.0) with verification test cases, TBD register, out-of-scope list, and decision log |
 | [docs/test-strategy.md](docs/test-strategy.md) | Test levels, focus areas, determinism, quality gates |
-| [docs/architecture.md](docs/architecture.md) | Architecture: principles, code organisation, core, protocol, front-ends, persistence, offline operation, decisions and decision log, risks, next steps |
+| [docs/architecture.md](docs/architecture.md) | Architecture (baseline v1.0): principles, code organisation, core, protocol, front-ends, persistence and move journal, offline operation, packaging, traceability, decisions and decision log, risks, open questions, next steps |
 | [docs/trade-study-gui-board.md](docs/trade-study-gui-board.md) | First-pass trade study of GUI board options (kept for the record) |
 | [docs/trade-study-gui-board-refined.md](docs/trade-study-gui-board-refined.md) | Refined trade study, chessground vs. react-chessboard, that decided D-4 |
 | [RELEASE_NOTES.md](RELEASE_NOTES.md) | Changes by release |
 
 ## Out of scope for v1
 
-Online play, matchmaking, accounts with passwords, chess variants (e.g. 960), opening-book trainers, native mobile apps, Windows/Linux packaging.
+Online or network play (a possible future enhancement), matchmaking, accounts with passwords, chess variants (e.g. 960), opening-book trainers, native mobile apps, Windows/Linux packaging, sound effects, FEN export, and languages other than English.
 
 ## Next steps
 

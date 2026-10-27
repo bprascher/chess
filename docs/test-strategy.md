@@ -1,64 +1,101 @@
 # Test Strategy
 
+| Document | Version | Date | Status | Owner |
+|---|---|---|---|---|
+| docs/test-strategy.md | 1.0 | 2026-10-26 | Aligned with requirements baseline v1.0 | Systems engineer (Claude), for Brian Prascher |
+
 Per-requirement test cases live under each requirement in [requirements.md](requirements.md). This file covers the overall approach; the concrete tools and where each test level lives are mapped onto the design in [architecture.md §9](architecture.md).
 
-**Status:** updated 2026-10-25 to match the agreed requirements. Changes this revision: GUI board testing (selection-sync sequences between chessground and our reducer, overlay alignment, axe on the `aria-hidden` board), terminal-UI testing (TUI screen snapshots at fixed sizes, PTY sessions parsed into a virtual screen, key bindings never swallowing move characters, terminal restore after quit/Ctrl-C/panic, plain mode) and offline testing (offline E2E for desktop, web, and CLI; CI scan of the GUI bundle for remote resources).
+**Status:** aligned on 2026-10-26 with **requirements baseline v1.0** (all requirements AGREED, priority Must; Q41–Q79 answered). Changes to this file after the baseline follow the requirements change control.
+- **Elo:** every Player, human or computer, has two ratings (Strict and Training) that start at the category baseline and change after rated games on their own scale. Computers' Training ratings change in Training games, the same as humans'. The K = 40 → 32 counter is kept separately for each scale (Q78). Computer Elo is no longer static. A computer's category label follows its **Strict** rating (Q79), and its engine settings never change.
+- **Ending games:** a resignation is a loss, an interruption changes nothing, and abort exists only for computer–computer watchers, where it changes nothing.
+- **Unfinished games (Q77):** one unfinished game per mode per **human** Player. A computer holds a slot only in a computer–computer game, so it is never blocked from a human–computer game, and several humans may each have an unfinished game against the same computer.
+- **Players:** Training games count in W/L/D; Player identity by UUID, with case-sensitive unique names counted in user-perceived characters. A reset keeps both ratings and their per-scale K counters, and hides the Player's past games from that Player's own views only; opponents' history and statistics keep them (Q76).
+- **Platforms:** Intel and all Apple silicon; four browsers in a 3-year window; the CLI and desktop app at one version.
+- **UI:** GUI color themes follow the system appearance; no sound in v1; no confirm-move step; the GUI scales with no minimum size; the TUI is fixed at 80×24 and asks the terminal to resize.
+- **Data:** no completed move lost on any interruption; merge-on-import with a collision prompt; one PGN + JSON export archive.
+- **Earlier revisions** added GUI board testing (selection-sync sequences between chessground and our reducer, overlay alignment, axe on the `aria-hidden` board), terminal-UI testing, and offline testing.
 
 ## Principles
-1. **Rules logic is pure and heavily unit-tested.** Move generation, SAN parse/format, Elo, clocks, PGN/FEN, mode policy, and computer-Player generation take data in and return data out — no I/O, no UI.
+1. **Rules logic is pure and heavily unit-tested.** Move generation, SAN parse/format, Elo, clocks, PGN/FEN (RULE-6–RULE-8, IF-1–IF-3), mode policy, and computer-Player generation take data in and return data out — no I/O, no UI.
 2. **Engine behind an interface.** Flow/UI tests use a deterministic fake engine; the real engine (Stockfish, UCI) is used only in integration, calibration, and strength tests.
 3. **One scenario, three front-ends.** Core scenarios are written once as scripted setups, move lists, and expected outcomes, then replayed through the CLI (PTY), web (browser automation), and desktop (same GUI suite against the desktop shell).
 4. **Every requirement ID maps to at least one automated test or an explicit manual one.** Test names/tags carry the requirement ID so a traceability matrix can be generated.
 5. **Policy is tested as a table.** Play-mode rules (Training vs. Strict) are a single policy object tested for every action in every mode and matchup, and each front-end is tested to expose exactly what the policy allows.
+6. **Tests never touch the user's ratings.** Calibration, soak, and E2E runs use an isolated data store, because computer ratings now change after rated games (RISK-2).
 
 ## Levels
 | Level | Scope | Examples |
 |---|---|---|
-| Unit | Pure logic | perft counts, SAN parser tables, Elo calc (K=40→32 switch, no clamping, self-play/c–c/Training exclusions), draw detection, clock logic with fake time, mode-policy table, class-band mapping, roster generation determinism, variation tree, board renderer snapshots, TUI screen snapshots at fixed terminal sizes |
-| Property / fuzz | Invariants | random legal playouts never reach an illegal state; `parse(format(move)) == move`; arbitrary CLI input never crashes; rewind/live round-trips preserve game state |
-| Integration | Component + real dependency | engine via UCI, data store with a real DB file, migrations, concurrent access from CLI + web server + desktop, engine-failure recovery |
-| End-to-end | Whole app per front-end | PTY-driven CLI sessions (TUI screen parsed by a terminal emulator; plain mode as a transcript); browser tests; desktop shell smoke; new-game setup combinations (GAME-1) |
-| Visual regression | GUI themes | screenshot diffs per board/piece theme (≥10 board, ≥5 piece sets), light/dark |
-| Calibration / strength (slow, nightly) | Engine classes | head-to-head matches show class ordering; measured Elo per class within tolerance of the assigned Elo, including the low-skill Beginner/Novice handicaps; 1000-game computer–computer soak |
-| Manual | Judgment calls | VoiceOver, clean-Mac install, look-and-feel of themes |
+| Unit | Pure logic | perft counts, SAN parser tables (including the `bxc3`/`Bxc3` bishop rule), Elo calc (two independent scales, for humans and computers; K = 40→32 with a separate counter per scale; no clamping; unrated cases: self-play, custom start, imported, watcher-aborted c–c; resignation = loss), draw detection, clock logic with fake time, mode-policy table, unfinished-game limit (per human Player per mode; computers only in c–c), class-band mapping and computer category labels (from the Strict rating only), roster generation determinism, name rules (128 user-perceived characters, case-sensitive uniqueness), variation tree, board renderer snapshots, TUI screen snapshots at 80×24 and larger |
+| Property / fuzz | Invariants | random legal playouts never reach an illegal state; `parse(format(move)) == move`; arbitrary CLI input never crashes; rewind/live round-trips preserve game state; rating history per scale = initial + Σ deltas |
+| Integration | Component + real dependency | engine via UCI, engine cancel (ENG-5), data store with a real DB file, migrations with pre-upgrade backup, concurrent access from CLI + web server + desktop, version-mismatch refusal (PLAT-5), engine-failure recovery with the clock still running, fault injection for no lost moves (NFR-2), import merge and collisions, export ZIP archive round-trip, reset visibility (hidden from the reset Player, kept for opponents), unfinished-game slots across processes |
+| End-to-end | Whole app per front-end | PTY-driven CLI sessions (TUI screen parsed by a terminal emulator; plain mode as a transcript); browser tests in Safari, Chrome, Firefox, and Edge; desktop shell smoke; new-game setup combinations (GAME-1); profile selection at launch |
+| Visual regression | GUI themes | screenshot diffs per board/piece theme (≥10 board, ≥5 piece sets) and per color theme (light, dark, and others), including following the system appearance |
+| Calibration / strength (slow; nightly and pre-release) | Engine categories | head-to-head matches show category ordering (higher category > 50 % at p < 0.05, ≥ 100 games per pairing, EST); measured strength per category within ±150 Elo of its baseline (EST), including the low-skill Beginner/Novice handicaps; 1000-game computer–computer soak; all on an isolated store. Calibration is done before release only; there is no recalibration after release. |
+| Manual | Judgment calls | VoiceOver, clean-Mac install (Intel, M1, M4) on Tahoe and on every later macOS release current at the app release (Intel only where that release supports it), TUI in Terminal and iTerm2, look-and-feel of themes |
 
 ## Agreed-behaviour test focus areas
 These cross-cutting behaviours came out of the requirements and need explicit coverage in every front-end:
 
 | Area | Key checks (requirement IDs) |
 |---|---|
-| Play modes | Training only for human–computer; Strict default; mode fixed at start and stored (PLY-5, GAME-1) |
+| Play modes | Training only for human–computer; Strict default; mode fixed at start and stored; Training rated on the Training scale, Strict on the Strict scale (PLY-5, GAME-1, ELO-2) |
 | Strict-mode integrity | **No engine analysis during play:** no control/command exists, and a spy on engine calls proves the engine is never queried on behalf of a human in an in-progress Strict game; post-game analysis available (ANA-1, ANA-3) |
-| Rewind | Read-only; moves rejected while rewound; return to live restores state; record unchanged; clock keeps running; computer move arriving while rewound leaves the view with an indicator; computers cannot rewind; hot-seat either human may rewind (GAME-3) |
-| Training | Takeback restores prior state; in-game analysis and what-if never alter the game; always untimed; Elo unchanged (RULE-3, ANA-1/2, ELO-2) |
-| Clocks | Strict only; presets + custom; increments; flag fall; pause on app close and resume; computer budgets from remaining time (RULE-4) |
-| Elo | Start from self-assessment (400/600/1200/2200/2500); K 40→32 after 30 rated games; no cap; humans only; no change for Training, computer–computer, self-play, custom-FEN, aborted, or imported games; real-valued storage, rounded display (ELO-1/2) |
-| Computer Players | 25-Player roster deterministic from seed; stable identity and parameters; unique parameter sets within class bounds; static Elo inside class band; cannot be deleted; draw/resign behaviour (PLY-4, ENG-2, RULE-2) |
+| Rewind | Read-only; moves rejected while rewound; return to live restores state; record unchanged; clock keeps running; computer move arriving while rewound leaves the view with an indicator; computers cannot rewind; hot-seat either human may rewind; c–c watchers can only scroll the move list (GAME-3, GAME-2) |
+| Training | Takeback restores prior state; in-game analysis (human's turn only) and what-if never alter the game; always untimed; only the Training ratings change; counts in W/L/D (RULE-3, ANA-1/2, ELO-2, UI-2) |
+| Clocks | Strict only; presets + custom; increments; flag fall; suspended on app close and on browser-tab close, and restored to the last recorded value; keep running while the engine is unavailable; computer budgets from remaining time (RULE-4, RULE-5, ENG-4) |
+| Elo | Two scales (Strict, Training) per Player, human and computer, both starting at the category baseline (400/600/1200/2200/2500); a Training game changes both sides' Training ratings, the computer's included; K 40→32 after 30 rated games, counted separately per scale (31 Strict + 0 Training games → K 32 Strict, K 40 Training); no cap; c–c between different computers rated; no change for self-play, custom-FEN, imported, watcher-aborted c–c, or interrupted games; resignation = loss in Elo and W/L/D; reset keeps both ratings and both K counters; real-valued storage, rounded display (ELO-1/2, PLY-7) |
+| Ending a game | Resign asks for confirmation (and for the side, in hot-seat); no abort command in human games; c–c watcher abort asks for confirmation and changes nothing; an interruption (kill, crash, power loss, closed tab, quit) leaves the game unfinished and resumable with no Elo or stats change (RULE-2, GAME-2, GAME-4, CLI-4) |
+| Unfinished games | At most one per mode per human Player; a computer holds a slot only in c–c games (one unfinished c–c game per computer); h–c games never use a computer's slot, so a computer with unfinished h–c or c–c games can always be chosen for a new h–c game; two humans can each have an unfinished h–c game against the same computer; setup offers resume/resign/abort instead of a second game; slots hold across processes (GAME-4, GAME-1, D-27) |
+| Computer Players | 25-Player roster deterministic from seed; stable identity; parameters within category bounds, unique, and unchanged after any number of games; ratings on both scales start at the baseline and change after rated games on that scale; category label follows the Strict rating, and a Training-rating change never moves it; never blocked by unfinished h–c games; cannot be deleted or reset; draw/resign behaviour (PLY-4, ENG-2, RULE-2) |
+| Players and identity | Profile pick or register at launch; UUID identity kept across rename; names up to 128 characters, case kept, case-sensitive uniqueness; reset asks for confirmation, keeps both ratings and K counters, hides the Player's pre-reset games from that Player's own views, and leaves opponents' history and statistics unchanged; archive asks for confirmation (PLY-2, PLY-6, PLY-7, PLY-4) |
 | Self-play | Allowed for human–human and computer–computer; unrated; excluded from W/L/D aggregates; present in history (PLY-1, ELO-1, UI-2) |
-| Stats | Any Player (human or computer) viewable; aggregates match seeded data; archived Players keep history; Computer Players screen (UI-2, UI-5) |
-| Persistence | Shared store across CLI/web/desktop; crash-safe; migrations; export/import round-trip; per-move evaluations computed after the game, never during play (DAT-1/2/3) |
-| Notation and input | SAN + coordinate form, case-insensitive, helpful errors (CLI-3); TUI key bindings never swallow move characters (CLI-4); mouse, keyboard, typed, tap input produce identical state (GUI-2) |
-| GUI board | One selection state across mouse, drag, touch, keyboard, and typed input: chessground's `api.state.selected` equals `BoardModel.selected` after every step of scripted mixed-input sequences; overlay ARIA grid aligned with the visual board (both orientations, several sizes); visual board `aria-hidden` and axe-clean; rejected pointer moves revert (GUI-2, UI-4, D-4) |
-| Terminal UI | Layout at minimum size and on resize; terminal restored after quit, Ctrl-C, and panic; plain mode selected when not a TTY; screen-reader use via plain mode (CLI-1, UI-4) |
-| Computer–computer | Only started by an explicit human choice with two computer Player selections (may be the same); pause, step, delay, abort (PLY-1, GAME-2) |
+| Stats | Any Player (human or computer) viewable; W/L/D includes Training games, with a breakdown by mode; Elo over time for both scales; average game length in moves and time; aggregates match seeded data; archived Players keep history; a reset Player's views start at the reset while opponents' views keep those games; empty state shows zero totals and "no games yet"; Computer Players screen with categories from Strict ratings (UI-2, UI-5, PLY-7) |
+| Persistence | Shared store across CLI/web/desktop at one version (mismatch refused); no completed move lost after any interruption; crash-safe; migrations with a backup first; import merges with a collision prompt; export is one ZIP archive (PGN of all games + JSON), with older format versions accepted and newer rejected; missing-store alert; per-move evaluations computed after the game, never during play (DAT-1/2/3/4/5/6, NFR-2, PLAT-5, IF-5) |
+| Notation and input | SAN + coordinate form, file letters in either case with the uppercase-`B` bishop rule, helpful errors (CLI-3); TUI key bindings never swallow move characters (CLI-4); mouse, keyboard, typed, and tap input produce identical state; all methods available at all times; no confirm-move step, and each method commits at its stated point (drop, Enter, destination select, promotion choice) (GUI-2, CLI-3) |
+| GUI board | One selection state across mouse, drag, touch, keyboard, and typed input: chessground's `api.state.selected` equals `BoardModel.selected` after every step of scripted mixed-input sequences; overlay ARIA grid aligned with the visual board (both orientations, at sizes from 480×320 to 5120×2880); visual board `aria-hidden` and axe-clean; rejected pointer moves revert (GUI-2, GUI-5, UI-4, D-4) |
+| GUI layout and themes | No minimum size: board square and fully visible, controls reachable, no horizontal scroll at every tested size; color themes include light and dark and follow the system appearance; every theme meets WCAG 2.2 AA contrast (GUI-5, UI-10, UI-7) |
+| Terminal UI | Every screen fits at 80×24; below that the TUI asks the terminal to resize, then shows an enlarge message within 1 s if it can't; reflow on resize; terminal restored after quit, confirmed Ctrl-C, and panic; plain mode selected when not a TTY; screen-reader use via plain mode (CLI-1, UI-4) |
+| Computer–computer | Only started by an explicit human choice with two computer Player selections (may be the same); pause, step, delay, scroll move list, abort (no Elo/stats change); rated when the two computers differ; the watching profile's maximum think time caps both computers (PLY-1, GAME-2, ELO-2, ENG-3) |
+| Max think time | h–c: the human's setting; c–c: the watching profile's setting; h–h: only post-game analysis search time per position (ENG-3, UI-1) |
 
 ## Reference data
 - **Perft suite:** standard positions with published node counts (start, Kiwipete, positions 3–6 from the Chess Programming Wiki).
 - **Rule fixtures:** FEN + expected legal moves/results for castling, en passant, promotion, pins, stalemate, insufficient material, automatic threefold and fifty-move draws.
 - **Tactics fixtures:** mate-in-1/2/3 and forced wins for engine top-move assertions (Training analysis, post-game analysis).
-- **Sample PGNs:** well-known games with all special moves, games with planted blunders, and malformed files.
-- **Seeded data stores** at each schema version for migration and stats tests, including self-play, Training, archived-Player, and computer-vs-computer games.
-- **Elo vectors:** hand-computed expected results, including a Player crossing game 30 and a Player above 2500.
+- **Sample PGNs:** well-known games with all special moves, games with planted blunders (≥ 300 cp), multi-game files, and malformed files.
+- **Seeded data stores** at each schema version for migration and stats tests, including self-play, Training, Strict, resigned, watcher-aborted c–c, unfinished, archived-Player, reset-Player (with games against opponents from before and after the reset), and computer-vs-computer games, with rating history on both scales for humans and computers. Also a store where two humans each have an unfinished h–c game against the same computer, and that computer has an unfinished c–c game.
+- **Elo vectors:** hand-computed expected results, including a Player crossing game 30 on one scale but not the other, a Player above 2500, a computer's Training rating after Training games, a computer whose category label changes as its Strict rating crosses a band floor, and one whose Training rating crosses a floor with no label change.
+- **Version fixtures:** stores marked with an older and a newer application version (PLAT-5, DAT-6).
 
 ## Determinism
 - Inject clock and RNG; fixed engine seed, single thread, and fixed depth wherever exact moves are asserted.
 - Never assert exact engine moves except in forced or tactical positions.
 - Roster generation uses the fixed seed so tests and users get the same 25 default Players.
+- Every automated run uses an isolated data store (`CHESS_DATA_DIR`), never the user's.
 
 ## Quality gates
-- All unit and integration tests green on every change; E2E on the main branch; calibration/soak nightly.
+- All unit and integration tests green on every change; E2E on the main branch; calibration/soak nightly and before each release.
 - Coverage target for rules, Elo, clock, policy, and parser modules: ≥ 90% line coverage; mutation testing on Elo and mode policy.
-- License audit (Stockfish GPLv3 compliance, dependency licenses) and lint in CI.
+- License audit (Stockfish GPLv3 compliance, dependency and bundled-asset licenses) and lint in CI.
+- Intel (x86_64) and Apple silicon (arm64) builds both pass the suite.
 
 ## Non-functional checks
-Startup and engine-latency benchmarks (NFR-1, ENG-3), crash-safety fault injection on the data store (NFR-2), illegal-state fuzzing (NFR-3), network-capture test for no telemetry (NFR-4), offline E2E for desktop, web, and CLI with non-loopback networking blocked plus a CI scan of the GUI bundle for remote resource references (PLAT-3), fresh-machine install walkthrough (NFR-5), license audit (NFR-6).
+- Startup benchmark on the baseline Mac (M4, ≥ 16 GB, macOS Tahoe): median of 10 warm starts, from launch (for web, `chess serve`) to the first screen accepting input (NFR-1). Engine think-time and cancel benchmarks (ENG-3, ENG-5).
+- Input-feedback latency during engine search ≤ 100 ms, 95th percentile, EST (NFR-8).
+- Fault injection at every write step (kill, simulated power loss, store unavailable, tab closed): no completed move lost, and clocks restored to the last recorded value (NFR-2, RULE-5).
+- Illegal-state fuzzing (NFR-3).
+- Network-capture test for zero non-loopback connections (NFR-4).
+- Offline E2E for desktop, web (Safari, Chrome, Firefox, Edge), and CLI with non-loopback networking blocked, plus a CI scan of the GUI bundle for remote resource references (PLAT-3).
+- Version-mismatch refusal (PLAT-5).
+- At each app release, the release checklist lists the current macOS releases (Tahoe and later, from Apple's published list), and the smoke suite runs on each (PLAT-2).
+- Fresh-machine install walkthrough on Intel and Apple silicon (NFR-5).
+- License audit covering code dependencies and bundled assets (NFR-6).
+- Web server Host/Origin rejection, including a DNS-rebinding host name; no access token is tested for, since ASM-1 is confirmed (NFR-7, D-22).
+
+## Open verification items at the baseline
+These come from the requirements register and must be closed by the step shown (requirements.md, TBD/TBR/TBC register):
+- **EST values to confirm by measurement:** TBD-5 (move delay), TBD-6 (20 games per preset), TBD-8 and TBD-9 (calibration tolerance and significance), TBD-12 (200 ms cancel), TBD-13 (engine timeouts), TBD-19 (analysis limits), TBD-20 (blunder thresholds), TBR-2 (100 ms feedback). A measurement that misses an EST value is raised as a change request, not fixed by editing the test.
+- **One-time source checks (Inspection):** TBC-2 (FIDE Laws: claim vs. automatic draws, dead position) before rule fixtures are frozen; TBC-3 (PGN Standard tags and encoding clause) before the PGN exporter; TBC-4 (WCAG 2.2 SC 1.4.3 and 1.4.11 values and formula) before theme checks; TBC-5 (Nielsen 0.1 s) with the latency test.
+- **Design values that tests depend on:** TBD-21 (exit codes, CLI-5), TBD-24 (custom PGN tags, IF-1), TBD-25 (import size limit, IF-2), TBD-26 (pinned Stockfish, IF-4), TBD-28 (stale-lease takeover time, DAT-4), TBD-18 (announcement wording, UI-6). The affected test cases are written with the value as a named parameter until the architect sets it.
