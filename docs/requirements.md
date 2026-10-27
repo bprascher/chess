@@ -2,12 +2,19 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/requirements.md | **1.0** | 2026-10-26 | **Baselined v1.0, 2026-10-26** | Systems engineer (Claude), for Brian Prascher | Brian Prascher (user) |
+| docs/requirements.md | **1.0, Amendment 1** | 2026-10-27 | **Baselined v1.0, 2026-10-26; Amendment 1 (CR-1–CR-3) applied 2026-10-27** | Systems engineer (Claude), for Brian Prascher | Brian Prascher (user) |
 
 **Baseline statement (v1.0, 2026-10-26).** Every requirement in this document is AGREED with priority Must, or is DELETED. No requirement is PROPOSED, and no detail is TBR. All user questions (Q1–Q79) are answered. What remains open is listed in the TBD/TBR/TBC register, and none of it needs a user decision before implementation starts:
 - **Values set during design** by the architect: TBD-18 (screen-reader wording), TBD-21 (exit codes), TBD-24 (custom PGN tags), TBD-25 (PGN import size limit), TBD-26 (pinned Stockfish version), TBD-28 (stale-lease takeover time). The architect has proposed values for most of them (architecture §10).
 - **Engineering estimates (EST)** accepted under Q53. Each must be confirmed by measurement on the baseline Mac.
 - **One-time source checks** of values accepted from memory: TBC-2 (FIDE Laws), TBC-3 (PGN Standard, including its encoding clause), TBC-4 (WCAG 2.2 contrast criteria), TBC-5 (Nielsen's 0.1 s limit).
+
+**Amendment 1 (2026-10-27).** The baseline statement above is kept as written on 2026-10-26. Three user decisions were applied through change control (Decision Log, 2026-10-27):
+- **CR-1:** a reset is allowed while the Player has unfinished games, and voids them (PLY-7). This closes the architect's OQ-8 / G-20.
+- **CR-2:** source checks TBC-2–TBC-5 are closed against the published sources. One sub-check remains as TBC-6 (PGN Seven Tag Roster and export-format tag rules).
+- **CR-3:** the engine is pinned to Stockfish 19 (`sf_19`, 2026-09-05), closing TBD-26. Two engine facts remain to check (TBC-7, TBC-8), plus the exact GPL version (TBC-9).
+
+No ID was renumbered. Items changed by the amendment are marked "Amended 2026-10-27 (CR-n)".
 
 From v1.0 on, no baselined item is edited in place. A change is raised as a change request, its impact is assessed (requirements, interfaces, verification, margins, risks), and it is recorded in the Decision Log and the change history below before the text changes.
 
@@ -18,6 +25,7 @@ From v1.0 on, no baselined item is edited in place. A change is raised as a chan
 | draft | 2026-10-25 | CLI amended to a full-screen TUI; PLAT-3 offline operation strengthened. |
 | draft | 2026-10-26 | Independent review (29148, INCOSE GtWR); PROPOSED amendments and requirements; decision rounds 1 (Q41–Q55) and 2 (Q56–Q74). |
 | **1.0** | 2026-10-26 | Final answers Q75–Q79 applied; every remaining PROPOSED and TBR item accepted (Q75); architecture decisions D-12, D-13, D-16, D-18–D-20, D-22–D-29 accepted; ASM-1 confirmed. Compound requirements split: RULE-5 → RULE-5–RULE-8, ENG-3 → ENG-3 and ENG-5. GAME-4 corrected (computers are never blocked by h–c games). Document baselined. |
+| **1.0, Amendment 1** | 2026-10-27 | **CR-1** (reset with unfinished games voids them): PLY-7 statement and verification; notes in GAME-1, GAME-4, RULE-2, RULE-5, DAT-3, ELO-1, ELO-2, UI-2, UI-5, ANA-4, IF-1; TBD-24 updated (`EndStatus`); TBD-30 added (EST). **CR-2** (source checks closed): RULE-1 (FIDE edition, verified citation, dead-position limitation, release-checklist note), IF-1 (PGN §4.1 citation, export format), UI-7 (WCAG 2.2 citation, non-text wording aligned with SC 1.4.11), NFR-8 (Nielsen citation); TBC-2–TBC-5 closed; TBC-6 added. **CR-3** (Stockfish 19): IF-4, ENG-1 note, ENG-2 (no assumed `UCI_Elo` floor); TBD-26 closed; TBC-7–TBC-9 added. Register, Open Questions, and Decision Log updated. Nothing renumbered. |
 
 **Status legend:** `AGREED` = confirmed by user · `PROPOSED` = suggested by Claude, awaiting decision (none remain at v1.0) · `DRAFT` = user's original wording, wording/details still open (none remain at v1.0) · `DELETED` = withdrawn; the ID is kept and never reused · `EST` = engineering estimate by Claude, based on the baseline Mac (Q47); the user accepted these as starting values (Q53), and each must be confirmed by measurement and changed only through the Decision Log · `TBR` = a value or detail Claude proposed that needed the user's review (all accepted by Q75 at v1.0)
 
@@ -30,15 +38,15 @@ From v1.0 on, no baselined item is edited in place. A change is raised as a chan
   - Round 2: Q56–Q74 and the TUI minimum.
   - Final round: Q75–Q79, the computers' Training Elo, the architecture decisions, and ASM-1.
 - The answers are merged into the requirement text, marked "AGREED 2026-10-26 (Qnn)". Where the coordinator interpreted an answer, the Decision Log records the interpretation.
-- Items accepted under Q75 are marked "AGREED 2026-10-26 (Q75)". Where Claude proposed a value from memory, the verification says the source text must be checked once (TBC-2–TBC-5).
+- Items accepted under Q75 are marked "AGREED 2026-10-26 (Q75)". Values Claude had proposed from memory were checked against their published sources on 2026-10-27 (TBC-2–TBC-5, closed by CR-2), and each requirement now cites the verified source.
 - Key settled decisions:
   - **Platform:** v1 is fully offline for desktop, web, and CLI (PLAT-3); network play is a planned future enhancement. Targets are macOS Tahoe and later releases, on Intel or any Apple silicon (baseline: M4 with 16 GB), and Safari, Chrome, Firefox, and Edge versions from the last 3 years. Terminal and iTerm2. The CLI and desktop app always ship as one version.
   - **Infrastructure:** one local shared data file; a local web server with a configurable port and no access token (one person per Mac account, ASM-1); Stockfish; English only; no sound effects.
   - **Players:** every Player is identified by a UUID. Names keep their case, are unique (case-sensitive), and are up to 128 characters. At launch the user picks a profile or registers.
   - **Elo:** every Player, human or computer, has two Elo ratings, Strict and Training, each starting at the Player's category baseline (400 / 600 / 1200 / 2200 / 2500). Both change after rated games on their own scale, for computers as well as humans. K is 40 for the first 30 rated games on each scale (counted separately per scale), then 32; there is no cap. A computer's category label follows its Strict rating, and its engine settings never change.
   - **Modes:** Training is human vs. computer, rated on the Training scale, untimed, with takeback and in-game analysis. Strict is the default: rated on the Strict scale, clocks, no in-game analysis, post-game analysis only.
-  - **Games:** each human Player has at most one unfinished game per mode. A computer holds an unfinished-game slot only in a computer–computer (Strict) game, so a computer is never blocked from a human–computer game. Ending a game on purpose means resigning, which is a loss in Elo and W/L/D. An interruption never changes Elo or stats, and the game resumes. Only a computer–computer watcher can abort, and that changes nothing. Read-only rewind for human Players. Hot-seat human–human. Humans may offer draws in h–h and h–c. Self-play is never rated and is excluded from W/L/D. Clocks are in v1, Strict only. No completed move is lost on any interruption.
-  - **Reset:** a reset hides a human Player's past games from that Player's own views only; the games stay in opponents' history and statistics.
+  - **Games:** each human Player has at most one unfinished game per mode. A computer holds an unfinished-game slot only in a computer–computer (Strict) game, so a computer is never blocked from a human–computer game. Ending a game on purpose means resigning, which is a loss in Elo and W/L/D. An interruption never changes Elo or stats, and the game resumes. Only a computer–computer watcher can abort, and that changes nothing. A reset voids the Player's unfinished games, with no result and no effect on anyone's Elo or stats (amended 2026-10-27, CR-1). Read-only rewind for human Players. Hot-seat human–human. Humans may offer draws in h–h and h–c. Self-play is never rated and is excluded from W/L/D. Clocks are in v1, Strict only. No completed move is lost on any interruption.
+  - **Reset:** a reset hides a human Player's past games from that Player's own views only; the games stay in opponents' history and statistics. *(Amended 2026-10-27, CR-1: a reset is allowed while the Player has unfinished games; each is voided, with no result and no effect on anyone's Elo or statistics.)*
 - **Changes 2026-10-24 → 2026-10-25:**
   - CLI amended to a full-screen, ratatui-style terminal UI (TUI): keyboard only, moves typed (no board cursor), no mouse, 80×24 minimum, terminal always restored, plain line-oriented mode for screen readers and pipes, scripted runs headless (CLI-1..4, UI-2, UI-4; Q38–Q40).
   - PLAT-3 strengthened: desktop app, web page, and CLI are fully usable offline in v1, including first launch, with no run-time Internet fetches and explicit offline tests.
@@ -246,13 +254,33 @@ The Game shall let the user reset a human Player's data, and shall carry out the
   - "Elo ratings" means each scale's current value and its rated-game count (which sets K, ELO-1, counted per scale); these are kept.
   - Preferences return to their defaults. Rating-history points from before the reset are hidden from the Player's own Elo charts.
   - A new history point at each current value is written on each scale, so the Player's charts and ELO-1's "final = initial + Σ deltas" check start again from it.
-- **Rationale/Source:** Q48, Q62, Q76.
+- **Amended 2026-10-27 (CR-1, user decision closing OQ-8 / G-20): reset with unfinished games.** The Game shall allow a reset while the Player has unfinished games. When the Player has any, the confirmation prompt shall state that each of them will be voided. On a confirmed reset, the Game shall void each of the Player's unfinished games.
+  - User's words: "allow it; the unfinished game does not count against either player."
+  - A **voided** game has no result. It changes no Elo rating, rated-game count, W/L/D total, or other statistic of any Player in it: the reset Player, a human opponent, or a computer Player. Voiding frees the reset Player's unfinished-game slot in that game's mode (GAME-4).
+  - Voiding is not a resignation, so the resignation-is-a-loss rule (RULE-2, GAME-4, Q60) does not apply.
+  - Interpretations (Decision Log, 2026-10-27; for the user to correct):
+    - A voided game stays in the opponent's game history, marked "voided by reset", with no result. It can be analysed, like a watcher-aborted c–c game (ANA-4). It is hidden from the reset Player's own views (Q76), because it started before the reset.
+    - A voided game is no longer unfinished, so it also frees the human opponent's slot in that mode, and it can never be resumed.
+    - A voided c–c game cannot occur: only human Players can be reset (Q62), and humans never play in c–c games.
+    - In a self-play h–h game (the reset Player on both sides), the voided game is hidden entirely, because both sides are the reset Player.
+    - A game that is open for play in a front-end process (DAT-4) is voided too. That front-end stops the game within 2 s (EST, TBD-30; the architecture's lease heartbeat) and tells its user that the game was voided by a reset. A move completed there in that short window is still stored (NFR-2), and the game stays voided (architecture D-30).
+- This replaces the architect's rule "a reset is refused while the Player has an unfinished game" (architecture OQ-8, G-20, D-26), which no requirement stated.
+- **Rationale/Source:** Q48, Q62, Q76; user decision 2026-10-27 (CR-1).
 - **Priority:** Must.
 - **Verification:** E: reset asks for confirmation, and cancelling changes nothing. I: after a confirmed reset, both current ratings and rated-game counts are unchanged; the Player's own history, statistics, and Elo charts show no game from before the reset; preferences are back to their defaults; the next rated game on each scale uses the kept K for that scale. I: after the reset, each opponent's (human or computer) game history, W/L/D, and ratings still include every game against the reset Player, unchanged. U: no reset action exists for computer Players.
+  - **Added 2026-10-27 (CR-1):**
+  - E: with an unfinished game, the reset prompt states that the game will be voided. Cancelling leaves the game unfinished and resumable, with nothing changed.
+  - I: reset a Player who has an unfinished Strict h–h game. Afterwards the opponent's Strict and Training ratings, rated-game counts, and W/L/D are unchanged; the game appears in the opponent's history marked "voided by reset", with no result, and can be opened in analysis (ANA-4); the game does not appear in the reset Player's views; the opponent can start a new Strict game.
+  - I: reset a Player who has an unfinished h–c game (one case in Training, one in Strict). Afterwards the computer Player's ratings on both scales, rated-game counts, and W/L/D are unchanged.
+  - E: immediately after a reset that voided an unfinished game, the reset Player starts a new game in that mode, and setup offers no resume or resign.
+  - I: a Player with an unfinished game in each mode is reset; both games are voided.
+  - U: voiding records no result and no loss (it is not a resignation), and its termination reason is "voided by reset".
+  - I: while one of the Player's unfinished games is open in another front-end process, a confirmed reset voids it; within 2 s (EST) that front-end stops the game and shows that it was voided by a reset; every completed move is stored, and the game is not resumable.
 
 ### GAME-1 (AGREED 2026-10-24) New-game setup
 In all three front-ends, starting a game collects: matchup (h–h, h–c, c–c), mode (Training/Strict, default Strict), Players for each side (registered humans / computer Players, per PLY-1/3/4), color assignment (White / Black / random), clock (Strict only: preset, custom, or untimed — RULE-4; Training is always untimed), and optionally a starting position (RULE-8). Invalid combinations (e.g., Training for h–h) are not selectable.
 - **AGREED 2026-10-26 (Q49, Q60, Q61, Q77):** setup cannot start a game in a mode where a chosen human Player already has an unfinished game, or a computer–computer game where a chosen computer Player already has an unfinished computer–computer game (GAME-4). Instead it offers to resume that game, or to resign it (a human's game), or to abort it (a computer–computer game). A computer Player can always be chosen for a human–computer game.
+- **Amended 2026-10-27 (CR-1):** a reset of the human Player (PLY-7) also frees the slot, by voiding the unfinished game. Reset is not one of setup's choices.
 - **Verification:** E: each combination produces the expected stored game header; E: invalid combinations are unselectable/rejected in CLI, web, desktop; U: setup validation table-tested; E: with an unfinished game for a chosen human Player in the chosen mode, setup offers resume, resign, or abort, and starts nothing else; E: a computer Player with unfinished games (h–c and c–c) can still be chosen as the opponent in a new h–c game.
 
 ### GAME-2 (AGREED; amended 2026-10-26, Q49/Q50/Q59) Watching computer–computer games
@@ -273,7 +301,7 @@ During play, a human Player can rewind the game to view past positions, read-onl
 - **Verification:** E: rewind k moves then return → position, move list, and clocks identical to never having rewound (apart from elapsed time); E: attempting a move while rewound is rejected; E: stored game record is unchanged by rewinding; E: clock keeps running while rewound; E: computer move arriving while rewound leaves the view in place with the indicator, and "live" shows the new position; E: all of the above in all three front-ends.
 
 ### GAME-4 (AGREED 2026-10-26, Q49/Q60/Q61/Q77) Unfinished games, interruptions, and deliberate ends
-Each human Player shall have at most one unfinished game per play mode (one Training, one Strict). While a human Player has an unfinished game in a mode, no other game in that mode can start with that Player until the unfinished game is finished or resigned.
+Each human Player shall have at most one unfinished game per play mode (one Training, one Strict). While a human Player has an unfinished game in a mode, no other game in that mode can start with that Player until the unfinished game is finished, resigned, or voided by a reset of one of its human Players (PLY-7; amended 2026-10-27, CR-1).
 
 Each computer Player shall have at most one unfinished computer–computer game. While it has one, no other computer–computer game can start with that computer Player until the unfinished one is finished or aborted by the watcher. Human–computer games never count toward a computer Player's limit, so a computer Player can always be chosen for a new human–computer game, whatever unfinished games it has.
 - **AGREED 2026-10-26 (Q61):** the limit is per Player, not per app.
@@ -284,8 +312,9 @@ Each computer Player shall have at most one unfinished computer–computer game.
 - **AGREED 2026-10-26 (Q49, Q60):**
   - **Interruptions:** an interruption the Player did not choose leaves the game unfinished. Examples are a crash, a failure, power loss, a closed app or tab, or quitting. The game is kept and resumes on restart (RULE-5), and no Player's Elo or statistics change.
   - **Resignation:** a deliberate end by a Player is a resignation (RULE-2). It counts as a loss for that Player, in Elo on the game's scale and in W/L/D.
-  - **No abort in human games:** human games have no abort; the only deliberate end is resigning. Abort exists only for a computer–computer watcher (GAME-2). Interpretation, Decision Log.
+  - **No abort in human games:** human games have no abort; the only deliberate end is resigning. Abort exists only for a computer–computer watcher (GAME-2). Interpretation, Decision Log. *(Amended 2026-10-27, CR-1: a reset also takes a game out of play, by voiding it with no result; see below.)*
   - **Analysis:** resigned and aborted games stay in history and can be analysed (ANA-4).
+  - **Voiding by reset (amended 2026-10-27, CR-1):** a reset of a human Player voids that Player's unfinished games (PLY-7). A voided game has no result and changes no Player's Elo or statistics. It is not a resignation and not an interruption.
   - This replaces the round-1 rule "aborting a Strict game counts as a loss for Elo" and "abort is available in every matchup".
 - **Rationale/Source:** Q49, Q60, Q61; RULE-5; GAME-2.
 - **Priority:** Must.
@@ -297,24 +326,33 @@ Each computer Player shall have at most one unfinished computer–computer game.
   - E: a computer Player with any number of unfinished h–c games can still be chosen for a new c–c game.
   - I: kill the app mid-game, then relaunch → the game resumes, and no rating or statistic changed.
   - U: no abort command exists in h–c or h–h games.
+  - I (added 2026-10-27, CR-1): after a reset voids a human Player's unfinished game, that Player's slot in that mode is free, and so is a human opponent's.
 
 ---
 
 ## 3. Chess Rules & Game Flow
 
 ### RULE-1 (AGREED; amended 2026-10-26, Q75) Full FIDE rules
-The Game shall enforce the FIDE Laws of Chess (edition TBC-2) for legal moves and game termination, with the deviations stated in RULE-2. This covers castling, en passant, promotion (choice of piece), check, checkmate, stalemate, the fifty-move rule, threefold repetition, and insufficient material.
+The Game shall enforce the FIDE Laws of Chess (edition effective 1 January 2023, approved by the FIDE General Assembly on 7 August 2022) for legal moves and game termination, with the deviations stated in RULE-2 and the limitation stated in (c). This covers castling, en passant, promotion (choice of piece), check, checkmate, stalemate, the fifty-move rule, threefold repetition, and insufficient material.
 - Original wording (2026-10-24): "Legal-move enforcement incl. castling, en passant, promotion (choice of piece), check/checkmate/stalemate, fifty-move rule, threefold repetition, insufficient material."
 - **AGREED 2026-10-26 (Q75), review amendments (a)–(c):**
   - (a) The statement above, with a subject and "shall".
   - (b) **Deliberate deviation from FIDE:** under the FIDE Laws, threefold repetition and the fifty-move rule are draws a player must claim, and only fivefold repetition and the 75-move rule end the game automatically. The Game ends the game automatically at threefold repetition and at the fifty-move rule, with no claim step (RULE-2).
   - (c) FIDE's draw rule is "dead position", of which insufficient material is one case. The Game detects the dead-position draw only for insufficient material (positions where neither side can checkmate by any legal sequence of moves because of the material left).
-  - These points were written from memory: the FIDE text is checked once against the current FIDE Laws (TBC-2).
+- **Amended 2026-10-27 (CR-2, TBC-2 closed): verified source.** FIDE Laws of Chess, effective 1 January 2023, https://handbook.fide.com/chapter/E012023. Checked against the text:
+  - Art. 5.2.2: a dead position ("neither player can checkmate the opponent's king with any series of legal moves") ends the game automatically.
+  - Art. 9.2 (threefold repetition) and Art. 9.3 (fifty-move rule) give a draw only "upon a correct claim by a player having the move".
+  - Art. 9.6: fivefold repetition and the 75-move rule are automatic draws. Under Art. 9.6.2, a checkmate on the final move takes precedence.
+  - So (b) is correct: the automatic draw at threefold repetition and at the fifty-move rule is a deliberate deviation from Art. 9.2 and 9.3.
+  - **(c) is a limitation relative to Art. 5.2.2.** Dead positions that are not insufficient material (for example, a fully blocked pawn structure) are not detected. Such a game continues until another rule ends it, for example the automatic threefold-repetition or fifty-move draw, a draw agreed on offer, or resignation.
+  - Interpretation (Claude, Decision Log 2026-10-27; for the user to correct): when the move that completes the fifty-move count gives checkmate, the checkmate stands, as Art. 9.6.2 rules for the 75-move rule. A position cannot repeat a third time with a checkmating move, so threefold repetition needs no such rule.
+- **Release checklist (not a requirement):** the FIDE Council on 23 August 2026 agreed to keep discussing a draft revision of the Laws. At each app release, the release checklist records whether a newer FIDE Laws edition is in force. If one is, the change is raised as a change request against RULE-1, RULE-2, and RULE-4.
 - **Verification**
   - U: perft test — move-generation node counts match published values for standard positions (start, Kiwipete, etc.) to depth ≥ 4.
   - U: table-driven tests of each special rule and each draw/termination condition (FEN in → expected legal moves / result out), including automatic ends at threefold repetition and at the fifty-move rule, and an insufficient-material draw.
   - U: illegal moves (into check, pinned piece, castling through check, wrong turn) rejected with a reason.
-  - Inspection (once, step 1): the claim/automatic rules and the dead-position wording in (b) and (c) match the current FIDE Laws text (TBC-2).
+  - U (added 2026-10-27, CR-2): a move that completes the fifty-move count and gives checkmate ends the game as checkmate. A blocked-pawn dead position without insufficient material is not declared drawn.
+  - Inspection, at each app release: the release checklist records whether a newer FIDE Laws edition is in force (release-checklist item above). *(The one-time source check TBC-2 was closed on 2026-10-27; see the verified source above.)*
 
 ### RULE-2 (AGREED; amended 2026-10-26, Q42/Q52/Q60) Game end actions
 Resign, draw offers, automatic result detection. Result recorded as 1-0, 0-1, ½-½ with termination reason.
@@ -322,8 +360,9 @@ Resign, draw offers, automatic result detection. Result recorded as 1-0, 0-1, ½
   - In human–human games the other human accepts or declines.
   - A computer never offers a draw.
   - This replaces the 2026-10-24 wording "offer/accept draw (human–human)".
-- **AGREED 2026-10-24 (unchanged):** a computer never resigns. It accepts a human's draw offer only if its own evaluation, from its own side, is ≤ 0. Threefold repetition and the fifty-move rule end the game automatically (no claim step). This is a deliberate deviation from the FIDE Laws (RULE-1 (b)).
+- **AGREED 2026-10-24 (unchanged):** a computer never resigns. It accepts a human's draw offer only if its own evaluation, from its own side, is ≤ 0. Threefold repetition and the fifty-move rule end the game automatically (no claim step). This is a deliberate deviation from the FIDE Laws, Art. 9.2 and 9.3 (RULE-1 (b); verified 2026-10-27, CR-2).
 - **AGREED 2026-10-26 (Q52, Q60):** resigning is the only way for a Player to end a game on purpose.
+  - **Amended 2026-10-27 (CR-1):** resigning is the only deliberate end that gives a result. A reset (PLY-7) voids the Player's unfinished games instead: a voided game has no result and is not a resignation.
   - It always asks for confirmation.
   - It counts as a loss for the resigning Player in Elo (on the game's scale) and in W/L/D (GAME-4).
   - In a hot-seat human–human game, the Game asks which side is resigning (interpretation, Decision Log).
@@ -350,6 +389,7 @@ The Game shall save every game automatically as it is played, so that an unfinis
 - **AGREED 2026-10-26 (Q66; architecture D-14):** when the browser tab closes or disconnects, the game's clock is suspended and the game's state is recorded, as when the app closes. This applies even if `chess serve` keeps running.
 - Clock recording frequency (EST): at every completed move, and at least once per second while a clock runs. "Last recorded value" only limits the time lost or regained by an interruption if values are recorded often. This matters in rated games, where a forced interruption should not buy thinking time.
 - One unfinished game per mode per human Player (a computer only in c–c games): GAME-4. Durability: NFR-2.
+- **Amended 2026-10-27 (CR-1):** a game voided by a reset (PLY-7) is no longer unfinished and is never resumed. Its completed moves stay stored.
 - Durability of moves is designed by architecture D-23 (per-game move journal, accepted 2026-10-26).
 - **Verification:** E: kill the app mid-game (for web, also kill the server) → relaunch → the game resumes at the same position with every completed move, and each clock equals its last recorded value. E: closing the browser tab suspends the clock; reopening resumes from the recorded value. *(The PGN round-trip and malformed-input checks moved to RULE-6–RULE-8 with the split.)*
 
@@ -388,6 +428,7 @@ The Game shall use an open-source chess engine for computer play and analysis.
   - The WASM build is not used. Stockfish runs only as a bundled native child process of the Rust core (architecture §2, D-9). The pinned-engine constraint is now IF-4.
   - The engine-failure behaviour in the verification is now requirement ENG-4.
   - The project license is GPL-3.0-or-later (D-10).
+- **Amended 2026-10-27 (CR-3):** the pinned release is Stockfish 19 (IF-4). Its release notes say "GPL"; the "GPLv3" in the 2026-10-24 wording is confirmed from the shipped `COPYING` file (TBC-9), and the license audit (NFR-6) records it.
 
 ### ENG-2 (AGREED; amended 2026-10-26, Q41/Q53/Q57/Q72) Difficulty levels
 User can configure difficulty by choosing a computer Player (PLY-4). Computer Players come in five **categories** — Beginner, Novice, Intermediate, Master, Grand Master.
@@ -395,6 +436,8 @@ User can configure difficulty by choosing a computer Player (PLY-4). Computer Pl
 - **AGREED 2026-10-26 (Q57, Q72):** a computer Player's parameters never change after it is created. Calibration happens before release only; there is no recalibration after release.
 - **AGREED 2026-10-26 (Q41, Q70):** each computer Player starts at its category's baseline Elo (400 / 600 / 1200 / 2200 / 2500) on both scales. Its ratings then change after rated games (ELO-1). This replaces "each computer Player's static Elo lies within its class's Elo band; Grand Master computers span 2500–3000" (2026-10-24).
 - **AGREED 2026-10-24:** Beginner and Novice computer Players (400 / 600 baselines) are below the range of Stockfish's built-in strength limiter, so they use a low skill level, shallow depth, and random errors. All categories are calibrated empirically by playing matches before release (see verification).
+  - **Amended 2026-10-27 (CR-3):** no `UCI_Elo` floor value is assumed. Any category whose baseline is below the lowest `UCI_Elo` value that the pinned Stockfish 19 accepts (TBC-8) uses the low-skill method above, and `UCI_Elo` is used only for values inside that engine's reported range. The 2026-10-24 statement expects Beginner and Novice to be in this group; TBC-8 confirms which categories are.
+  - Calibration is run against the pinned release (IF-4). A later Stockfish release is pinned only after a Decision Log entry and a new calibration run.
 - **Calibration criteria (EST, Q53):**
   - Each category's parameter bounds are tuned so its measured strength is within ±150 Elo of its baseline.
   - Each higher category scores more than 50 % against each lower one, at one-sided significance p < 0.05, over ≥ 100 games per pairing.
@@ -402,6 +445,7 @@ User can configure difficulty by choosing a computer Player (PLY-4). Computer Pl
 - **Calibration verification:** E (slow, pre-release): matches against reference opponents and between categories give measured Elo estimates within ±150 (EST) of each category's baseline.
 - **Verification**
   - U: generated Players in a category stay within the category's parameter bounds; no two share an identical parameter set.
+  - I (added 2026-10-27, CR-3): every generated `UCI_Elo` value lies inside the range that the pinned engine reports for the `UCI_Elo` option in its `uci` reply (TBC-8).
   - I: generated parameter sets persist and reload unchanged, including after rated games.
   - E (slow, nightly): round-robin matches between categories (≥ 100 games per pairing, SPRT or binomial test). Each higher category scores more than 50 % at p < 0.05 (EST), which shows strength rises with category.
   - I: each level produces legal moves within its time budget.
@@ -467,6 +511,7 @@ User can export all their data and import it back (format: IF-5).
 Store for each game (including self-play games, which are flagged — ELO-1/UI-2): players, colors, result + termination reason, start/end time, **game time (total elapsed duration, and time spent by each Player; excludes time the app was closed/paused during a saved-and-resumed game)**, move list (PGN), mode, for each computer side the computer Player's ID and the engine parameters it used, rating scale (Strict, Training, or unrated), whether analysis was used, Elo before/after on that scale, opening (ECO), per-move time, per-move engine evaluation / accuracy (centipawn loss). Per-move evaluation is computed after the game ends, in the background, and never during play.
 - **AGREED 2026-10-26 (Q41, Q70):** "Elo before/after" applies to both sides, computer Players included, on the game's scale. "Rated flag" became "rating scale", because Training games are now rated on their own scale.
 - Termination reasons include resignation and, for c–c games, aborted (GAME-4).
+  - **Amended 2026-10-27 (CR-1):** they also include "voided by reset" (PLY-7). A voided game stores no result, and its Elo before/after fields are empty, because it is unrated.
 - **Accuracy (EST, Q53):** stored as per-move centipawn loss and each side's average centipawn loss for the game. There is no separate "accuracy %" in v1.
 - **AGREED 2026-10-26 (Q75), review amendments:**
   - (a) The ECO classification table used for "opening (ECO)" is bundled with the app, so classification works offline (PLAT-3). Architecture D-20 (accepted 2026-10-26) puts it in `chess-domain`, and its data license is checked under NFR-6.
@@ -523,7 +568,7 @@ Every Player, human or computer, shall have two Elo ratings: a **Strict** rating
   - U: each Player's delta uses their own K; deltas are exactly opposite when both Ks are equal; sign correct for win/draw/loss. Covers h–h, h–c (human and computer both change), and c–c between different computers.
   - U: K switches from 40 to 32 after exactly 30 rated games on a scale (game 30 uses 40, game 31 uses 32), for humans and computers, and the two scales' counts are independent: a Player with 31 rated Strict games and 0 rated Training games uses K = 32 on Strict and K = 40 on Training.
   - U: a Training game changes only Training ratings; a Strict game changes only Strict ratings.
-  - U: unrated games (self-play, custom start position, imported, watcher-aborted c–c) and interruptions do not change any rating. A resignation is rated as a loss for the resigning side.
+  - U: unrated games (self-play, custom start position, imported, watcher-aborted c–c, voided by reset) and interruptions do not change any rating. A resignation is rated as a loss for the resigning side.
   - U: ratings above 2500 and below the starting value are stored/handled with no clamping.
   - I: rating history is append-only and consistent per scale: final rating = initial + Σ deltas (after a reset, initial = the reset point, PLY-7).
   - E: after N scripted rated games on one scale, history query for that scale returns N+1 points.
@@ -533,7 +578,8 @@ Strict-mode games are rated on the Strict scale, and Training-mode games on the 
 - self-play games (ELO-1);
 - games from a non-standard starting position (RULE-8);
 - imported games (RULE-7);
-- computer–computer games aborted by the watcher (GAME-2).
+- computer–computer games aborted by the watcher (GAME-2);
+- games voided by a reset (PLY-7; added 2026-10-27, CR-1).
 
 Mode is not mutable mid-game, so no game can switch scales.
 - **AGREED 2026-10-26 (Q70):** Training games are rated on their own scale. This replaces the 2026-10-24 rule "Training-mode games are casual and never change Elo".
@@ -542,7 +588,7 @@ Mode is not mutable mid-game, so no game can switch scales.
   - A resignation is a rated loss for the resigning Player.
   - An interruption is not an end of the game and changes no rating (GAME-4).
   - This replaces the round-1 rule "aborting a rated Strict game counts as a loss".
-- **Verification:** E: Training game (with analysis and takeback) → only the Training ratings of the human and the computer change; both Strict ratings are unchanged. E: rateable Strict h–c game (standard start, not self-play) → both Players' Strict ratings change. E: c–c game between different computers → both Strict ratings change; the same game aborted by the watcher → no change. E: custom-FEN, self-play, and imported games → no change on either scale. E: resigned rated game → loss recorded for the resigning side. E: game interrupted by a kill and then resumed → no change until it ends. *(The 2026-10-24 check "Strict game using restricted analysis → rating updated" was removed 2026-10-26, because Strict has no in-game analysis (ANA-1).)*
+- **Verification:** E: Training game (with analysis and takeback) → only the Training ratings of the human and the computer change; both Strict ratings are unchanged. E: rateable Strict h–c game (standard start, not self-play) → both Players' Strict ratings change. E: c–c game between different computers → both Strict ratings change; the same game aborted by the watcher → no change. E: custom-FEN, self-play, and imported games → no change on either scale. E: resigned rated game → loss recorded for the resigning side. E: game interrupted by a kill and then resumed → no change until it ends. E (added 2026-10-27, CR-1): a game voided by a reset → no change on either scale for any Player in it (cases in PLY-7). *(The 2026-10-24 check "Strict game using restricted analysis → rating updated" was removed 2026-10-26, because Strict has no in-game analysis (ANA-1).)*
 
 ---
 
@@ -579,9 +625,10 @@ User can view statistics over time: W/L/D totals, by color, by mode (Training, S
 - **AGREED 2026-10-26 (Q76):** after a reset (PLY-7), the reset Player's own statistics show only games played after the reset. Opponents' statistics keep every game against that Player.
 - **AGREED 2026-10-26 (Q73):** average game length is shown in both moves and time.
 - Resignations count as losses (GAME-4). Watcher-aborted c–c games and unfinished games are not counted in aggregates, but resigned and aborted games are listed in history.
+  - **Amended 2026-10-27 (CR-1):** games voided by a reset (PLY-7) are not counted in any aggregate. They are listed in the opponent's history, marked "voided by reset", and are hidden from the reset Player's views.
 - CLI: a TUI statistics screen with tables and Elo-over-time charts; plain mode prints a text table + ASCII sparkline of each scale's Elo.
 - **Verification**
-  - I: seeded store with known games (Training, Strict, self-play, resigned, aborted c–c, unfinished) → displayed numbers equal expected aggregates, including average length in moves and in time.
+  - I: seeded store with known games (Training, Strict, self-play, resigned, aborted c–c, unfinished, voided by reset) → displayed numbers equal expected aggregates, including average length in moves and in time.
   - E: each Elo chart's point count and last value match the stored history for its scale.
   - E: empty state (no games) shows zero totals and a "no games yet" message, with no error.
   - I: seeded store with a reset Player → that Player's views exclude games from before the reset, and an opponent's views include them.
@@ -609,6 +656,7 @@ The user can view statistics for **any** Player, human or computer:
 Self-play games are excluded from aggregates but listed in history (UI-2). A "Computer Players" screen lists all computer Players with current category, both current ratings, and W/L/D.
 - **AGREED 2026-10-26:** computer ratings change (Q41) and are shown over time like a human's, on both scales. A computer's category label follows its Strict rating (Q57, Q79). Training games count, and the Training rating is shown, for computers as well as humans (Q70, final round). Game length is shown both ways (Q73). This replaces "for humans, over time; computers show their static Elo".
 - **AGREED 2026-10-26 (Q76):** a reset Player's past games still appear in the statistics and history of the Players they played (PLY-7).
+  - **Amended 2026-10-27 (CR-1):** a game voided by the reset appears only in the opponent's history, marked "voided by reset", and never in any statistic. This applies to computer opponents too.
 - **Verification:** I: seeded store → displayed numbers for a chosen human and a chosen computer Player equal expected aggregates. E: the computer Player list shows the 25 default Players with categories matching their current Strict ratings. E: each Elo chart matches the rating history for its scale. E: archived (deleted) human Players' history remains visible where referenced.
 
 ### UI-6 (AGREED 2026-10-26, Q75) Screen-reader announcements in the GUI
@@ -619,12 +667,17 @@ When either side moves, check is given, the game ends, or a move is rejected, th
 - **Verification:** E: Playwright asserts the live-region text after each event type, in web and desktop. M: VoiceOver speaks each event in Safari and in the desktop app while focus stays on the board.
 
 ### UI-7 (AGREED 2026-10-26, Q45/Q68) Color contrast
-In every bundled GUI theme (board, piece, and color themes), the GUI shall give text a contrast ratio of at least 4.5:1 against its background. Pieces, move and check highlights, and focus indicators shall have at least 3:1 against the adjacent colors. Ratios are computed as defined in WCAG 2.2.
+In every bundled GUI theme (board, piece, and color themes), the GUI shall give all text a contrast ratio of at least 4.5:1 against its background. The visual information needed to identify user-interface components and their states (including move and check highlights and focus indicators), and the graphical objects needed to understand the content (including pieces), shall have at least 3:1 against the adjacent colors. Ratios are computed as defined in WCAG 2.2: (L1 + 0.05) / (L2 + 0.05), where L1 is the relative luminance of the lighter color and L2 that of the darker.
+- Original non-text wording (2026-10-26): "Pieces, move and check highlights, and focus indicators shall have at least 3:1 against the adjacent colors." **Amended 2026-10-27 (CR-2):** worded as SC 1.4.11 states its scope; the original items are kept as named examples. The original ratio wording was "Ratios are computed as defined in WCAG 2.2"; the formula is now stated.
 - **AGREED 2026-10-26 (Q45):** WCAG 2.2 AA contrast values.
 - **AGREED 2026-10-26 (Q68):** nothing beyond WCAG AA is required, including for the high-contrast theme. Interpretation: no minimum contrast between light and dark squares.
-- **Rationale/Source:** UI-4's "sufficient color contrast" was not measurable. The values come from WCAG 2.2 level AA success criteria 1.4.3 (Contrast, Minimum) and 1.4.11 (Non-text Contrast). These criterion numbers and values were written from memory and accepted (Q45, Q75); the W3C text is checked once (TBC-4).
+- **Rationale/Source:** UI-4's "sufficient color contrast" was not measurable. **Amended 2026-10-27 (CR-2, TBC-4 closed): verified source.** WCAG 2.2, W3C Recommendation, 12 December 2024, https://www.w3.org/TR/WCAG22/. Checked against the text:
+  - SC 1.4.3 Contrast (Minimum), Level AA: text at least 4.5:1; large-scale text (at least 18 point, or 14 point bold) at least 3:1.
+  - SC 1.4.11 Non-text Contrast, Level AA: user-interface components and their states, and graphical objects required to understand the content, at least 3:1 against adjacent colors.
+  - The contrast ratio is (L1 + 0.05) / (L2 + 0.05).
+- **Stricter than SC 1.4.3 (decision 2026-10-27, CR-2):** UI-7 keeps its AGREED wording, so 4.5:1 applies to all text, including large-scale text and text in inactive controls. UI-7 does not use the 3:1 allowance for large-scale text. This keeps one threshold for every text check. Q68 says nothing beyond AA is *required*; if the user wants exactly AA, the large-text allowance can be added by a one-line change request.
 - **Priority:** Must.
-- **Verification:** U: each theme's colors are computed against these thresholds (extends the existing UI-4 check). E: the axe color-contrast rule is clean on every screen in every color theme. Inspection (once, before step 3): the 4.5:1 and 3:1 values, the criterion numbers, and the contrast-ratio formula match the W3C WCAG 2.2 Recommendation (TBC-4).
+- **Verification:** U: each theme's colors are computed against these thresholds (extends the existing UI-4 check). E: the axe color-contrast rule is clean on every screen in every color theme. U (amended 2026-10-27, CR-2): the contrast-ratio function implements (L1 + 0.05) / (L2 + 0.05) with the relative-luminance definition of WCAG 2.2. The test author reads that definition when writing the test and checks known pairs: black on white gives 21:1, and identical colors give 1:1. *(The one-time source check TBC-4 was closed on 2026-10-27. The relative-luminance definition was not read in that check, so this unit test carries that sub-check.)*
 
 ### UI-8 (AGREED 2026-10-26, Q75) Visible keyboard focus
 While any GUI control or board square has keyboard focus, the GUI shall show a focus indicator on it that meets the UI-7 non-text contrast ratio.
@@ -691,13 +744,14 @@ After every game (any mode), the user is offered analysis of the entire game: st
 - Opening analysis later from game history: ANA-4.
 
 ### ANA-4 (AGREED 2026-10-26, Q49/Q60/Q75) Analysis of stored games
-In every front-end, the user shall be able to open full-game analysis (ANA-3) and what-if (ANA-2) from the game history list for any completed, resigned, watcher-aborted, or imported game.
+In every front-end, the user shall be able to open full-game analysis (ANA-3) and what-if (ANA-2) from the game history list for any completed, resigned, watcher-aborted, voided, or imported game.
 - **AGREED 2026-10-26 (Q49, Q60):** resigned games and watcher-aborted c–c games can be analysed. Unfinished games are resumed, not analysed (GAME-4).
+- **Amended 2026-10-27 (CR-1, interpretation):** a game voided by a reset (PLY-7) can be analysed from the opponent's history, like a watcher-aborted c–c game.
 - **AGREED 2026-10-26 (Q75):** opening analysis from the game history list, as stated.
 - **Rationale/Source:** RULE-7 ("imported PGNs are for review/analysis only"; RULE-5 before the split) and UI-2 ("game history list with replay") imply it, but ANA-3 only covers the offer made right after a game. Architecture §6.1 assumes it (Game history → replay / analysis / PGN export).
 - Analysis never changes Elo or statistics (ANA-3, RULE-7).
 - **Priority:** Must.
-- **Verification:** E: in CLI, web, and desktop, open analysis from history for a completed Strict game, a Training game, a resigned game, a watcher-aborted c–c game, and an imported PGN. I: stored result, Elo, and statistics are unchanged afterwards.
+- **Verification:** E: in CLI, web, and desktop, open analysis from history for a completed Strict game, a Training game, a resigned game, a watcher-aborted c–c game, a game voided by a reset (from the opponent's history; added 2026-10-27, CR-1), and an imported PGN. I: stored result, Elo, and statistics are unchanged afterwards.
 
 ---
 
@@ -822,9 +876,9 @@ The GUI shall have no minimum window size. At every browser viewport or desktop 
 | NFR-3 | Engine moves always legal; app never enters illegal state | Property-based/fuzz tests; c-v-c soak of 1000 games with no crashes (on an isolated store, RISK-2) |
 | NFR-4 (AGREED; amended 2026-10-26, Q43) | Privacy: in v1 the Game makes no network connection other than loopback, and has no telemetry, update check, or other outbound feature. Data stays on the Mac. Network play is a planned future enhancement (PLAT-3). *(Replaces "data stays local unless user opts in; no telemetry by default".)* | Network-capture test shows no outbound calls |
 | NFR-5 | Documented install + run steps for each of the 3 entry points | M: fresh-machine walkthrough; install and update keep the CLI and desktop app at one version (PLAT-5) |
-| NFR-6 (AGREED; amended 2026-10-26, Q75) | Open-source license compliance for the engine, all code dependencies, and all bundled assets (fonts, piece sets, board themes, the ECO table); the project license is GPL-3.0-or-later (D-10). *(2026-10-24 wording: "Open-source license compliance for engine and all deps".)* | License audit in CI, covering code dependencies and every bundled asset |
+| NFR-6 (AGREED; amended 2026-10-26, Q75) | Open-source license compliance for the engine, all code dependencies, and all bundled assets (fonts, piece sets, board themes, the ECO table); the project license is GPL-3.0-or-later (D-10). *(2026-10-24 wording: "Open-source license compliance for engine and all deps".)* | License audit in CI, covering code dependencies and every bundled asset. The audit records the Stockfish GPL version read from its shipped `COPYING` file (added 2026-10-27, CR-3, TBC-9) |
 | NFR-7 (AGREED 2026-10-26, Q75) | Security: the local web server shall reject every HTTP and WebSocket request whose `Host` or `Origin` is not the server's own loopback origin. *Rationale:* without this, any web page open in the browser, or a DNS-rebinding host name, could drive games and read data over localhost (architecture R-5, §5.2). Loopback-only binding is PLAT-4. No access token is required, because ASM-1 (one person per Mac account) was confirmed on 2026-10-26 (architecture D-22, accepted). Priority Must. | I: requests with a foreign `Host`/`Origin`, including a rebinding host name, are rejected. E: a page from another origin cannot open the WebSocket. |
-| NFR-8 (AGREED 2026-10-26, Q75; value EST, Q53) | Responsiveness: while an engine search or background analysis runs, every front-end shall show visible feedback to a key press, click, or tap within 100 ms (EST) on the baseline Mac. *Rationale:* "UI never blocks" (ENG-3 before the split) is not measurable. 0.1 s is the commonly cited limit for a response to feel instant (Nielsen, *Usability Engineering*, 1993). This source was cited from memory and accepted (Q75); the text is checked once (TBC-5). Priority Must. | I/E: inject inputs during a maximum-length search; 95th-percentile input-to-render latency ≤ 100 ms. E: during engine think the UI stays interactive (settings open, resign works) (moved from ENG-3). Inspection (once): the cited source supports the 0.1 s value (TBC-5). |
+| NFR-8 (AGREED 2026-10-26, Q75; value EST, Q53) | Responsiveness: while an engine search or background analysis runs, every front-end shall show visible feedback to a key press, click, or tap within 100 ms (EST) on the baseline Mac. *Rationale:* "UI never blocks" (ENG-3 before the split) is not measurable. 0.1 s is the limit for the user to feel that the system reacts instantaneously (Jakob Nielsen, "Response Times: The 3 Important Limits", an excerpt from Chapter 5 of *Usability Engineering*, 1993, https://www.nngroup.com/articles/response-times-3-important-limits/; the article credits Miller (1968) and Card et al. (1991) as the origin of the limits). *Amended 2026-10-27 (CR-2, TBC-5 closed):* citation verified; the 100 ms value stays an EST (TBR-2). Priority Must. | I/E: inject inputs during a maximum-length search; 95th-percentile input-to-render latency ≤ 100 ms. E: during engine think the UI stays interactive (settings open, resign works) (moved from ENG-3). |
 | NFR-9 (AGREED 2026-10-26, Q75) | Error reporting: when the Game rejects a user action or an operation fails, the front-end shall show a message that states what failed and, where one exists, the user's next step. Cases include an illegal or stale move, a disallowed command, an invalid import file, a version mismatch (PLAT-5), and a store or engine error. *Rationale:* error handling appeared only in scattered verification lines (CLI-3, ENG-1, DAT-1, RULE-5). Architecture §8 maps error codes to messages. Priority Must. | U: every protocol error code has a message. E: each listed error path in each front-end shows its message and the game continues. Fuzz (CLI-3, NFR-3). |
 
 - **AGREED 2026-10-26 (Q75):** the review amendments to NFR-1 (start and end points of startup) and NFR-6 (bundled assets) are merged into the table above.
@@ -837,18 +891,24 @@ The GUI shall have no minimum window size. At every browser viewport or desktop 
 Added by the 2026-10-26 review. RULE-5–RULE-8, DAT-2, and ENG-1 name PGN/FEN files, the full-data export, and the engine, but do not specify them. The front-end ↔ core protocol is internal and is specified in architecture §5, not here.
 
 ### IF-1 (AGREED 2026-10-26, Q75) PGN export
-The Game shall export each game as PGN that conforms to the PGN Standard (Steven J. Edwards, "Portable Game Notation Specification and Implementation Guide", 1994-03-12), except that the file is encoded as UTF-8. The export includes the Seven Tag Roster, SAN movetext, and the result.
+The Game shall export each game as PGN that conforms to the export format of the PGN Standard (Steven J. Edwards, coordinator, "Portable Game Notation Specification and Implementation Guide", revised 1994.03.12), except that the file is encoded as UTF-8. The export includes the Seven Tag Roster, SAN movetext, and the result.
+- **Amended 2026-10-27 (CR-2, TBC-3 closed): verified source.** Copy read at https://phh.readthedocs.io/en/latest/_static/PGN_Reference.txt. Checked against the text:
+  - Section 4.1: "PGN data is represented using a subset of the eight bit ISO 8859/1 (Latin 1) character set". The UTF-8 encoding is therefore a deliberate deviation from section 4.1.
+  - The standard defines an import format (flexible, may be prepared by hand) and an export format (strict, generated by programs). IF-1 output uses the export format ("export format" added to the statement on 2026-10-27, matching the deterministic output that PLAT-1 needs). IF-2 input follows the import format.
+  - Not yet checked: the Seven Tag Roster text and the export-format tag spacing rules (TBC-6).
+- **Amended 2026-10-27 (CR-1, interpretation):** a game voided by a reset (PLY-7) is exported with `Result "*"`, `Termination "abandoned"`, and the custom tag `EndStatus "voided"` (architecture §5.7, D-30; tag name in TBD-24). A watcher-aborted c–c game is exported the same way with `EndStatus "aborted"`. The standard tag values are checked under TBC-6.
 - Tags: a non-standard start uses `SetUp` and `FEN`, a timed game uses `TimeControl`, and the termination reason uses `Termination`. Mode, rating scale, and Player category go in custom tags, with names TBD-24.
 - Saved what-if branches are exported as PGN variations (ANA-2).
-- **AGREED 2026-10-26 (Q75):** the 1994 PGN Standard is the reference, and the encoding is UTF-8, a deliberate deviation. The 1994 standard specifies ISO 8859-1, which cannot hold every Unicode Player name (PLY-6). Both the reference and its encoding clause were cited from memory; the text is checked once (TBC-3). This closes TBR-3.
+- **AGREED 2026-10-26 (Q75):** the 1994 PGN Standard is the reference, and the encoding is UTF-8, a deliberate deviation. The 1994 standard specifies a subset of ISO 8859/1 (Latin 1) (section 4.1, verified 2026-10-27), which cannot hold every Unicode Player name (PLY-6). This closes TBR-3.
 - **Rationale/Source:** RULE-6 ("PGN export for any game"; RULE-5 before the split), ANA-2, DAT-2, CLI-5. PLAT-1 compares PGN across front-ends, so the export must be deterministic. PGN is the de facto game format (Q74).
 - **Priority:** Must.
-- **Verification:** U: exported PGN of fixture games re-imports (IF-2) with identical moves and tags. U: the export of one game is byte-identical from CLI, web, and desktop. U: a Player name with non-Latin-1 characters round-trips as UTF-8. Inspection: a sample opens in an independent PGN reader, chosen by the test owner and named in the test report. Inspection (once, step 1): the Seven Tag Roster, the tag names used, and the encoding clause match the PGN Standard text (TBC-3).
+- **Verification:** U: exported PGN of fixture games re-imports (IF-2) with identical moves and tags. U: the export of one game is byte-identical from CLI, web, and desktop. U: a Player name with non-Latin-1 characters round-trips as UTF-8. Inspection: a sample opens in an independent PGN reader, chosen by the test owner and named in the test report. Inspection (once, step 1): the Seven Tag Roster, the tag names used, the export-format tag spacing rules, the `*` result token, and the `Termination "abandoned"` value match the PGN Standard text (TBC-6). U (added 2026-10-27, CR-1): a voided game and a watcher-aborted game export with `*` and the matching `EndStatus`, and the full-data import restores their status. *(The encoding clause was verified on 2026-10-27, closing TBC-3.)*
 
 ### IF-2 (AGREED 2026-10-26, Q51/Q75) PGN import
 The Game shall import every valid game in a PGN file, including files that hold many games. For each game that fails to parse, it shall report the game's index in the file and the line of its first error, and still import the remaining valid games.
 - **AGREED 2026-10-26 (Q51):** multi-game PGN files are in scope.
 - Content accepted: tags, SAN movetext, comments, NAGs, variations, and `SetUp`/`FEN` starting positions.
+- **Amended 2026-10-27 (CR-2):** the importer accepts the PGN Standard's import format (the flexible, hand-preparable form; see IF-1), in Latin-1 (section 4.1) or UTF-8.
 - **AGREED 2026-10-26 (Q75):** variations are kept for analysis. A game identical to one already imported (same tags and moves) is a collision and is handled by the DAT-2 prompt.
 - A file larger than TBD-25 is rejected with a message (NFR-9).
 - Imported games are review-only: never rated, never counted in statistics (RULE-7), and listed in game history (ANA-4).
@@ -865,11 +925,16 @@ The Game shall accept a position as a six-field FEN string, and shall reject, wi
 - **Verification:** U: a table of valid FENs (including castling and en-passant fields) and invalid FENs (each syntax error and each illegal-position case) gives the expected acceptance or message.
 
 ### IF-4 (AGREED 2026-10-26, Q75) Engine
-All computer play and analysis in the Game shall use one pinned Stockfish release (version TBD-26), bundled with every entry point for both Intel (x86_64) and Apple silicon (arm64) (PLAT-2), and controlled through the UCI protocol.
+All computer play and analysis in the Game shall use one pinned Stockfish release, Stockfish 19 (tag `sf_19`, published 2026-09-05), bundled with every entry point for both Intel (x86_64) and Apple silicon (arm64) (PLAT-2), and controlled through the UCI protocol.
+- Original wording (2026-10-26): "one pinned Stockfish release (version TBD-26)". **Amended 2026-10-27 (CR-3, user decision "use the latest Stockfish as the baseline"; TBD-26 closed as a version choice):**
+  - Source: GitHub release API, https://github.com/official-stockfish/Stockfish/releases/tag/sf_19 (not a pre-release). Release assets include `stockfish-macos-universal.tar.gz`. The release notes say Stockfish moved to "universal binaries" that detect CPU features at run time. That means CPU-feature dispatch; it does not by itself show that the macOS asset holds both arm64 and x86_64 code.
+  - License: the release notes say "licensed under the GPL license". That matches the project's GPL-3.0-or-later (D-10). The exact GPL version is read from the shipped `COPYING` file (TBC-9).
+  - Not verified (the binary could not be downloaded and run): the architectures in the macOS asset (TBC-7), and the `UCI_Elo` range, including its floor (TBC-8).
+  - **Any later Stockfish release** needs a Decision Log entry and a new calibration run (ENG-2) before it is pinned, because computer parameters never change after creation (Q57, Q72).
 - This is a constraint, not a free design choice. It follows from ENG-1 (AGREED: Stockfish, UCI), PLAT-3 (bundled, no run-time download), PLAT-2 (Intel and Apple silicon targets), and architecture D-9 (pinned, checksummed at build time).
 - **Rationale/Source:** without a pinned version, the strength calibration (ENG-2) and tactics fixtures cannot be reproduced. Since computer parameters never change after creation (Q57/Q72), changing the engine version in a later release would also change computer strength. Install location and engine discovery: architecture D-18 and D-25 (accepted 2026-10-26).
 - **Priority:** Must.
-- **Verification:** I: the engine's `id name` reply reports the pinned version on both architectures. I: the build fails if the downloaded archive's checksum differs. Inspection: the CLI install and `Chess.app` bundle the same version.
+- **Verification:** I: the engine's `id name` reply reports the pinned version (Stockfish 19) on both architectures. I: the build fails if the downloaded archive's checksum differs. Inspection: the CLI install and `Chess.app` bundle the same version. Inspection (step 2, TBC-7): `lipo -archs` (or equivalent) on the bundled `stockfish` lists both `arm64` and `x86_64`.
 
 ### IF-5 (AGREED 2026-10-26, Q74/Q75) Full-data export format
 The full-data export (DAT-2) shall be one ZIP archive file holding:
@@ -903,6 +968,8 @@ Architecture inputs resolved 2026-10-24: Rust backend, TypeScript UI, Tauri desk
 
 **At baseline v1.0 (2026-10-26) no user question is open.** New questions raised after the baseline are added here with the next free number (Q80 onward) and answered through change control.
 
+**Amendment 1 (2026-10-27):** no new numbered question. The user is asked to confirm or correct the interpretations recorded in the Decision Log on 2026-10-27 (CR-1 voided-game handling; CR-2 checkmate on the fifty-move-completing move, and 4.5:1 for all text in UI-7).
+
 ### Resolved
 - Q1–Q40: see Decision Log. Removed from scope by decision: Strict-mode analysis during play (Q15).
 - Q41–Q55: answered 2026-10-26, round 1.
@@ -911,7 +978,7 @@ Architecture inputs resolved 2026-10-24: Rust backend, TypeScript UI, Tauri desk
 
 | Q | Requirement(s) | Question (as asked) | Answer |
 |---|---|---|---|
-| Q75 | see list below | Do you accept all of the items below as written? Each one accepted becomes AGREED with priority Must. | **Yes, all.** Each listed item is AGREED 2026-10-26 with priority Must. Values cited from memory carry a one-time source check (TBC-2–TBC-5). |
+| Q75 | see list below | Do you accept all of the items below as written? Each one accepted becomes AGREED with priority Must. | **Yes, all.** Each listed item is AGREED 2026-10-26 with priority Must. Values cited from memory carry a one-time source check (TBC-2–TBC-5). *(All four closed 2026-10-27, CR-2.)* |
 | Q76 | PLY-7, UI-2, UI-5 | After you reset a Player, should that Player's past games stay in their opponents' history and stats? | **Yes.** They stay in opponents' history and stats, and are hidden only from the reset Player's own views. |
 | Q77 | GAME-4, GAME-1, PLY-5 | Because the one-unfinished-game limit applies to computer Players too, nobody can start a game in that mode against a computer that already has an unfinished game. Is that OK? | **No.** Computers are never blocked by unfinished h–c games; any Player can always play any computer. The limit applies to each human Player, and to computers only in c–c (Strict) games. |
 | Q78 | ELO-1 | Is the "first 30 rated games at K = 40" counted separately for Strict and for Training? | **Yes.** |
@@ -953,12 +1020,12 @@ Architecture inputs resolved 2026-10-24: Rust backend, TypeScript UI, Tauri desk
   - GUI-5: side panels scroll vertically at small sizes.
   - IF-1: UTF-8 (TBR-3).
   - IF-2: variations kept; duplicate games treated as collisions.
-- **Accepted, with a one-time source check:** TBC-2 (FIDE Laws edition and deviation wording), TBC-3 (PGN Standard 1994 and its encoding clause), TBC-4 (WCAG 2.2 contrast criteria), TBC-5 (Nielsen's 0.1 s limit).
+- **Accepted, with a one-time source check:** TBC-2 (FIDE Laws edition and deviation wording), TBC-3 (PGN Standard 1994 and its encoding clause), TBC-4 (WCAG 2.2 contrast criteria), TBC-5 (Nielsen's 0.1 s limit). *(All four closed 2026-10-27, CR-2; TBC-6 remains for the PGN tag rules.)*
 
-### TBD / TBR / TBC register (baseline v1.0, 2026-10-26)
+### TBD / TBR / TBC register (baseline v1.0, 2026-10-26; Amendment 1, 2026-10-27)
 TBD = value unknown · TBR = value proposed, needs review · TBC = to confirm · EST = engineering estimate accepted under Q53. "Close by" refers to the implementation steps in [architecture.md §13](architecture.md): step 1 = `chess-rules` + `chess-domain`; step 2 = store, engine, app, CLI; step 3 = GUI and Tauri shell.
 
-Status values: **Closed** = settled, with the source · **EST** = accepted estimate, to be confirmed by the named measurement · **Open (design)** = a value the owner sets during design; it needs no user decision unless it changes user-visible behaviour · **Source check** = accepted value whose source text is checked once.
+Status values: **Closed** = settled, with the source · **EST** = accepted estimate, to be confirmed by the named measurement · **Open (design)** = a value the owner sets during design; it needs no user decision unless it changes user-visible behaviour · **Source check** = accepted value whose source text is checked once · **Fact check** = a fact about a chosen component, checked by the owner at the step shown.
 
 | ID | Item | Requirement | Owner | Close by | Status |
 |---|---|---|---|---|---|
@@ -985,20 +1052,25 @@ Status values: **Closed** = settled, with the source · **EST** = accepted estim
 | TBD-21 | Headless exit codes per failure class | CLI-5 | Architect | Step 2 (headless runner) | Open (design). Architect's proposal: 0 / 1 / 2 / 3 (architecture §6.1) |
 | TBD-22 | GUI minimum window size | GUI-5 | User | — | **Closed** (Q55): no minimum; GUI scales |
 | TBD-23 | Move loss on power loss / OS crash | NFR-2 | User | — | **Closed** (Q54): no completed move lost |
-| TBD-24 | Custom PGN tag names | IF-1 | Architect | Step 1 (PGN exporter) | Open (design). Architect's proposal: `Mode`, `Rated`, `WhiteClass`, `BlackClass` (architecture §5.7) |
+| TBD-24 | Custom PGN tag names | IF-1 | Architect | Step 1 (PGN exporter) | Open (design). Architect's proposal: `Mode`, `Rated`, `WhiteClass`, `BlackClass` (architecture §5.7); `EndStatus` (`aborted` or `voided`, only for games that ended without a result) added 2026-10-27 (D-30, CR-1) |
 | TBD-25 | Maximum PGN import file size | IF-2 | Architect | Step 2 (importer) | Open (design). Architect's proposal: 10 MB, EST (architecture §5.7) |
-| TBD-26 | Pinned Stockfish version | IF-4 | Architect (D-9) | Step 2 (engine build script) | Open (design): latest stable release when D-9 is implemented |
+| TBD-26 | Pinned Stockfish version | IF-4 | Architect (D-9) | — | **CLOSED 2026-10-27** (CR-3, user: "use the latest Stockfish as the baseline"), as a version choice: Stockfish 19, tag `sf_19`, published 2026-09-05, not a pre-release. Source: https://github.com/official-stockfish/Stockfish/releases/tag/sf_19 (GitHub release API). A later release needs a Decision Log entry and a new calibration run (ENG-2). Open facts: TBC-7, TBC-8, TBC-9 |
 | TBD-27 | Full-data export layout | IF-5 | User | — | **Closed** (Q74, Q75, D-29): one ZIP archive, PGN + JSON |
 | TBD-28 | Stale-lease takeover time | DAT-4 | Architect | Step 2 (lease integration test) | **Closed** (architecture §10.1, D-23): 0 s. The journal lock is released by the OS when the owner exits or crashes, so another process can take over at once |
 | TBD-29 | Server config file location and format | PLAT-4 | Architect | — | **Closed** (D-24 accepted 2026-10-26): `config.toml` (TOML) in the data directory |
-| TBR-1 | WCAG 2.2 AA contrast values | UI-7 | User | — | **Closed** (Q45, Q68): accepted; nothing beyond AA. Source check: TBC-4 |
-| TBR-2 | 100 ms input feedback | NFR-8 | Test owner | Step 2 (latency test) | EST (Q53); NFR-8 AGREED (Q75). Source check: TBC-5 |
+| TBD-30 | Time for another front-end to stop a game voided by a reset | PLY-7 | Architect | Step 2 (lease integration test) | EST (added 2026-10-27, CR-1): 2 s, the lease heartbeat of architecture D-30 |
+| TBR-1 | WCAG 2.2 AA contrast values | UI-7 | User | — | **Closed** (Q45, Q68): accepted; nothing beyond AA. Source verified 2026-10-27 (TBC-4 closed) |
+| TBR-2 | 100 ms input feedback | NFR-8 | Test owner | Step 2 (latency test) | EST (Q53); NFR-8 AGREED (Q75). Citation verified 2026-10-27 (TBC-5 closed); the value is still confirmed by the latency measurement |
 | TBR-3 | UTF-8 PGN encoding | IF-1 | User | — | **Closed** (Q75): UTF-8 accepted |
 | TBC-1 | Supported terminals | PLAT-2 | User | — | **Closed** (Q46): Terminal and iTerm2 |
-| TBC-2 | FIDE Laws edition and deviation wording | RULE-1, RULE-2, RULE-4 | User (check the current FIDE Laws) | Step 1 (before rule fixtures are frozen) | Source check. Wording accepted (Q75); record the edition and confirm (b) and (c) of RULE-1 against its text |
-| TBC-3 | PGN Standard (1994) as the reference, and its ISO 8859-1 encoding clause | IF-1, IF-2 | User | Step 1 (before the PGN exporter) | Source check. Reference and UTF-8 deviation accepted (Q75) |
-| TBC-4 | WCAG 2.2 success criteria 1.4.3 and 1.4.11: numbers, 4.5:1 and 3:1 values, ratio formula | UI-7, UI-8 | User | Before step 3 (theme checks) | Source check. Values accepted (Q45, Q75) |
-| TBC-5 | Nielsen (*Usability Engineering*, 1993) as the source of the 0.1 s limit | NFR-8 | User | Step 2 (latency test) | Source check. Value accepted (Q53, Q75); the requirement stands on the EST even if the citation changes |
+| TBC-2 | FIDE Laws edition and deviation wording | RULE-1, RULE-2, RULE-4 | User (check the current FIDE Laws) | — | **CLOSED 2026-10-27** (CR-2). Edition: FIDE Laws of Chess effective 1 January 2023 (approved by the FIDE General Assembly on 7 August 2022), https://handbook.fide.com/chapter/E012023. Verified: Art. 5.2.2 dead position ends the game automatically; Art. 9.2 threefold repetition and Art. 9.3 fifty-move rule are draws only "upon a correct claim by a player having the move"; Art. 9.6 fivefold repetition and the 75-move rule are automatic (9.6.2: checkmate on the final move takes precedence). RULE-1 (b) confirmed; RULE-1 (c) recorded as a limitation. The FIDE Council (23 August 2026) is discussing a draft revision: re-checked at each release (release checklist) |
+| TBC-3 | PGN Standard (1994) as the reference, and its ISO 8859-1 encoding clause | IF-1, IF-2 | User | — | **CLOSED 2026-10-27** (CR-2). "Portable Game Notation Specification and Implementation Guide", revised 1994.03.12, coordinator Steven J. Edwards; copy at https://phh.readthedocs.io/en/latest/_static/PGN_Reference.txt. Verified: §4.1 "a subset of the eight bit ISO 8859/1 (Latin 1) character set" (the UTF-8 deviation stands); import format (flexible) and export format (strict) are defined. Remaining part: TBC-6 |
+| TBC-4 | WCAG 2.2 success criteria 1.4.3 and 1.4.11: numbers, 4.5:1 and 3:1 values, ratio formula | UI-7, UI-8 | User | — | **CLOSED 2026-10-27** (CR-2). WCAG 2.2, W3C Recommendation 12 December 2024, https://www.w3.org/TR/WCAG22/. Verified: SC 1.4.3 (AA) text ≥ 4.5:1, large-scale text (≥ 18 pt, or 14 pt bold) ≥ 3:1; SC 1.4.11 (AA) UI components and states, and required graphical objects, ≥ 3:1 against adjacent colors; ratio (L1 + 0.05) / (L2 + 0.05). The relative-luminance definition was not read; it is checked in the UI-7 unit test of the ratio function |
+| TBC-5 | Nielsen (*Usability Engineering*, 1993) as the source of the 0.1 s limit | NFR-8 | User | — | **CLOSED 2026-10-27** (CR-2). "Response Times: The 3 Important Limits", excerpt from Chapter 5 of *Usability Engineering* (1993), https://www.nngroup.com/articles/response-times-3-important-limits/; cites Miller (1968) and Card et al. (1991). Verified: 0.1 s is the limit for the user to feel the system reacts instantaneously. The 100 ms value stays EST (TBR-2) |
+| TBC-6 | PGN Standard: Seven Tag Roster text, export-format tag spacing rules, the `*` result token, and the `Termination` value `abandoned` | IF-1 | Test owner | Step 1 (before the PGN exporter) | **Fact check** (opened 2026-10-27, CR-2). Read the named parts of the TBC-3 source and confirm the IF-1 export matches them |
+| TBC-7 | Architectures in the Stockfish 19 macOS asset (`stockfish-macos-universal.tar.gz`): arm64 and x86_64 both present, or separate builds needed | IF-4, PLAT-2 | Architect | Step 2 (engine build script) | **Fact check** (opened 2026-10-27, CR-3; same fact as architecture ASM-3). Not verified: the binary could not be downloaded and run. "Universal binaries" in the release notes means run-time CPU-feature dispatch, which does not prove both architectures |
+| TBC-8 | `UCI_Elo` range of Stockfish 19, including its floor | ENG-2 | Architect | Step 2 (engine build script, before the first calibration run) | **Fact check** (opened 2026-10-27, CR-3; same fact as architecture ASM-3). Read from the `option name UCI_Elo` line of the pinned engine's `uci` reply. No floor value is assumed in the requirements |
+| TBC-9 | Exact GPL version of Stockfish 19 | ENG-1, NFR-6 | Architect | Step 2 (engine build script) | **Fact check** (opened 2026-10-27, CR-3). The release notes say "GPL"; read the version from the shipped `COPYING` file and confirm it is compatible with GPL-3.0-or-later (D-10) |
 
 ## Out of Scope (AGREED 2026-10-24, v1)
 Online play, matchmaking, accounts with passwords, chess variants (960, etc.), opening-book trainers, mobile native apps, Windows/Linux packaging.
@@ -1097,3 +1169,9 @@ Online play, matchmaking, accounts with passwords, chess variants (960, etc.), o
 | | **Architecture decisions:** the user accepted every decision the architect had PROPOSED: D-12, D-13, D-16, D-18, D-19, D-20, D-22–D-29. Requirements cite them where relevant. D-24 closes TBD-3 (default port 8765) and TBD-29 (`config.toml` in the data directory). | PLAT-1, PLAT-2, PLAT-4, PLAT-5, GAME-4, RULE-5, DAT-1–DAT-4, ELO-1, PLY-7, CLI-4, NFR-2, NFR-7, IF-4, IF-5 |
 | | **ASM-1 confirmed:** one person uses each Mac account, so the local web server needs no access token (D-22). If this changes, PLAT-4 and NFR-7 are reopened. | PLAT-4, NFR-7 |
 | 2026-10-26 | **Baseline v1.0.** Every requirement is AGREED (priority Must) or DELETED; no PROPOSED or TBR item remains; no user question is open. Remaining open items are design values (TBD-18, TBD-21, TBD-24–TBD-26, TBD-28), EST values awaiting measurement, and one-time source checks (TBC-2–TBC-5). Later changes follow change control. | all |
+| 2026-10-27 | **Amendment 1 to baseline v1.0 (CR-1–CR-3).** Three user decisions applied through change control. The baseline statement is kept; no ID renumbered. Impact: requirements and verification listed per CR below; interfaces IF-1, IF-4; no margin or budget affected; risks unchanged (RISK-2 still applies to computer ratings). | see each CR |
+| | **CR-1 (user decision, closes the architect's OQ-8 / G-20):** "allow it; the unfinished game does not count against either player." A reset is allowed while the Player has unfinished games, and the confirmation prompt says they will be voided. A voided game has no result and no effect on any Player's Elo, rated-game count, W/L/D, or statistics (the reset Player, a human opponent, or a computer), and it frees the reset Player's unfinished-game slot. It is not a resignation, so the Q60 loss rule does not apply. Replaces the architect's rule that refused a reset while a game was unfinished (architecture D-26, OQ-8). | PLY-7, GAME-1, GAME-4, RULE-5, DAT-3, ELO-1, ELO-2, UI-2, UI-5, ANA-4, IF-1 |
+| | **CR-1 interpretations (Claude; for the user to correct):** (1) The voided game stays in the opponent's game history, marked "voided by reset", with no result; it can be analysed, like a watcher-aborted c–c game (ANA-4); it is hidden from the reset Player's own views (Q76). (2) A voided c–c game cannot occur, because only humans can be reset and humans never play in c–c games. (3) A voided game is no longer unfinished, so it also frees a human opponent's slot, and it can never be resumed. (4) A voided self-play game is hidden entirely. (5) A game that is open for play in another front-end process is voided too; that front-end stops it and tells its user (architecture D-30). (6) A voided game is exported as PGN with `Result "*"`, `Termination "abandoned"`, and the custom tag `EndStatus "voided"` (architecture §5.7, D-30; TBD-24; standard tag values checked under TBC-6). These match the architect's interpretation Q-A18. | PLY-7, GAME-4, ANA-4, DAT-4, IF-1 |
+| | **CR-2 (user asked for the source checks to be made against the web):** TBC-2, TBC-3, TBC-4, and TBC-5 closed with the verified sources recorded in the register. Findings applied: RULE-1 names the FIDE Laws edition effective 1 January 2023, confirms (b) as a deliberate deviation from Art. 9.2 and 9.3, and states (c) as a limitation relative to Art. 5.2.2; IF-1 cites PGN §4.1 and names the export format, and IF-2 the import format; UI-7's non-text clause is worded as SC 1.4.11 scopes it, and the ratio formula is stated; NFR-8 cites Nielsen's "Response Times: The 3 Important Limits". The "from memory" caveats were removed from the requirement text and verification. New TBC-6 (PGN Seven Tag Roster, export-format tag spacing, `*` token; test owner, step 1). Release-checklist item added (not a requirement change): at each release, check whether a newer FIDE Laws edition is in force (the FIDE Council on 23 August 2026 agreed to keep discussing a draft revision). | RULE-1, RULE-2, IF-1, IF-2, UI-7, NFR-8, register |
+| | **CR-2 decisions and interpretations (Claude; for the user to correct):** (1) UI-7 keeps its AGREED wording, so 4.5:1 applies to all text, which is stricter than SC 1.4.3 (it allows 3:1 for large-scale text). Q68 said nothing beyond AA is required; adding the large-text allowance is a one-line change if the user prefers exact AA. (2) The relative-luminance definition, not read in the check, is carried by the UI-7 unit test instead of a register item. (3) When the move that completes the fifty-move count gives checkmate, the checkmate stands, as FIDE Art. 9.6.2 rules for the 75-move rule. | UI-7, RULE-1 |
+| | **CR-3 (user decision: "use the latest Stockfish as the baseline"):** IF-4 pins Stockfish 19 (tag `sf_19`, published 2026-09-05, not a pre-release; GitHub release API). TBD-26 closed as a version choice. A later release needs a Decision Log entry and a new calibration run (ENG-2) before it is pinned. ENG-2 no longer assumes a `UCI_Elo` floor value. Not verified, because the binary could not be downloaded and run: the macOS asset's architectures (TBC-7) and the `UCI_Elo` range (TBC-8); the exact GPL version is read from the shipped `COPYING` file (TBC-9). Owner of all three: architect, step 2. | IF-4, ENG-1, ENG-2, NFR-6, register |

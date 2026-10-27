@@ -1,5 +1,52 @@
 # Release Notes
 
+## Design baseline v1.0, Amendment 1: 2026-10-27
+
+Documentation-only release. No application code exists yet.
+
+### Changed: user decisions
+- **Reset with an unfinished game is allowed (PLY-7, D-30).** The unfinished game is *voided*: it has no result and no effect on either side's Elo, rated-game count or W/L/D, and it frees the Player's unfinished-game slot. It stays in the opponent's history marked "voided by reset", can be analysed, and is hidden from the reset Player's own views. A game live in another front-end stops at its next lease heartbeat (about 2 s, an estimate). The reset confirmation names the games it will void. Exported PGN uses `Result "*"`, `Termination "abandoned"` and the custom tag `EndStatus`. D-26 is revised, G-20 and OQ-8 are closed, and the data model, state machine, protocol, error table and journal gain a `Voided` state. The interpretation of how a voided game is shown is recorded for the user to correct (Q-A18).
+- **Stockfish 19 is the pinned engine (D-9, IF-4, TBD-26):** tag `sf_19`, released 2026-09-05. The build prefers the official `stockfish-macos-universal` asset, accepted only if `lipo -info` shows both arm64 and x86_64, with a from-source fallback. The `UCI_Elo` floor is no longer hard-coded: the range is read from the engine at run time. Any later Stockfish release needs a decision-log entry and a calibration re-run.
+
+### Changed: source checks closed against the primary texts
+- **FIDE Laws of Chess (TBC-2):** the 2023 edition (in force from 2023-01-01) is current. Threefold repetition (Art. 9.2) and the fifty-move rule (Art. 9.3) are claims; fivefold repetition and the 75-move rule (Art. 9.6) are automatic. The app's automatic draw at threefold and fifty-move is stated as a deliberate deviation. Dead positions other than insufficient material are not detected (limitation against Art. 5.2.2). A re-check for a new edition is now a release-checklist item.
+- **PGN standard (TBC-3):** revised 1994.03.12; section 4.1 specifies ISO 8859/1, so the UTF-8 export is a stated deviation. Export and import formats are named as the standard names them. The Seven Tag Roster text and the `Termination` value `abandoned` are still to be checked (new TBC-6).
+- **WCAG 2.2 (TBC-4):** W3C Recommendation of 2024-12-12. SC 1.4.3 and 1.4.11 values (4.5:1 and 3:1) and the ratio formula are confirmed. UI-7 keeps 4.5:1 for all text, which is stricter than the standard.
+- **Nielsen (TBC-5):** the 0.1 s limit is from "Response Times: The 3 Important Limits" (Chapter 5 of *Usability Engineering*, 1993), which cites Miller (1968) and Card et al. (1991). NFR-8's citation is corrected.
+
+### Open at this release
+- Could not be checked, because downloading and running the binary was blocked: the macOS Stockfish asset's architectures and the `UCI_Elo` range (TBC-7, TBC-8, ASM-3), and the GPL version (TBC-9). All close at the first engine build-script run.
+- Mermaid diagrams are hand-checked only (no Node.js on the build machine).
+
+## Design baseline v1.0: 2026-10-26
+
+Documentation-only release. No application code exists yet. **Requirements and architecture are baselined.** Every requirement is AGREED at priority Must; every architecture decision is AGREED except D-21 (deferred).
+
+### Changed: requirements (docs/requirements.md)
+- **Reviewed to ISO/IEC/IEEE 29148 and INCOSE rules.** Fixes to agreed requirements were made as amendments with the old wording kept. No IDs were renumbered or deleted.
+- **Added:** PLAT-4 (`chess serve`), PLAT-5 (one version for CLI and desktop), PLY-6 (names), PLY-7 (reset), ENG-4 (engine failure), ENG-5 (cancel), DAT-4 to DAT-6 (one front-end per live game, store integrity, backup before upgrade), GAME-4 (unfinished games), UI-6 to UI-11 (screen-reader announcements, contrast, focus, offline help, themes, English only), ANA-4, CLI-5, NFR-7 to NFR-9, RULE-6 to RULE-8 (PGN export, PGN import, FEN start positions, split from RULE-5), and IF-1 to IF-5 (PGN, FEN, bundled Stockfish, export archive).
+- **User decisions (Q41 to Q79) applied:**
+  - **Ratings:** every Player, human or computer, has a Strict and a Training Elo, starting at the category baseline. Ratings change by the Elo formula, with K = 40 for the first 30 rated games, counted per scale. A computer's category label follows its Strict rating. No recalibration after release.
+  - **Ending games:** a crash or closed tab suspends a game with no effect. Humans can only resign, which is a loss. Abort exists only for a computer-vs-computer watcher and has no effect on stats.
+  - **Draws:** humans can offer draws in human-human and human-computer games. The computer never offers one.
+  - **Unfinished games:** one per mode per human Player. Computers are limited only in computer-vs-computer games and are never blocked in human-vs-computer games.
+  - **Players:** UUID identity; unique, case-sensitive names of up to 128 characters; a reset keeps Elo and hides history from the reset Player only.
+  - **Platform:** macOS Tahoe and later; Intel and Apple silicon; Safari, Chrome, Firefox and Edge from the last 3 years; Terminal and iTerm2. v1 is fully offline, with network play a possible future enhancement.
+  - **Interface:** no sound and no confirm-move setting in v1; themes follow the system; WCAG 2.2 AA contrast; English only; the TUI minimum is 80x24 with a resize request.
+  - **Data:** no completed move is ever lost, and clocks restore to the last recorded value. Imports merge, asking on collisions. The full-data export is one archive of PGN and JSON.
+  - **Server:** the port is set by CLI option or config file.
+- **Register:** a TBD/TBR/TBC register with owners and close-by steps, and a Decision Log.
+
+### Changed: architecture (docs/architecture.md)
+- **New sections:** concurrency model (D-13); error catalogue of 16 codes; protocol reliability (reconnect, idempotency, version check); internal interface contracts; data ownership; crash-safe move journal (D-23); one version everywhere (D-16); deployment and packaging (D-18); accessibility details; per-requirement traceability with orphan checks.
+- **Decisions:** D-12 to D-29 recorded. D-12 (SQLite) and D-16 are one-way for data, and the user accepted the consequences. ASM-1 (one person per Mac account, so no access token on the local server) is confirmed.
+- **Fixes to the design:** the engine now replies only after an accepted move; post-game analysis goes to the analysis service; every engine move is checked for legality; timeouts and tolerances are set from the M4 / 16 GB baseline.
+- **Added risks:** R-9 to R-18, including Tahoe being the last macOS release to support Intel.
+
+### Changed: other documents
+- **docs/test-strategy.md** rewritten to match: two Elo scales, resign and interruption rules, per-Player unfinished-game limit, merge import, export archive, themes, no sound, no-lost-moves fault injection, the macOS release checklist, and isolated data stores for every test run.
+- **README.md** rewritten to describe the baselined design.
+
 ## Design baseline v0.4: 2026-10-25
 
 Documentation-only release. No application code exists yet. **All architecture decisions are now agreed.**
