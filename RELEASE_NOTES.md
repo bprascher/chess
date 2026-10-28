@@ -2,7 +2,12 @@
 
 ## Design baseline v1.0, Amendments 2 and 3: 2026-10-28
 
-Documentation-only release. No application code exists yet. Under the user's delegation (no questions), the systems engineer and the architect closed the gaps found in a first use-case and functional analysis, then ran a consistency pass. This release carries the requirements, architecture and test-strategy changes; the use cases and functional decomposition follow in the next release entry. The decisions are the systems engineer's and the architect's judgement and are open to the user's correction (requirements Decision Log, CR-4 and CR-5).
+Documentation-only release. No application code exists yet. Under the user's delegation (no questions), the systems engineer and the architect closed every gap in the use-case set and the functional decomposition, then ran a consistency pass over all documents. The decisions are the systems engineer's and the architect's judgement and are open to the user's correction (requirements Decision Log, CR-4 and CR-5).
+
+### Added
+- **docs/use_cases/** (README and UC-1 to UC-29, v0.3): Cockburn use cases with a use-case diagram, five activity diagrams, requirement and function traces, and a coverage table (82 of 82 requirement and risk IDs). UC-29 covers the build and release enabling system.
+- **docs/functional_decomp.md** (v0.3): 124 functions, 104 leaves, allocated to the architecture's named blocks (§2.2), with a requirement-to-function matrix.
+- **docs/handoff_se_to_architect.md**: the systems engineer's change list for the architect (closed; the disposition is in architecture §10.4).
 
 ### Changed: requirements (Amendment 2, CR-4; Amendment 3, CR-5)
 - **New requirements:** PLAT-6 (install, update, uninstall; `chess install-cli`), DAT-7 (failed writes, unreadable journals), UI-12 (confirmation of destructive actions), NFR-10 (local diagnostic log).
