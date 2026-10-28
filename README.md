@@ -2,13 +2,13 @@
 
 An offline, single-machine chess application for macOS with three front-ends (terminal UI, local web UI, desktop app) on top of one shared Rust core, using Stockfish as the engine.
 
-> **Status: requirements and architecture baselined as v1.0 (2026-10-26), with the architecture amended on 2026-10-27 (reset with unfinished games, Stockfish 19).** No code is implemented yet. This repository holds the requirements, the test strategy, and the architecture, plus the trade studies behind the GUI board choice. Every requirement and every architecture decision is agreed, except the GUI Elo chart library, which is deferred to implementation. What remains open needs measurement or a check during implementation, not a user decision (see the TBD register in [docs/requirements.md](docs/requirements.md) and §14 of [docs/architecture.md](docs/architecture.md)). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced so far.
+> **Status: requirements and architecture baselined as v1.0 (2026-10-26), amended on 2026-10-27 (reset with unfinished games, Stockfish 19) and on 2026-10-28 (Amendments 2 and 3: use-case gaps closed, install and recovery rules).** No code is implemented yet. This repository holds the requirements, the test strategy, the architecture, the use cases and functional decomposition (drafts, not baselined), plus the trade studies behind the GUI board choice. Every requirement and every architecture decision is agreed, except the GUI Elo chart library, which is deferred to implementation. What remains open needs measurement or a check during implementation, not a user decision (see the TBD register in [docs/requirements.md](docs/requirements.md) and §14 of [docs/architecture.md](docs/architecture.md)). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced so far.
 
 ## Planned features
 
 - **Three ways to run**: a full-screen terminal UI (ratatui-style, minimum 80×24, with a plain line-oriented mode for screen readers and scripting), a local web UI started with `chess serve`, and a Tauri desktop app. All three share one data store and one core, and they ship together as one bundle, so they are always the same version.
 - **Full FIDE rules**, takeback (Training), PGN import/export (including multi-game files), and optional clocks (presets and custom, Strict only).
-- **Players and profiles**: at launch you choose a registered Player or register a new one. Names can be up to 128 characters and are unique, and Players are identified internally by a UUID. Computer Players come in five strength classes, and their engine settings never change.
+- **Players and profiles**: at launch you choose a registered Player or register a new one. Names can be up to 128 user-perceived characters and are unique (case-sensitive), and Players are identified internally by a UUID. Computer Players come in five strength classes, and their engine settings never change.
 - **Two play modes**:
   - *Training*: human vs. computer, untimed, with takeback and in-game analysis. It has its own Training Elo.
   - *Strict* (default): clocks, no in-game analysis, and full-game analysis after the game. It has its own Strict Elo.
@@ -17,7 +17,7 @@ An offline, single-machine chess application for macOS with three front-ends (te
 - **Statistics**: W/L/D totals (Training and Strict), by color and opponent, Elo over time for each track, game history with replay, and average game length in moves and time. A human Player's data can be reset after confirmation: everything except their Elo ratings is cleared from that Player's own views. Nothing is deleted, so their old games stay in their opponents' history and stats. A reset is allowed while the Player has unfinished games: the confirmation lists them, and each one is voided. A voided game has no result and counts for neither player (no Elo, no W/L/D), and it stays in the opponent's history, marked "voided by reset", where it can still be analysed.
 - **Analysis**: post-game analysis of every game (including aborted computer-vs-computer games and games voided by a reset), what-if scenarios, and read-only rewind in both modes.
 - **Themes and accessibility**: at least 10 board themes and 5 piece sets, and app colour themes including light and dark that follow the system appearance. Every theme meets WCAG AA contrast. Keyboard operation, screen-reader labels, and English-only text in v1. No sound effects in v1.
-- **Data**: full-data export as one archive (a PGN of all games plus JSON for Players, ratings, and settings) and a merging import that asks how to handle each conflict.
+- **Data**: full-data export as one archive (a PGN of all games plus JSON for Players, ratings, settings, and per-game records with the analysis results) and a merging import that asks how to handle each conflict. The store is checked at start-up, backed up automatically (at most every 24 hours, newest 3 kept) and before every upgrade, and can be restored from a backup with the move journals replayed on top.
 - **Offline**: the desktop app, web page, and terminal UI are all fully usable with no Internet connection, including first launch. Nothing is fetched at run time and there is no outbound traffic. Network play is a possible future enhancement and is not in v1.
 
 ## Platforms
@@ -38,7 +38,7 @@ An offline, single-machine chess application for macOS with three front-ends (te
 | Storage | SQLite (WAL mode, fully synced), plus a per-game move journal flushed to disk before each move is acknowledged |
 | Front-end ↔ core | One serializable protocol: in-process (CLI), Tauri IPC (desktop), localhost WebSocket (web); TypeScript types generated with `ts-rs` |
 | Processes | Each entry point embeds the core; they coordinate through the shared data directory. The web server is started with `chess serve`. Its port comes from the `--port` flag, then the config file, then the default |
-| Packaging | One `Chess.app` bundle containing the desktop app, the `chess` CLI, and Stockfish; `chess` is put on `PATH` with a symlink |
+| Packaging | One `Chess.app` bundle containing the desktop app, the `chess` CLI, and Stockfish, built locally and ad-hoc signed; `chess install-cli` puts `chess` on `PATH` with a symlink |
 | License | GPL-3.0-or-later |
 | GUI board | `@lichess-org/chessground` for visuals and mouse/touch, plus our own accessible keyboard overlay (ARIA grid) and selection reducer; fallback react-chessboard |
 
@@ -46,9 +46,12 @@ An offline, single-machine chess application for macOS with three front-ends (te
 
 | Document | Contents |
 |---|---|
-| [docs/requirements.md](docs/requirements.md) | Requirements (baseline v1.0) with verification test cases, TBD register, out-of-scope list, and decision log |
+| [docs/requirements.md](docs/requirements.md) | Requirements (baseline v1.0, Amendment 3) with verification test cases, TBD register, out-of-scope list, and decision log |
 | [docs/test-strategy.md](docs/test-strategy.md) | Test levels, focus areas, determinism, quality gates |
-| [docs/architecture.md](docs/architecture.md) | Architecture (baseline v1.0): principles, code organisation, core, protocol, front-ends, persistence and move journal, offline operation, packaging, traceability, decisions and decision log, risks, open questions, next steps |
+| [docs/architecture.md](docs/architecture.md) | Architecture (baseline v1.0, amendment 3): principles, code organisation, core, protocol, front-ends, persistence and move journal, offline operation, packaging, traceability, decisions and decision log, risks, open questions, next steps |
+| [docs/use_cases/README.md](docs/use_cases/README.md) | Use cases UC-1 to UC-29 (draft v0.3): summary, use-case diagram, requirement and function coverage, issue resolution |
+| [docs/functional_decomp.md](docs/functional_decomp.md) | Functional decomposition (draft v0.3): function hierarchy, allocation to architecture blocks, requirement-to-function matrix |
+| [docs/handoff_se_to_architect.md](docs/handoff_se_to_architect.md) | Systems engineer's change list for the architect (closed; disposition in architecture section 10.4) |
 | [docs/trade-study-gui-board.md](docs/trade-study-gui-board.md) | First-pass trade study of GUI board options (kept for the record) |
 | [docs/trade-study-gui-board-refined.md](docs/trade-study-gui-board-refined.md) | Refined trade study, chessground vs. react-chessboard, that decided D-4 |
 | [RELEASE_NOTES.md](RELEASE_NOTES.md) | Changes by release |
