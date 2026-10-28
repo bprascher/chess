@@ -1,5 +1,21 @@
 # Release Notes
 
+## Design baseline v1.0, Amendments 2 and 3: 2026-10-28
+
+Documentation-only release. No application code exists yet. Under the user's delegation (no questions), the systems engineer and the architect closed the gaps found in a first use-case and functional analysis, then ran a consistency pass. This release carries the requirements, architecture and test-strategy changes; the use cases and functional decomposition follow in the next release entry. The decisions are the systems engineer's and the architect's judgement and are open to the user's correction (requirements Decision Log, CR-4 and CR-5).
+
+### Changed: requirements (Amendment 2, CR-4; Amendment 3, CR-5)
+- **New requirements:** PLAT-6 (install, update, uninstall; `chess install-cli`), DAT-7 (failed writes, unreadable journals), UI-12 (confirmation of destructive actions), NFR-10 (local diagnostic log).
+- **Rules settled:** names are unique case-sensitively and counted in grapheme clusters; takeback stops at the human's first turn; draw offers stop all clocks; "move now" is `movenow`, F2 and a GUI button; the resume list covers either side of a hot-seat game; computer Players cannot be renamed or archived; scripted runs are computer-vs-computer, stored and rated, with `--data-dir`; `chess serve` fails fast on a bad config and stops cleanly on Ctrl-C; the full-data archive gains `games.json` with the analysis results; duplicate PGN games raise a skip or keep-both prompt.
+- **Data damage:** a failed pre-upgrade backup stops the upgrade; every store-changing action is all-or-nothing; an unreadable journal resumes from its longest intact run, or the game is voided as "voided: unreadable"; a restore replays every retained journal. **Amendment 3** adds the automatic backup (at start-up when the newest is older than 24 h, newest 3 kept; TBD-33) and states the limit of a restore (a game of a Player created after the backup keeps its journal but is not recovered).
+- **Register:** TBD-31 to TBD-33 and TBC-10 added; TBD-21 closed (exit codes 0 to 4).
+
+### Changed: architecture (amendment 2 and 3)
+- Decisions D-31 to D-37, risks R-19 and R-20, a build-and-release context view (§2.1), named allocation blocks (§2.2), and the handoff disposition (§10.4). Amendment 3 is text-only: it records the systems engineer's acceptance of the architect's pushback.
+
+### Open at this release
+- As for Amendment 1, plus: macOS facts behind `install-cli` and ad-hoc signing (TBC-10, ASM-5), checked at packaging time.
+
 ## Design baseline v1.0, Amendment 1: 2026-10-27
 
 Documentation-only release. No application code exists yet.
