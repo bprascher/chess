@@ -1,5 +1,29 @@
 # Release Notes
 
+## Design baseline v1.0, Amendment 4: 2026-10-28
+
+Documentation-only release. No application code exists yet.
+
+### Added
+- **docs/engineering/SWE-001-engagement-profile.md**: criticality, coding standard, design approvers, installed toolchain and assumptions.
+- **docs/SRR-SFR-readiness.md**: the readiness check for detailed design. Run 1: NOT-READY (one blocker, no criticality or coding standard). Run 2, after the user's answers: **READY-WITH-CONDITIONS** for step 1 (`chess-rules`, `chess-domain`), with 12 findings open (7 Major, 5 Minor) and owners and closing steps for each. The use cases and functional decomposition baselined as v1.0 earlier the same day are the SFR inputs (entry below).
+
+### Changed: user decisions (requirements Amendment 4, CR-6)
+- The software has **ordinary criticality** (not safety-related, not regulated). **SEI CERT** is the coding standard, with the standard Rust and TypeScript checks and every warning treated as an error. No requirement text changed.
+- Design changes inside one component are approved by the system-architect agent (desk review); anything wider by the user.
+- The systems engineer's earlier interpretations are confirmed (PLY-4, RULE-2, CLI-4, IF-2, PLY-7, RULE-1, UI-7), and architecture Q-A18 is answered.
+- No Intel Mac is available for testing. PLAT-2 is unchanged and its Intel verification can't be run (open, FIND-015).
+
+### Open at this release
+- As before, plus the open readiness findings (FIND-004 to FIND-008, FIND-010 to FIND-016), in particular how CERT applies to Rust and TypeScript (FIND-014) and the unverifiable Intel requirement (FIND-015).
+
+## Design baseline v1.0: use cases and functional decomposition, 2026-10-28
+
+Documentation-only release. No application code exists yet.
+
+### Changed
+- **docs/use_cases/** (README and UC-1 to UC-29) and **docs/functional_decomp.md** are baselined as **v1.0**, approved by the user. Content is unchanged from v0.3; only status, approver, version references and change logs changed. Further changes go through change control.
+
 ## Design baseline v1.0, Amendments 2 and 3: 2026-10-28
 
 Documentation-only release. No application code exists yet. Under the user's delegation (no questions), the systems engineer and the architect closed every gap in the use-case set and the functional decomposition, then ran a consistency pass over all documents. The decisions are the systems engineer's and the architect's judgement and are open to the user's correction (requirements Decision Log, CR-4 and CR-5).

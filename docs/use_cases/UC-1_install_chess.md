@@ -2,7 +2,7 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/use_cases/UC-1_install_chess.md | **0.3 (draft)** | 2026-10-28 | **DRAFT. Not baselined.** Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v0.3 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): approval **required**, not given |
+| docs/use_cases/UC-1_install_chess.md | **1.0** | 2026-10-28 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
 
 **Goal in Context:** The User wants Chess.app and the `chess` command installed on the Mac, as one version, so that all three entry points can be used.
 
@@ -79,7 +79,7 @@
 | Kind | IDs |
 |---|---|
 | Requirements | PLAT-1, PLAT-2, PLAT-5, NFR-5, PLAT-3, PLAT-6 |
-| Functions (functional_decomp v0.3) | F-8.1, F-8.5, F-8.6, F-8.8, F-8.11 |
+| Functions (functional_decomp v1.0) | F-8.1, F-8.5, F-8.6, F-8.8, F-8.11 |
 | Architecture | See requirements allocation, architecture 10.1. |
 
 ## Change log
@@ -89,3 +89,4 @@
 | 0.1 | 2026-10-27 | First draft. |
 | 0.2 | 2026-10-28 | CR-4: install source, `chess install-cli`, update, uninstall, blocked app and unsupported macOS decided (UG-4 closed); PLAT-6 added to the trace. |
 | 0.3 | 2026-10-28 | Consistency pass (requirements Amendment 3, CR-5): baseline references updated to architecture amendment 3 and functional_decomp v0.3; version aligned across the set. |
+| 1.0 | 2026-10-28 | Baselined: approved by the user. Content unchanged from 0.3; references to functional_decomp updated to v1.0. |

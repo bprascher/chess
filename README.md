@@ -2,7 +2,7 @@
 
 An offline, single-machine chess application for macOS with three front-ends (terminal UI, local web UI, desktop app) on top of one shared Rust core, using Stockfish as the engine.
 
-> **Status: requirements and architecture baselined as v1.0 (2026-10-26), amended on 2026-10-27 (reset with unfinished games, Stockfish 19) and on 2026-10-28 (Amendments 2 and 3: use-case gaps closed, install and recovery rules).** No code is implemented yet. This repository holds the requirements, the test strategy, the architecture, the use cases and functional decomposition (drafts, not baselined), plus the trade studies behind the GUI board choice. Every requirement and every architecture decision is agreed, except the GUI Elo chart library, which is deferred to implementation. What remains open needs measurement or a check during implementation, not a user decision (see the TBD register in [docs/requirements.md](docs/requirements.md) and §14 of [docs/architecture.md](docs/architecture.md)). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced so far.
+> **Status: requirements and architecture baselined as v1.0 (2026-10-26), amended on 2026-10-27 (reset with unfinished games, Stockfish 19) and on 2026-10-28 (Amendments 2 and 3: use-case gaps closed, install and recovery rules; Amendment 4: criticality, coding standard and design approvers recorded).** No code is implemented yet. This repository holds the requirements, the test strategy, the architecture, the use cases and functional decomposition (baselined v1.0, 2026-10-28), plus the trade studies behind the GUI board choice. Every requirement and every architecture decision is agreed, except the GUI Elo chart library, which is deferred to implementation. What remains open needs measurement or a check during implementation, not a user decision (see the TBD register in [docs/requirements.md](docs/requirements.md) and §14 of [docs/architecture.md](docs/architecture.md)). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced so far.
 
 ## Planned features
 
@@ -49,8 +49,10 @@ An offline, single-machine chess application for macOS with three front-ends (te
 | [docs/requirements.md](docs/requirements.md) | Requirements (baseline v1.0, Amendment 3) with verification test cases, TBD register, out-of-scope list, and decision log |
 | [docs/test-strategy.md](docs/test-strategy.md) | Test levels, focus areas, determinism, quality gates |
 | [docs/architecture.md](docs/architecture.md) | Architecture (baseline v1.0, amendment 3): principles, code organisation, core, protocol, front-ends, persistence and move journal, offline operation, packaging, traceability, decisions and decision log, risks, open questions, next steps |
-| [docs/use_cases/README.md](docs/use_cases/README.md) | Use cases UC-1 to UC-29 (draft v0.3): summary, use-case diagram, requirement and function coverage, issue resolution |
-| [docs/functional_decomp.md](docs/functional_decomp.md) | Functional decomposition (draft v0.3): function hierarchy, allocation to architecture blocks, requirement-to-function matrix |
+| [docs/use_cases/README.md](docs/use_cases/README.md) | Use cases UC-1 to UC-29 (baselined v1.0): summary, use-case diagram, requirement and function coverage, issue resolution |
+| [docs/functional_decomp.md](docs/functional_decomp.md) | Functional decomposition (baselined v1.0): function hierarchy, allocation to architecture blocks, requirement-to-function matrix |
+| [docs/engineering/SWE-001-engagement-profile.md](docs/engineering/SWE-001-engagement-profile.md) | Software engineering profile: criticality, coding standard, design approvers, toolchain, assumptions |
+| [docs/SRR-SFR-readiness.md](docs/SRR-SFR-readiness.md) | Readiness check for detailed design (SRR/SFR exit criteria): checklist results, findings by owner, verdict per implementation step |
 | [docs/handoff_se_to_architect.md](docs/handoff_se_to_architect.md) | Systems engineer's change list for the architect (closed; disposition in architecture section 10.4) |
 | [docs/trade-study-gui-board.md](docs/trade-study-gui-board.md) | First-pass trade study of GUI board options (kept for the record) |
 | [docs/trade-study-gui-board-refined.md](docs/trade-study-gui-board-refined.md) | Refined trade study, chessground vs. react-chessboard, that decided D-4 |

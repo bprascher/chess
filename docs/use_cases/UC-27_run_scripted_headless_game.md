@@ -2,7 +2,7 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/use_cases/UC-27_run_scripted_headless_game.md | **0.3 (draft)** | 2026-10-28 | **DRAFT. Not baselined.** Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v0.3 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): approval **required**, not given |
+| docs/use_cases/UC-27_run_scripted_headless_game.md | **1.0** | 2026-10-28 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
 
 **Goal in Context:** The User wants a script to run a complete game from command-line flags with no prompts, and to get the finished game as PGN and a usable exit status.
 
@@ -75,7 +75,7 @@
 | Kind | IDs |
 |---|---|
 | Requirements | CLI-4, CLI-5, PLAT-1, PLY-2, GAME-1, ENG-4, RISK-2, NFR-1 |
-| Functions (functional_decomp v0.3) | F-7.1.4, F-2.1.1, F-3.7 |
+| Functions (functional_decomp v1.0) | F-7.1.4, F-2.1.1, F-3.7 |
 | Architecture | See requirements allocation, architecture 10.1. |
 
 ## Change log
@@ -85,3 +85,4 @@
 | 0.1 | 2026-10-27 | First draft. |
 | 0.2 | 2026-10-28 | CR-4: scripted runs are computer-only, stored and rated, with `--data-dir` for isolation (CLI-4, CLI-5; UG-13, A-5 closed). |
 | 0.3 | 2026-10-28 | Consistency pass (requirements Amendment 3, CR-5): baseline references updated to architecture amendment 3 and functional_decomp v0.3; version aligned across the set. Exit codes closed (TBD-21), signal extension 3b, scripted human play via plain mode. |
+| 1.0 | 2026-10-28 | Baselined: approved by the user. Content unchanged from 0.3; references to functional_decomp updated to v1.0. |

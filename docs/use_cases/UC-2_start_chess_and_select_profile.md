@@ -2,7 +2,7 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/use_cases/UC-2_start_chess_and_select_profile.md | **0.3 (draft)** | 2026-10-28 | **DRAFT. Not baselined.** Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v0.3 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): approval **required**, not given |
+| docs/use_cases/UC-2_start_chess_and_select_profile.md | **1.0** | 2026-10-28 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
 
 **Goal in Context:** The User wants to open Chess through the desktop app, the `chess` command or the web page, and continue as one registered Player, so that settings, history and games belong to the right Player.
 
@@ -97,7 +97,7 @@
 | Kind | IDs |
 |---|---|
 | Requirements | PLAT-1, PLAT-3, PLAT-5, PLY-2, PLY-4, DAT-1, DAT-5, DAT-6, NFR-1, NFR-9, CLI-1, UI-4, UI-11, PLAT-2 |
-| Functions (functional_decomp v0.3) | F-8.1, F-8.5, F-6.5, F-6.6, F-6.8, F-6.15, F-6.9, F-1.5, F-6.1, F-6.4, F-7.1.3, F-7.1.5, F-7.3.3, F-7.3.4, F-7.4.3, F-7.4.4, F-7.4.5 |
+| Functions (functional_decomp v1.0) | F-8.1, F-8.5, F-6.5, F-6.6, F-6.8, F-6.15, F-6.9, F-1.5, F-6.1, F-6.4, F-7.1.3, F-7.1.5, F-7.3.3, F-7.3.4, F-7.4.3, F-7.4.4, F-7.4.5 |
 | Architecture | See requirements allocation, architecture 10.1. |
 
 ## Change log
@@ -107,3 +107,4 @@
 | 0.1 | 2026-10-27 | First draft. |
 | 0.2 | 2026-10-28 | CR-4: failed pre-upgrade backup (DAT-6, UG-17), new Player becomes active (PLY-2, UG-8, A-4 closed), switching the active Player. |
 | 0.3 | 2026-10-28 | Consistency pass (requirements Amendment 3, CR-5): baseline references updated to architecture amendment 3 and functional_decomp v0.3; version aligned across the set. Automatic backup (F-6.15) added as extension 2g. |
+| 1.0 | 2026-10-28 | Baselined: approved by the user. Content unchanged from 0.3; references to functional_decomp updated to v1.0. |

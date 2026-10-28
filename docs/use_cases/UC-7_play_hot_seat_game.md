@@ -2,7 +2,7 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/use_cases/UC-7_play_hot_seat_game.md | **0.3 (draft)** | 2026-10-28 | **DRAFT. Not baselined.** Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v0.3 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): approval **required**, not given |
+| docs/use_cases/UC-7_play_hot_seat_game.md | **1.0** | 2026-10-28 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
 
 **Goal in Context:** Two people on one Mac (or one person playing both sides) want to play a complete Strict game against each other, so that the result rates both Players.
 
@@ -79,7 +79,7 @@
 | Kind | IDs |
 |---|---|
 | Requirements | PLY-1, PLY-3, PLY-5, GAME-1, GAME-3, GAME-4, RULE-1, RULE-2, RULE-4, RULE-5, DAT-3, ELO-1, ELO-2, UI-2, NFR-2, NFR-9 |
-| Functions (functional_decomp v0.3) | F-2.2.3, F-2.2.4, F-2.3.1, F-2.4.1, F-2.4.2, F-2.4.3, F-2.5.2, F-2.5.3, F-2.5.6, F-2.6.1, F-2.6.5, F-2.6.6, F-4.1, F-4.2, F-6.2, F-7.2.2 |
+| Functions (functional_decomp v1.0) | F-2.2.3, F-2.2.4, F-2.3.1, F-2.4.1, F-2.4.2, F-2.4.3, F-2.5.2, F-2.5.3, F-2.5.6, F-2.6.1, F-2.6.5, F-2.6.6, F-4.1, F-4.2, F-6.2, F-7.2.2 |
 | Architecture | See requirements allocation, architecture 10.1. |
 
 ## Change log
@@ -89,3 +89,4 @@
 | 0.1 | 2026-10-27 | First draft. |
 | 0.2 | 2026-10-28 | CR-4: draw-offer and resume rules decided (RULE-2, GAME-1; UG-6, UG-7 closed); custom-start games out of W/L/D. |
 | 0.3 | 2026-10-28 | Consistency pass (requirements Amendment 3, CR-5): baseline references updated to architecture amendment 3 and functional_decomp v0.3; version aligned across the set. |
+| 1.0 | 2026-10-28 | Baselined: approved by the user. Content unchanged from 0.3; references to functional_decomp updated to v1.0. |

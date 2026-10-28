@@ -2,7 +2,7 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/use_cases/UC-3_register_human_player.md | **0.3 (draft)** | 2026-10-28 | **DRAFT. Not baselined.** Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v0.3 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): approval **required**, not given |
+| docs/use_cases/UC-3_register_human_player.md | **1.0** | 2026-10-28 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
 
 **Goal in Context:** The User wants a new human Player profile with a unique name and a self-assessed category, so that games, ratings and settings are kept for that Player.
 
@@ -73,7 +73,7 @@
 | Kind | IDs |
 |---|---|
 | Requirements | PLY-2, PLY-6, ELO-1, UI-1, NFR-9, DAT-1, DAT-7 |
-| Functions (functional_decomp v0.3) | F-1.1, F-1.2, F-7.3.3, F-7.3.4 |
+| Functions (functional_decomp v1.0) | F-1.1, F-1.2, F-7.3.3, F-7.3.4 |
 | Architecture | See requirements allocation, architecture 10.1. |
 
 ## Change log
@@ -83,3 +83,4 @@
 | 0.1 | 2026-10-27 | First draft. |
 | 0.2 | 2026-10-28 | CR-4: name rules aligned with PLY-6 (UG-19 closed), failed write (DAT-7, UG-17), active Player at launch (UG-8). |
 | 0.3 | 2026-10-28 | Consistency pass (requirements Amendment 3, CR-5): baseline references updated to architecture amendment 3 and functional_decomp v0.3; version aligned across the set. |
+| 1.0 | 2026-10-28 | Baselined: approved by the user. Content unchanged from 0.3; references to functional_decomp updated to v1.0. |

@@ -2,7 +2,7 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/use_cases/UC-29_build_and_release_chess.md | **0.3 (draft)** | 2026-10-28 | **DRAFT. Not baselined.** Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v0.3 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): approval **required**, not given |
+| docs/use_cases/UC-29_build_and_release_chess.md | **1.0** | 2026-10-28 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
 
 **Goal in Context:** The release engineer wants to build a version of Chess and prove, before it is used, that it meets the release-time requirements: the bundled engine is the pinned one, licences are compliant, and the app works on every macOS release that is supported at that date.
 
@@ -81,7 +81,7 @@
 | Kind | IDs |
 |---|---|
 | Requirements | NFR-6, RISK-1, PLAT-2, IF-4, ENG-1, ENG-2, NFR-5, PLAT-1, PLAT-5, PLAT-6, RISK-2, RULE-1 |
-| Functions (functional_decomp v0.3) | F-8.6, F-8.7, F-8.8, F-8.9, F-8.10, F-3.9 |
+| Functions (functional_decomp v1.0) | F-8.6, F-8.7, F-8.8, F-8.9, F-8.10, F-3.9 |
 | Architecture | See requirements allocation, architecture 10.1 (`packaging/`, CI, `third_party/`). |
 
 ## Change log
@@ -90,3 +90,4 @@
 |---|---|---|
 | 0.1 | 2026-10-28 | First draft. Added to close UG-1 and UG-2 (enabling-system scope). |
 | 0.3 | 2026-10-28 | Consistency pass (requirements Amendment 3, CR-5): baseline references updated to architecture amendment 3 and functional_decomp v0.3; version aligned across the set. |
+| 1.0 | 2026-10-28 | Baselined: approved by the user. Content unchanged from 0.3; references to functional_decomp updated to v1.0. |
