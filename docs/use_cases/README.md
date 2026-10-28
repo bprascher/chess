@@ -2,13 +2,15 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/use_cases/README.md | **0.3 (draft)** | 2026-10-28 | **DRAFT. Not baselined.** Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v0.3 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): approval **required**, not given |
+| docs/use_cases/README.md | **1.0** | 2026-10-28 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
 
-**Summary.** 29 use cases (UC-1 to UC-29) describe how the Chess application is used: install, start and select a profile, set up and play games (against the computer, hot-seat, or watching two computers), resume and end games, review and analyse games, manage Players, change settings, and move data in and out. UC-29 is the one use case of a second scope, the build and release enabling system. 27 are at user-goal level and 2 are subfunctions. Each use case is in its own file in this folder, written with Cockburn's fully dressed template and traced to requirement IDs and to function IDs of [functional_decomp.md](../functional_decomp.md) v0.3. Five carry an activity diagram (UC-5, UC-6, UC-9, UC-20, UC-25). **This is a draft for review: not baselined and approval is not given.**
+**Summary.** 29 use cases (UC-1 to UC-29) describe how the Chess application is used: install, start and select a profile, set up and play games (against the computer, hot-seat, or watching two computers), resume and end games, review and analyse games, manage Players, change settings, and move data in and out. UC-29 is the one use case of a second scope, the build and release enabling system. 27 are at user-goal level and 2 are subfunctions. Each use case is in its own file in this folder, written with Cockburn's fully dressed template and traced to requirement IDs and to function IDs of [functional_decomp.md](../functional_decomp.md) v1.0. Five carry an activity diagram (UC-5, UC-6, UC-9, UC-20, UC-25). **Baselined as v1.0 on 2026-10-28, approved by the user.** Changes from here on go through change control.
 
 **Version 0.2 (2026-10-28).** The user delegated the closing of all open issues to the systems engineer. All 22 issues (UG-1 to UG-22) are now **closed** (section 8) by decisions recorded as requirements Amendment 2 (CR-4), and assumptions A-4 and A-5 are closed (section 9). The use cases were updated to match. The requirements gained PLAT-6, DAT-7, UI-12 and NFR-10 and many amendments. The architect applied the resulting changes to the architecture (amendment 2) and the functional decomposition (v0.2) as listed in [docs/handoff_se_to_architect.md](../handoff_se_to_architect.md), which is now closed; see architecture section 10.4 for the disposition.
 
 **Version 0.3 (2026-10-28).** Consistency pass across all documents (requirements Amendment 3, CR-5). The baseline references of every use case were updated (architecture amendment 3, functional_decomp v0.3) and the version aligned. New leaf function F-6.15 (automatic backup) is cited by UC-2 (extension 2g) and UC-26; UC-26 gains the restore limit (extension 5a); UC-27 gains exit code 4 and the signal extension. 104 leaf functions, all cited.
+
+**Version 1.0 (2026-10-28).** Baselined: the user approved the use-case set (README and UC-1 to UC-29) together with functional_decomp v1.0. No content changed from 0.3.
 
 **Result in one line:** every requirement and risk ID (82 of 82) is cited by at least one use case, every use case cites requirements, every leaf function is cited by a use case, and no open issue remains in this document set. The decisions are the systems engineer's, not the user's, and are open to the user's correction (requirements Decision Log, 2026-10-28).
 
@@ -23,7 +25,7 @@
 | [README.md](../../README.md), [RELEASE_NOTES.md](../../RELEASE_NOTES.md) | As of 2026-10-27 | Scope, features, amendment history |
 | [docs/requirements.md](../requirements.md) | v1.0, Amendment 3 (CR-1 to CR-5) | Behaviour, rules, verification, traces |
 | [docs/architecture.md](../architecture.md) | v1.0, amendment 3; decisions D-1 to D-37 | Context diagram actors and blocks (§2), state machine (§4.3), policy table (§4.4), screens (§6.1), data and import rules (§7) |
-| [docs/functional_decomp.md](../functional_decomp.md) | **0.3 draft** | Function IDs for the trace; its gap list (FG-n) |
+| [docs/functional_decomp.md](../functional_decomp.md) | **1.0 (baselined 2026-10-28)** | Function IDs for the trace; its gap list (FG-n) |
 | Decision records | Architecture §11 (D-1 to D-37, decision log §11.2) and requirements Decision Log | Rationale for rules cited in the use cases (D-14, D-15, D-17, D-26, D-27, D-30, D-35, D-36) |
 | [docs/test-strategy.md](../test-strategy.md), the two GUI board trade studies | Read | Not a source of use cases |
 
@@ -33,7 +35,7 @@
 - **File names.** `UC-n_short_name.md` in this folder. Numbers are not zero-padded, so a plain directory listing does not sort by number; this README is the index.
 - **Level.** User goal (sea level) or Subfunction. No summary-level use case was written.
 - **Priority.** Every agreed requirement is Must (requirements Q56). A ranking of use cases, and their frequency, are TBD (no usage data exists).
-- **Traces.** "Requirements" lists the requirements a use case realises or constrains; rules that live in a requirement are linked, not restated. "Functions" lists leaf (and some parent) function IDs from functional_decomp v0.3.
+- **Traces.** "Requirements" lists the requirements a use case realises or constrains; rules that live in a requirement are linked, not restated. "Functions" lists leaf (and some parent) function IDs from functional_decomp v1.0.
 - **Wording.** Intent, not mechanics: "User asks to rewind" rather than a key name. Key names appear only under Technology and Data Variations, where the requirements fix them.
 - **Diagrams.** Mermaid only. Mermaid has no UML use case or activity diagram, so both are drawn as `flowchart` with UML conventions. All Mermaid in this folder was machine-validated (section 10).
 
@@ -51,7 +53,7 @@ The context diagram (architecture §2) has two external entities, `User` and `In
 
 ## 4. Use case summary
 
-Requirement and function lists are those in each use case file ("Traceability"). Function IDs are from functional_decomp v0.3.
+Requirement and function lists are those in each use case file ("Traceability"). Function IDs are from functional_decomp v1.0.
 
 | ID | Name | Primary actor | Level | Requirements | Functions |
 |---|---|---|---|---|---|
@@ -302,7 +304,7 @@ A requirement is "covered" when at least one use case cites it, either as behavi
 
 ### 7.2 Function to use case
 
-Of the 104 leaf functions of functional_decomp v0.3, all 104 are cited by at least one use case. The five that were not cited in v0.1 (F-3.9, F-8.7, F-8.9, F-8.10 and F-6.14, UG-2) are cited by UC-29 (F-3.9, F-8.7, F-8.9, F-8.10; F-8.6 and F-8.8 also) and UC-26 (F-6.14). Three functions were added after v0.1: **F-8.11** (link the `chess` command onto `PATH`, `chess install-cli` and `--remove`; cited by UC-1), **F-8.12** (stop the local web server on Ctrl-C or SIGTERM; cited by UC-4) and **F-6.15** (automatic backup; cited by UC-2 and UC-26). F-8.11 is allocated to `CLI front-end`. All other function IDs cited by the use cases were checked to exist in functional_decomp section 3 (script check, section 10).
+Of the 104 leaf functions of functional_decomp v1.0, all 104 are cited by at least one use case. The five that were not cited in v0.1 (F-3.9, F-8.7, F-8.9, F-8.10 and F-6.14, UG-2) are cited by UC-29 (F-3.9, F-8.7, F-8.9, F-8.10; F-8.6 and F-8.8 also) and UC-26 (F-6.14). Three functions were added after v0.1: **F-8.11** (link the `chess` command onto `PATH`, `chess install-cli` and `--remove`; cited by UC-1), **F-8.12** (stop the local web server on Ctrl-C or SIGTERM; cited by UC-4) and **F-6.15** (automatic backup; cited by UC-2 and UC-26). F-8.11 is allocated to `CLI front-end`. All other function IDs cited by the use cases were checked to exist in functional_decomp section 3 (script check, section 10).
 
 ## 8. Issues and their resolution
 
@@ -350,7 +352,7 @@ All 22 issues of v0.1 are **closed** as of v0.2 (2026-10-28). The user delegated
 - **Generated checks.** Every requirement ID and function ID cited in the use cases exists in requirements.md and functional_decomp §3. Coverage tables in section 7 are computed from the use case files' trace lists.
 - **Diagram-text conformance.** Each use case with an activity diagram has a conformance table at the end of its file (UC-5, UC-6, UC-9, UC-20, UC-25).
 - **Mermaid (v0.2).** The use case diagram (section 5) and the UC-9 activity diagram were changed and re-validated; the result is in the first bullet above.
-- **Not done.** No independent review of this draft; Cockburn review checklist was applied by the author only (Engineer stance). Verification cases per use case (MSS plus each extension as a test scenario) are not written; the requirements already carry verification and test-strategy.md describes the approach.
+- **Not done.** No independent review of this set before baseline (the user approved it on 2026-10-28 without one); Cockburn review checklist was applied by the author only (Engineer stance). Verification cases per use case (MSS plus each extension as a test scenario) are not written; the requirements already carry verification and test-strategy.md describes the approach.
 
 **Change log**
 
@@ -359,3 +361,4 @@ All 22 issues of v0.1 are **closed** as of v0.2 (2026-10-28). The user delegated
 | 0.1 | 2026-10-27 | First draft: 28 use cases, summary, diagram, coverage and open issues. |
 | 0.2 | 2026-10-28 | Issues UG-1 to UG-22 resolved by the systems engineer under the user's delegation (requirements Amendment 2, CR-4); assumptions A-4 and A-5 closed, A-1 and A-2 confirmed. UC-29 (build and release, enabling system) added. Use cases UC-1 to UC-12, UC-15 to UC-20, UC-22 to UC-27 updated. Trace tables, coverage (section 7), diagram (section 5) and sections 8 and 9 regenerated. Handoff to the architect written. |
 | 0.3 | 2026-10-28 | Consistency pass (requirements Amendment 3, CR-5). Baseline references of the README and all 29 use cases updated (architecture amendment 3, functional_decomp v0.3). F-6.15 added to UC-2 and UC-26 (summary table, section 7.2). Stale statements removed (architecture and functional decomposition "not edited", counts 103 to 104). Diagram and coverage tables unchanged and re-checked by script. |
+| 1.0 | 2026-10-28 | Baselined: the user approved the README and UC-1 to UC-29. Content unchanged from 0.3; status, approver and references to functional_decomp updated to v1.0. |

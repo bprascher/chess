@@ -2,7 +2,7 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/use_cases/UC-21_configure_settings.md | **0.3 (draft)** | 2026-10-28 | **DRAFT. Not baselined.** Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v0.3 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): approval **required**, not given |
+| docs/use_cases/UC-21_configure_settings.md | **1.0** | 2026-10-28 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
 
 **Goal in Context:** The User wants to adjust their Player's settings, themes and display options, so that Chess looks and behaves as they like.
 
@@ -66,7 +66,7 @@
 | Kind | IDs |
 |---|---|
 | Requirements | UI-1, UI-3, UI-7, UI-8, UI-10, UI-11, GUI-3, NFR-9 |
-| Functions (functional_decomp v0.3) | F-1.7, F-7.2.4, F-7.1.1, F-7.3.4 |
+| Functions (functional_decomp v1.0) | F-1.7, F-7.2.4, F-7.1.1, F-7.3.4 |
 | Architecture | See requirements allocation, architecture 10.1. |
 
 ## Change log
@@ -75,3 +75,4 @@
 |---|---|---|
 | 0.1 | 2026-10-27 | First draft. |
 | 0.3 | 2026-10-28 | Consistency pass (requirements Amendment 3, CR-5): baseline references updated to architecture amendment 3 and functional_decomp v0.3; version aligned across the set. |
+| 1.0 | 2026-10-28 | Baselined: approved by the user. Content unchanged from 0.3; references to functional_decomp updated to v1.0. |

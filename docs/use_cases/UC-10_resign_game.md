@@ -2,7 +2,7 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/use_cases/UC-10_resign_game.md | **0.3 (draft)** | 2026-10-28 | **DRAFT. Not baselined.** Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v0.3 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): approval **required**, not given |
+| docs/use_cases/UC-10_resign_game.md | **1.0** | 2026-10-28 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
 
 **Goal in Context:** The User wants to end a game on purpose by conceding it, which is the only way a human ends a game early.
 
@@ -71,7 +71,7 @@
 | Kind | IDs |
 |---|---|
 | Requirements | RULE-2, GAME-4, PLY-5, ELO-1, ELO-2, DAT-3, ANA-4, CLI-4, GAME-1, UI-2, UI-12 |
-| Functions (functional_decomp v0.3) | F-2.5.3, F-2.5.7, F-2.6.5, F-4.1, F-4.2, F-4.3, F-7.1.2 |
+| Functions (functional_decomp v1.0) | F-2.5.3, F-2.5.7, F-2.6.5, F-4.1, F-4.2, F-4.3, F-7.1.2 |
 | Architecture | See requirements allocation, architecture 10.1. |
 
 ## Change log
@@ -81,3 +81,4 @@
 | 0.1 | 2026-10-27 | First draft. |
 | 0.2 | 2026-10-28 | CR-4: custom-start games out of W/L/D (UG-18 closed), resign from the prompt in a hot-seat game (UG-7 closed), UI-12 added. |
 | 0.3 | 2026-10-28 | Consistency pass (requirements Amendment 3, CR-5): baseline references updated to architecture amendment 3 and functional_decomp v0.3; version aligned across the set. |
+| 1.0 | 2026-10-28 | Baselined: approved by the user. Content unchanged from 0.3; references to functional_decomp updated to v1.0. |

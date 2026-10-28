@@ -2,7 +2,7 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/use_cases/UC-6_play_game_against_computer.md | **0.3 (draft)** | 2026-10-28 | **DRAFT. Not baselined.** Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v0.3 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): approval **required**, not given |
+| docs/use_cases/UC-6_play_game_against_computer.md | **1.0** | 2026-10-28 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
 
 **Goal in Context:** The User wants to play a complete game of chess against a computer Player, in Training or Strict mode, so that they enjoy a fair game under FIDE rules and their rating reflects the result.
 
@@ -114,7 +114,7 @@
 | Kind | IDs |
 |---|---|
 | Requirements | PLY-1, PLY-4, PLY-5, PLY-7, GAME-1, GAME-3, GAME-4, RULE-1, RULE-2, RULE-3, RULE-4, RULE-5, RULE-8, ENG-1, ENG-2, ENG-3, ENG-4, ENG-5, DAT-1, DAT-3, DAT-4, ELO-1, ELO-2, UI-1, UI-3, UI-4, UI-6, UI-7, UI-8, UI-11, CLI-1, CLI-2, CLI-3, CLI-4, GUI-1, GUI-2, GUI-3, GUI-4, GUI-5, NFR-2, NFR-3, NFR-4, NFR-8, NFR-9, IF-4, UI-2 |
-| Functions (functional_decomp v0.3) | F-2.2.1, F-2.2.2, F-2.2.3, F-2.2.4, F-2.3.1, F-2.4.1, F-2.4.2, F-2.4.3, F-2.6.1, F-2.6.4, F-2.6.5, F-2.6.6, F-3.1, F-3.2, F-3.3, F-3.4, F-3.5, F-3.6, F-3.7, F-4.1, F-4.2, F-4.3, F-4.4, F-4.6, F-5.5, F-6.2, F-6.3, F-7.1.1, F-7.1.2, F-7.1.3, F-7.2.1, F-7.2.2, F-7.2.3, F-7.2.5, F-7.2.6, F-7.4.1, F-7.4.2, F-7.4.6 |
+| Functions (functional_decomp v1.0) | F-2.2.1, F-2.2.2, F-2.2.3, F-2.2.4, F-2.3.1, F-2.4.1, F-2.4.2, F-2.4.3, F-2.6.1, F-2.6.4, F-2.6.5, F-2.6.6, F-3.1, F-3.2, F-3.3, F-3.4, F-3.5, F-3.6, F-3.7, F-4.1, F-4.2, F-4.3, F-4.4, F-4.6, F-5.5, F-6.2, F-6.3, F-7.1.1, F-7.1.2, F-7.1.3, F-7.2.1, F-7.2.2, F-7.2.3, F-7.2.5, F-7.2.6, F-7.4.1, F-7.4.2, F-7.4.6 |
 | Architecture | architecture 4.3 (state machine), 4.4 (policy table), 5.3 (human move then computer reply), 5.4 (game end, rating, analysis) |
 
 ## Activity diagram
@@ -254,3 +254,4 @@ flowchart TD
 | 0.1 | 2026-10-27 | First draft. |
 | 0.2 | 2026-10-28 | CR-4: move-now controls (ENG-5, UG-3), draw and takeback pointers, custom-start games out of W/L/D (UI-2, UG-18), `save` (UG-14); issues UG-3, 5, 6, 14, 18 closed. |
 | 0.3 | 2026-10-28 | Consistency pass (requirements Amendment 3, CR-5): baseline references updated to architecture amendment 3 and functional_decomp v0.3; version aligned across the set. |
+| 1.0 | 2026-10-28 | Baselined: approved by the user. Content unchanged from 0.3; references to functional_decomp updated to v1.0. |

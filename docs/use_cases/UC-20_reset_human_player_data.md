@@ -2,7 +2,7 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/use_cases/UC-20_reset_human_player_data.md | **0.3 (draft)** | 2026-10-28 | **DRAFT. Not baselined.** Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v0.3 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): approval **required**, not given |
+| docs/use_cases/UC-20_reset_human_player_data.md | **1.0** | 2026-10-28 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
 
 **Goal in Context:** The User wants a human Player to start afresh, as seen in that Player's own views, without losing the Player's Elo ratings.
 
@@ -76,7 +76,7 @@
 | Kind | IDs |
 |---|---|
 | Requirements | PLY-7, PLY-4, GAME-4, RULE-5, DAT-4, ELO-1, ELO-2, UI-2, UI-5, ANA-4, UI-1, IF-1, UI-12 |
-| Functions (functional_decomp v0.3) | F-1.8, F-1.8.1, F-1.8.2, F-1.8.3, F-2.6.4, F-2.5.7, F-4.3 |
+| Functions (functional_decomp v1.0) | F-1.8, F-1.8.1, F-1.8.2, F-1.8.3, F-2.6.4, F-2.5.7, F-4.3 |
 | Architecture | See requirements allocation, architecture 10.1. |
 
 ## Activity diagram
@@ -147,3 +147,4 @@ flowchart TD
 | 0.1 | 2026-10-27 | First draft. |
 | 0.2 | 2026-10-28 | CR-4: UI-12 added to the trace (confirmation of destructive actions). |
 | 0.3 | 2026-10-28 | Consistency pass (requirements Amendment 3, CR-5): baseline references updated to architecture amendment 3 and functional_decomp v0.3; version aligned across the set. |
+| 1.0 | 2026-10-28 | Baselined: approved by the user. Content unchanged from 0.3; references to functional_decomp updated to v1.0. |

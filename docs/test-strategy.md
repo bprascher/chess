@@ -2,7 +2,7 @@
 
 | Document | Version | Date | Status | Owner |
 |---|---|---|---|---|
-| docs/test-strategy.md | 1.0, Amendment 3 | 2026-10-28 | Aligned with requirements baseline v1.0, Amendment 3 (CR-1–CR-5) | Systems engineer (Claude), for Brian Prascher |
+| docs/test-strategy.md | 1.0, Amendment 4 | 2026-10-28 | Aligned with requirements baseline v1.0, Amendment 4 (CR-1–CR-6) | Systems engineer (Claude), for Brian Prascher |
 
 Per-requirement test cases live under each requirement in [requirements.md](requirements.md). This file covers the overall approach; the concrete tools and where each test level lives are mapped onto the design in [architecture.md §9](architecture.md).
 
@@ -16,6 +16,7 @@ Per-requirement test cases live under each requirement in [requirements.md](requ
 - **Data:** no completed move lost on any interruption; merge-on-import with a collision prompt; one PGN + JSON export archive.
 - **Amendment 1 (2026-10-27, CR-1–CR-3):** a reset is allowed with unfinished games and voids them, with no effect on anyone's Elo or statistics (CR-1); the FIDE, PGN, WCAG, and Nielsen source checks are closed, leaving TBC-6 (CR-2); the engine is pinned to Stockfish 19, with TBC-7–TBC-9 to check (CR-3).
 - **Amendments 2 and 3 (2026-10-28, CR-4, CR-5):** new requirements PLAT-6, DAT-7, UI-12, NFR-10 and many amended ones. Their test cases live in requirements.md under each requirement (fault injection for all-or-nothing actions and unreadable journals, restore with journal replay, automatic backup cadence and retention, `chess install-cli` walk-throughs, config-error and signal handling in `chess serve`, exit codes 0 to 4). This file's approach is unchanged.
+- **Amendment 4 (2026-10-28, CR-6):** the user set the coding standard and criticality (quality gates below). The Intel part of the platform matrix can't be run for now, because no Intel Mac is available; PLAT-2 and the Intel gate are unchanged and the consequence is open (readiness FIND-015).
 - **Earlier revisions** added GUI board testing (selection-sync sequences between chessground and our reducer, overlay alignment, axe on the `aria-hidden` board), terminal-UI testing, and offline testing.
 
 ## Principles
@@ -80,6 +81,7 @@ These cross-cutting behaviours came out of the requirements and need explicit co
 ## Quality gates
 - All unit and integration tests green on every change; E2E on the main branch; calibration/soak nightly and before each release.
 - Coverage target for rules, Elo, clock, policy, and parser modules: ≥ 90% line coverage; mutation testing on Elo and mode policy.
+- Static checks: the standard compiler and linter checks of Rust and TypeScript run in CI with every warning treated as an error, and code is reviewed against SEI CERT (ordinary criticality, not safety-related, not regulated; user, 2026-10-28). Tools and scope: docs/engineering/SWE-001-engagement-profile.md. How CERT applies to Rust and TypeScript is open (readiness FIND-014).
 - License audit (Stockfish GPL compliance, with the GPL version read from the shipped `COPYING` file, TBC-9; dependency and bundled-asset licenses) and lint in CI.
 - Intel (x86_64) and Apple silicon (arm64) builds both pass the suite.
 

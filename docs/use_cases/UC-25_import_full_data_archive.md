@@ -2,7 +2,7 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/use_cases/UC-25_import_full_data_archive.md | **0.3 (draft)** | 2026-10-28 | **DRAFT. Not baselined.** Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v0.3 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): approval **required**, not given |
+| docs/use_cases/UC-25_import_full_data_archive.md | **1.0** | 2026-10-28 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
 
 **Goal in Context:** The User wants to bring the contents of an export archive back into the store, merged with what is there, so that data can be restored or moved to another Mac.
 
@@ -77,7 +77,7 @@
 | Kind | IDs |
 |---|---|
 | Requirements | DAT-2, IF-5, DAT-1, PLY-6, NFR-9, UI-12 |
-| Functions (functional_decomp v0.3) | F-6.13, F-6.9, F-6.4 |
+| Functions (functional_decomp v1.0) | F-6.13, F-6.9, F-6.4 |
 | Architecture | See requirements allocation, architecture 10.1. |
 
 ## Activity diagram
@@ -158,3 +158,4 @@ flowchart TD
 | 0.1 | 2026-10-27 | First draft. |
 | 0.2 | 2026-10-28 | CR-4: archive layout with `games.json` (IF-5, UG-12 closed); unfinished-game conflicts decided (DAT-2); journals after restore answered in UC-26 (UG-21 closed). |
 | 0.3 | 2026-10-28 | Consistency pass (requirements Amendment 3, CR-5): baseline references updated to architecture amendment 3 and functional_decomp v0.3; version aligned across the set. |
+| 1.0 | 2026-10-28 | Baselined: approved by the user. Content unchanged from 0.3; references to functional_decomp updated to v1.0. |

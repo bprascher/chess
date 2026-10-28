@@ -2,7 +2,7 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/use_cases/UC-5_set_up_new_game.md | **0.3 (draft)** | 2026-10-28 | **DRAFT. Not baselined.** Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v0.3 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): approval **required**, not given |
+| docs/use_cases/UC-5_set_up_new_game.md | **1.0** | 2026-10-28 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
 
 **Goal in Context:** The User wants to choose who plays, in which mode and with which clock and start position, so that a valid game starts.
 
@@ -89,7 +89,7 @@
 | Kind | IDs |
 |---|---|
 | Requirements | GAME-1, GAME-4, PLY-1, PLY-3, PLY-4, PLY-5, RULE-4, RULE-8, IF-3, UI-1, ELO-2, NFR-9 |
-| Functions (functional_decomp v0.3) | F-1.5, F-2.1, F-2.1.1, F-2.1.2, F-2.1.3, F-2.1.4, F-2.3.1, F-7.3.4 |
+| Functions (functional_decomp v1.0) | F-1.5, F-2.1, F-2.1.1, F-2.1.2, F-2.1.3, F-2.1.4, F-2.3.1, F-7.3.4 |
 | Architecture | See requirements allocation, architecture 10.1. |
 
 ## Activity diagram
@@ -173,3 +173,4 @@ flowchart TD
 | 0.1 | 2026-10-27 | First draft. |
 | 0.2 | 2026-10-28 | CR-4: resume list scope and hot-seat resign from the offer decided (GAME-1, UG-7 closed). |
 | 0.3 | 2026-10-28 | Consistency pass (requirements Amendment 3, CR-5): baseline references updated to architecture amendment 3 and functional_decomp v0.3; version aligned across the set. |
+| 1.0 | 2026-10-28 | Baselined: approved by the user. Content unchanged from 0.3; references to functional_decomp updated to v1.0. |
