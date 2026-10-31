@@ -1,5 +1,24 @@
 # Release Notes
 
+## Detailed design drafts (SDDs) and Amendments 5 and 6: 2026-10-30
+
+Documentation-only release. No application code exists yet.
+
+### Added
+- **docs/design/**: nine IEEE 1016 Software Design Descriptions, DRAFT v0.1, approver pending, one per software block: `chess-rules`, `chess-domain`, `chess-store`, `chess-engine`, `chess-app`, `chess-server`, `chess-cli`, `ui`, `desktop-tauri`. Each traces its design entities to requirements, functions and decisions, and lists upstream findings.
+- **docs/design/SDD-consistency-review.md**: cross-SDD review. 30 mismatches (15 Major, 15 Minor), consolidated edge, dependency and ownership tables, and a de-duplicated register of 52 upstream findings. It made 14 mechanical edits to seven SDDs.
+- **docs/design/SDD-architect-triage.md**: system-architect triage of every mismatch and finding, 12 cross-cutting rulings, 10 draft ADRs (D-38 to D-47), 14 proposed architecture amendments, and 13 decisions recommended for the user. These are recommendations only. None is approved, and architecture.md is not yet amended.
+
+### Changed: requirements and architecture (Amendments 5 and 6, CR-7 and CR-8)
+- User decisions on the readiness findings: whole-integer Elo ratings (ELO-1), PGN rules checked against the standard, latest stable versions of all components (architecture §3.4), CERT informs best practice for Rust and TypeScript, best-effort verification on unavailable platforms, and no security requirement beyond best practice and avoiding known CVEs.
+- ECO opening table is the Lichess `chess-openings` snapshot; games store the ECO code and opening name (DAT-3).
+- Engagement profile, readiness check and test strategy updated to match.
+
+### Open at this release
+- The 13 decisions in the triage await the user, and 26 questions await the systems engineer. Several affect stored formats (journal kinds, nullable fields, `content_hash`) and must be settled before any store code.
+- Dependency versions listed in the SDDs are not looked up, and library behaviour marked unverified has not been checked.
+- No SDD has had a reviewer pass or desk review.
+
 ## Design baseline v1.0, Amendment 4: 2026-10-28
 
 Documentation-only release. No application code exists yet.
