@@ -4,8 +4,8 @@
 |---|---|
 | Document | docs/design/SDD-architect-triage.md |
 | Version | 0.1 DRAFT |
-| Date | 2026-10-30 |
-| Approver | **PENDING.** Brian Prascher for every G2 and G3 item. The system-architect agent's desk review (G1) is recorded per row; it never satisfies G2 or G3 |
+| Date | 2026-10-30; decisions recorded 2026-10-31 |
+| Approver | **APPROVED by Brian Prascher, 2026-10-31**, decisions 1 to 13, accepted as recommended except the modifications to decisions 9, 11 and 13 (section 5, "Resolution"). Recorded in requirements Amendment 7 (CR-9.1). Original text: Brian Prascher for every G2 and G3 item. The system-architect agent's desk review (G1) is recorded per row; it never satisfies G2 or G3 |
 | Stance | System architect (architecture-governance, decision-records, interface-contracts, data-architecture). Rulings and recommendations only. `architecture.md`, `requirements.md` and the nine SDDs are **not edited**. Nothing is committed |
 | Input | [SDD-consistency-review](SDD-consistency-review.md) (XC-1 to XC-30, ED-1 to ED-8, D-1 to D-33, OW-1 to OW-24, UR-01 to UR-52); architecture sections 1, 3.2 to 3.4, 5.5 to 5.7, 7.6; spot checks in the store, domain, engine and app SDDs (grep, not a full read) |
 | Gate | This document is G0 (text). The rulings below are **recommendations** for G2/G3 items (SWE-001 section 3). Rows marked G1 are a desk review by this role, recorded as such. No human approval is claimed |
@@ -341,6 +341,14 @@ Order: first the structural rulings that unblock the SDDs, then stored formats, 
 | 12 | **Score point of view (UR-15).** `MOVE_EVAL.cp` and `mate` are stored from White's point of view | G3 | **Accept** | High | Store side-to-move scores; every reader must flip |
 | 13 | **Variations (UR-19, XC-24).** Keep `VariationTree` for PGN mapping; add `player_id` and `created_at` to `VARIATION` after the systems engineer confirms the reset rule (D-26) | G3 | **Accept after Q-SE-9** | Medium | Variations are visible to every participant; no `player_id` |
 
+**Resolution (2026-10-31, Brian Prascher; requirements Amendment 7, CR-9.1).** Decisions 1 to 8, 10 and 12: **ACCEPTED** as recommended. Decisions 9, 11 and 13: **ACCEPTED WITH MODIFICATIONS**, below. The "Recommended answer" column above is kept as written.
+
+| # | Status | Modification |
+|---|---|---|
+| 9 | Accepted, modified | The archive size limit is documented and is an **ESTIMATE** (requirements TBD-35), with a `ValidationFailed` message that gives the limit, the file size and the CLI alternative. The PGN limit stays 10 MB (TBD-25). The CLI imports by path with no limit. No dialog plugin; the desktop shell writes to the Downloads folder. |
+| 11 | Accepted in principle, modified | Version lookups are required before any crate enters architecture 3.4. **The single-instance mechanism (UR-45, the Tauri single-instance plugin) is dropped:** it is not a requirement (Q-SE-21). Concurrent launches are covered by the store lock (DAT-1, DAT-4). |
+| 13 | Accepted, modified | `VariationTree` is kept for the PGN mapping. **No `player_id`** (PLY-7 hides variations with their game, Q-SE-9). `created_at` and the anchor ply are added. **Saving a what-if branch from the final position is refused** with a message; this limits ANA-2 (requirements CR-9.4). |
+
 Not for Brian (my G1 or text only): XC-3, 5, 12, 14 to 18, 21, 23, 24, 26, 29, 30 and UR rows marked G0/G1.
 
 ---
@@ -485,4 +493,4 @@ Unchanged (already in 3.4): D-1, D-2, D-9, D-10, D-12 to D-14, D-19, D-20, D-23,
 
 **Validation.** Mermaid in this document: `[RAN node ~/.claude/skills/architecture-governance/scripts/validate-mermaid.mjs]` -> 1/1 block parsed OK, 2026-10-30. A parse pass proves syntax, not readability.
 
-**Approval.** PENDING. Brian Prascher for decisions 1 to 13. The systems engineer for Q-SE-1 to Q-SE-26. No commit was made.
+**Approval.** APPROVED by Brian Prascher, 2026-10-31, decisions 1 to 13 with the modifications to 9, 11 and 13 (section 5). Q-SE-1 to Q-SE-26 are resolved in SDD-SE-desk-answers.md and requirements Amendment 7 (CR-9). The rulings are applied in architecture amendments AMD-1 to AMD-14 and the SDDs (v0.2). The recommendation texts in this document are kept as written on 2026-10-30.

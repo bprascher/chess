@@ -3,22 +3,33 @@
 | Field | Value |
 |---|---|
 | Document | docs/design/SDD-chess-engine.md |
-| Version / status | 0.1 DRAFT |
-| Date | 2026-10-30 |
+| Version / status | **0.3.1 DRAFT** |
+| Date | 2026-10-31 (v0.1: 2026-10-30) |
 | Standard basis | IEEE 1016-style (no conformance claim; `implementation-design-1016` skill) |
 | Owner | Software engineer role (Claude), for Brian Prascher |
-| Approver | PENDING. Nothing in this document is approved. |
-| Gate | Drafting this document is documents-only: **G0**, no approver (SWE-001 §3). No `GATE-` file was created here (gate numbers GATE-101 onward are assigned by the coordinator, SWE-001 ASM-S5). Implementing the design is G1 unless an item in section 9 applies. |
+| Approver | PENDING for this SDD. The rulings applied in v0.2 were approved by Brian Prascher on 2026-10-31 (SDD-architect-triage section 5, decisions 1 to 13; requirements Amendment 7, CR-9.1); this revision applies them as text and adds no new decision. Nothing else in this document is approved. |
+| Gate | Drafting this document is documents-only: **G0**, no approver (SWE-001 §3). No gate record is created here; the coordinator assigns gate records (SWE-001 ASM-S5). Implementing the design is G1 unless an item in section 9 applies. |
 | Engineering profile | [SWE-001](../engineering/SWE-001-engagement-profile.md): Rust 1.99.1 / edition 2024, CERT-informed practice with no conformance claim, warnings are errors |
 | Crate / allocation name | `crates/chess-engine`; architecture §2.2 block `chess-app core :: chess-engine`. It drives the supporting block `stockfish` (`third_party/stockfish/` build output, F-3.2) |
 | Sibling SDDs | [chess-rules](SDD-chess-rules.md), [chess-domain](SDD-chess-domain.md), [chess-store](SDD-chess-store.md), [chess-app](SDD-chess-app.md), [chess-server](SDD-chess-server.md), [chess-cli](SDD-chess-cli.md), [ui](SDD-ui.md), [desktop-tauri](SDD-desktop-tauri.md) |
+| Upstream baselines read | architecture.md v1.0 amendment 7 (D-38 to D-50, §3.2, §4.6, §4.7, §5.7, FF-1 to FF-8); requirements.md v1.0 Amendment 7 (CR-9); [SDD-architect-triage](SDD-architect-triage.md) (approved 2026-10-31); [SDD-SE-desk-answers](SDD-SE-desk-answers.md) (resolved 2026-10-31) |
 | Evidence tags | `[OBS file §]` read in this session; `[RAN]` executed; `[INF]` inferred; `[ASM-EN-n]` assumed; `[UNV]` unverified |
+
+### Change log
+
+| Version | Date | Change |
+|---|---|---|
+| 0.1 DRAFT | 2026-10-30 | First draft. |
+| 0.2 DRAFT | 2026-10-31 | G0 text edits implementing approved decisions only. **TR-6** (D-43): `EnginePersonality` (`error_rate: f64`) stays the engine's type, converted by `personality_to_engine` in `chess-app`; no `engine -> domain` edge; FIND-EN-001 RESOLVED. **TR-9** (D-46, FF-7): new public constant `PINNED_UCI_ELO_RANGE` (DD-EN-015), compared with the real handshake by EI-EN-002; the handshake range no longer feeds roster generation and `OptionPlan` clamps `UCI_Elo` for the search only; **no numeric range is written here**. **TR-12** (FF-8): `SearchRequest.seed` is the error-pick seed computed by `chess_domain::error_pick_seed`; `SplitMix64` stays duplicated with a shared test-vector file. **UR-39** (AMD-12): preemption lanes, `Threads` and `Hash` placeholders set before the first calibration run. **UR-40** (AMD-3): `updates`, `lines` and `SearchPosition::Moves` are documented in architecture §5.7. **XC-18, Q-SE-12**: in-flight failure reported, retry is the next request (confirmed). **XC-26**: `Fen::as_str`/`Display` and `Move::from_uci` from the rules SDD. **UR-14, Q-SE-10**: the budget cap is applied last. **UR-15**: scores are normalised to White's point of view by `chess-app`. **UR-37**: "sidecar" means a bundled helper binary only. **XC-29**: ENG-5 is supporting here (primary block `GameSession`). **XC-30**: IDs written `PREFIX-nnn`, none renumbered (one- and two-digit forms zero-padded to three digits; `R-EN-` followed by a number becomes `DR-EN-nnn` like the rationale rows of the other SDDs; the triage cites `R-EN-1`, now DR-EN-001, and architecture 4.6 and FF-7 cite `EI-EN-02`, now EI-EN-002). Interface-card IDs (`IFP-EN-nn`, `IFR-EN-nn`) keep their form. |
+| 0.3 DRAFT | 2026-10-31 | G0 text edits applying the joint-review rulings (SDD-v0.2-joint-review section 7; architecture amendment 7 addendum A, D-46, D-57; requirements CR-9.9, CR-9.10). No new decision. **CR-9.9 (FIND-JR-011):** the zero-padding of v0.2 (`R-EN-n` to `DR-EN-nnn`, `EI-EN-02` to `EI-EN-002`) is an accepted one-time exception; the engine keeps the `FIND-EN-` prefix. **OQ-EN-003 closed:** architecture §4.6 and FF-7 now cite `EI-EN-002`, so the test ID matches in both documents. **FIND-JR-009 (engine part):** the conversion of `EloRange` to the domain `UciEloRange` is done once in `chess-app` (this crate has no edge to the domain); the "every stored `uci_elo` inside the range" test is a `chess-app` test (3.10.12). **FIND-JR-006 (engine part):** the `test-support` feature is the one that `chess-app`'s own `test-support` enables, so a front-end builds a `Core` over `FakeEngine` with no edge to this crate (3.10.11; architecture §5.7). **D-57:** `chess-app` owns the calibration run; this crate supplies the primitives only (`EnginePurpose::Calibration` requests). **OQ-EN-002** narrowed against architecture §4.6 (still open, no value or crate version written). |
+| 0.3 DRAFT (addendum) | 2026-11-01 | G0. [SDD-v0.3-joint-review](SDD-v0.3-joint-review.md). **FIND-JR3-003:** no engine change. `EngineFactory` is a `chess-app` trait (`seams.rs`); the app writes the production factory and the fake factory over this crate's concrete public API (the `UciEngine` spawn path with `EngineConfig`, and the `FakeEngine` constructor behind `test-support`). This SDD never implied that `chess-engine` supplies a factory; the app SDD's phrase "production implementations come from `chess-engine`" is read as "are built from this crate's constructors" and is the app owner's to reword. This crate has no edge to `chess-app`. **FIND-JR3-013:** `CT-EN-001..021` is a range whose members 007 to 009, 018 and 019 are not defined; the DD-EN-004 trace row cites only defined IDs where the table is next re-read `[INF]`. |
+| 0.3.1 DRAFT | 2026-11-01 | G0. Applies architecture addendum B and C: D-61 confirmed (this crate supplies constructors, `chess-app` owns `EngineFactory`); no engine change. Version label unified. Cites D-60 (ECO import refinements), D-61 (`EngineFactory` owned by `chess-app`) and D-62 (PGN duplicates and the ECO question stay two steps; OQ-23 closed). Nothing is approved; no code exists |
 
 ## 1 Introduction
 
 ### 1.1 Purpose and scope
 
-This SDD designs the crate that talks to Stockfish: the `Engine` trait, the UCI driver over a child process's standard input and output, the process pool, the translation of a computer Player's parameters into UCI options and search limits, the seeded "random error" move choice, binary discovery, and a deterministic fake engine for tests.
+This SDD designs the crate that talks to Stockfish: the `Engine` trait, the UCI driver over a child process's standard input and output, the process pool, the translation of a computer Player's parameters into UCI options and search limits, the seeded "random error" move choice, binary discovery, a deterministic fake engine for tests, and the pinned `UCI_Elo` range constant of the bundled engine (DD-EN-015).
 
 The crate **does not** decide whether a request is allowed (that is `EngineGateway` and `Policy`), does not check that a move is legal (`EngineGateway` with `chess-rules`, architecture §4.5), does not decide when to cancel a search (`GameSession`), and does not generate Players (`RosterGen`, `chess-domain`). Strict-mode integrity (ANA-1) is therefore **not** enforced here; this crate only guarantees that nothing outside `chess-app` is meant to hold an `Engine` (architecture §5.7).
 
@@ -29,10 +40,10 @@ Allocation: architecture §10.1 rows ENG-1, ENG-2 (UCI options), ENG-3 (`SearchL
 | Requirement | Role of this crate | Primary DD |
 |---|---|---|
 | ENG-1 open-source engine, UCI, start and answer `uci`/`isready`, failure surfaces and game stays recoverable | UCI driver, failure detection, typed errors | DD-EN-004, 005, 013 |
-| ENG-2 difficulty levels: parameters (`Skill Level`, depth, movetime, `UCI_Elo` only inside the reported range, random error) | Option plan and move selector; range read from the handshake | DD-EN-008, 009 |
+| ENG-2 difficulty levels: parameters (`Skill Level`, depth, movetime, `UCI_Elo` only inside the reported range, random error) | Option plan and move selector; the handshake range is read for the search clamp and for the CI check; the roster uses the pinned constant | DD-EN-008, 009, 015 |
 | ENG-3 think time ≤ configured maximum | `SearchLimits` minimum rule; hard deadline | DD-EN-002, 009 |
 | ENG-4 engine failure handling (5 s readiness, 2 s after the limit) | Handshake and search timers, kill, restart | DD-EN-004, 014 |
-| ENG-5 cancel: best move so far within 200 ms | `stop()` writes UCI `stop` first | DD-EN-001, 004 |
+| ENG-5 cancel: best move so far within 200 ms | `stop()` writes UCI `stop` first. Supporting: architecture 10.1 names `GameSession` as the primary block (XC-29) | DD-EN-001, 004 |
 | IF-4 one pinned Stockfish 19, bundled, UCI | Binary discovery, `id name` pin check | DD-EN-006, 004 |
 | NFR-1 start-up (CLI ≤ 1 s) | Nothing spawns until needed; optional `warm()` | DD-EN-007 |
 | NFR-3 never an illegal state | Output is syntactic only; malformed output is a failure, legality is the gateway's | DD-EN-002, 003 |
@@ -51,7 +62,7 @@ Allocation: architecture §10.1 rows ENG-1, ENG-2 (UCI options), ENG-3 (`SearchL
 
 ### 1.3 Decisions and risks
 
-D-9 (pinned Stockfish 19, `sf_19`), D-13 (no blocking on runtime workers), D-15 (the clock keeps running during engine failure), D-18 (bundled lookup, never `PATH`, `CHESS_STOCKFISH` for dev and tests only), D-33 (`movenow` stops a search and plays the best so far). Risks: R-12 (several processes compete for CPU), R-14 (slower Macs), R-2 (low-strength calibration), R-17 (calibration must not touch real ratings).
+D-9 (pinned Stockfish 19, `sf_19`), D-13 (no blocking on runtime workers), D-15 (the clock keeps running during engine failure), D-18 (bundled lookup, never `PATH`, `CHESS_STOCKFISH` for dev and tests only), D-33 (`movenow` stops a search and plays the best so far), D-43 (`Personality` representation), D-46 (pinned `UCI_Elo` range), D-47 (dependency admission), FF-7 and FF-8 (fitness functions on the range constant and the shared `SplitMix64` vectors). Risks: R-12 (several processes compete for CPU), R-14 (slower Macs), R-2 (low-strength calibration), R-17 (calibration must not touch real ratings).
 
 ### 1.4 Definitions
 
@@ -61,7 +72,7 @@ D-9 (pinned Stockfish 19, `sf_19`), D-13 (no blocking on runtime workers), D-15 
 
 ### 2.1 Readiness basis
 
-Upstream is baselined. No separate readiness report was produced. The findings in section 7 are the readiness input to the System Architect and Systems Engineer. FIND-EN-01 (who owns `Personality`) should be answered before the crate manifest is written, because it decides a dependency edge.
+Upstream is baselined. No separate readiness report was produced. The findings in section 7 are the readiness input to the System Architect and Systems Engineer. FIND-EN-001 (who owns `Personality`) is decided: D-43 keeps `EnginePersonality` here and adds no `engine -> domain` edge, so the crate manifest has no workspace dependency but `chess-rules`.
 
 ### 2.2 Viewpoints
 
@@ -82,7 +93,7 @@ Upstream is baselined. No separate readiness report was produced. The findings i
 
 ### 2.3 Conventions
 
-`DD-EN-nnn` design entities; `IFP-EN-nn` / `IFR-EN-nn` interfaces; `UT-EN-nnn` / `CT-EN-nnn` tests; `FIND-EN-nn` upstream findings; `ASM-EN-n` assumptions. Numbers that no requirement or decision fixes are `ESTIMATE`. UCI protocol facts below are the author's recall of the UCI specification and Stockfish behaviour; no Stockfish binary was run `[UNV]`. They are verified by the first run of the engine build script (ASM-3) and by the engine integration tests.
+`DD-EN-nnn` design entities; `IFP-EN-nn` / `IFR-EN-nn` interfaces; `UT-EN-nnn` / `CT-EN-nnn` / `EI-EN-nnn` tests; `FIND-EN-nnn` upstream findings; `ASM-EN-nnn` assumptions; `DR-EN-nnn` design rationale; `OQ-EN-nnn` open questions (written `PREFIX-nnn`, XC-30). A finding that a ruling settled is marked RESOLVED with the ruling id and is kept, not deleted. Numbers that no requirement or decision fixes are `ESTIMATE`. UCI protocol facts below are the author's recall of the UCI specification and Stockfish behaviour; no Stockfish binary was run `[UNV]`. They are verified by the first run of the engine build script (ASM-3) and by the engine integration tests.
 
 ## 3 Viewpoints
 
@@ -129,6 +140,7 @@ No network, no data directory, no database. The child process has no environment
 | DD-EN-012 | `fake-uci` binary | Test executable speaking UCI with `FakeEngine` logic, selected by `CHESS_STOCKFISH` | test-strategy, §8.2 |
 | DD-EN-013 | `EngineError` | Typed failures and mapping to `EngineUnavailable{cause}` | §5.5, ENG-4 |
 | DD-EN-014 | `EngineConfig` | Timeouts, threads, hash, caps; all overridable in tests | §4.8 |
+| DD-EN-015 | `PINNED_UCI_ELO_RANGE` | The `UCI_Elo` range of the bundled engine as a constant; roster generation uses it instead of the handshake | D-46, FF-7, ENG-2 |
 
 ### 3.3 Logical viewpoint
 
@@ -174,7 +186,7 @@ classDiagram
     Engine ..> SearchResult
 ```
 
-Key types (names are design proposals; those in architecture §3.3 are kept: `Engine`, `UciEngine`, `EnginePool`, `SearchLimits`, `FakeEngine`; `Personality` is renamed, FIND-EN-01):
+Key types (names are design proposals; those in architecture §3.3 are kept: `Engine`, `UciEngine`, `EnginePool`, `SearchLimits`, `FakeEngine`; `Personality` is renamed to `EnginePersonality`, D-43):
 
 ```rust
 pub struct UciMove(/* 4 or 5 ASCII chars, syntax-checked: file rank file rank [qrbn] */);
@@ -189,12 +201,16 @@ pub struct SearchLimits { pub movetime: Duration, pub depth: Option<u32>, pub no
 pub enum SearchPosition { Fen(Fen), Moves { start: Option<Fen>, moves: Vec<UciMove> } }
 pub struct SearchRequest {
     pub position: SearchPosition, pub limits: SearchLimits, pub multipv: u8,
-    pub new_game: bool, pub updates: Option<mpsc::Sender<SearchInfo>>,
+    pub new_game: bool,
+    pub seed: u64,                 // error-pick seed from chess_domain::error_pick_seed; consumed by MoveSelector, ignored by UciEngine::search (UCI has no seed)
+    pub updates: Option<mpsc::Sender<SearchInfo>>,
 }
-pub struct EnginePersonality {            // fields of architecture §4.6 Personality
+pub struct EnginePersonality {            // fields of architecture §4.6 Personality; the stored type has error_permille: u16
     pub skill_level: u8, pub depth_limit: u32, pub movetime_ms: u32,
-    pub uci_elo: Option<u32>, pub error_rate: f64, pub error_multipv: u8,
+    pub uci_elo: Option<u32>, pub error_rate: f64 /* = permille / 1000.0, set by personality_to_engine in chess-app */, pub error_multipv: u8,
 }
+pub struct EloRange { pub min: u32, pub max: u32 }
+pub const PINNED_UCI_ELO_RANGE: EloRange = /* value from the Stockfish 19 build step, ASM-3: not written in this document */;
 pub enum Health { NotStarted, Ready, Searching, Dead }
 ```
 
@@ -204,16 +220,16 @@ pub enum Health { NotStarted, Ready, Searching, Dead }
 
 **Concern:** what depends on what?
 
-Crate edges, exactly as architecture §3.2: `chess-app → chess-engine`, `chess-engine → chess-rules` `[OBS architecture.md §3.2]`. The crate has **no edge** to `chess-domain`, `chess-store`, the server or any front-end. `chess-domain` has no edge to this crate either, which causes FIND-EN-01.
+Crate edges, exactly as architecture §3.2: `chess-app → chess-engine`, `chess-engine → chess-rules` `[OBS architecture.md §3.2]`. The crate has **no edge** to `chess-domain`, `chess-store`, the server or any front-end. `chess-domain` has no edge to this crate either; FIND-EN-001 is RESOLVED by D-43 (two separate personality types and one conversion in `chess-app`). The domain's `error_pick_seed` and the app's `personality_to_engine` are the only bridges, and both live outside this crate.
 
 | Dependency | Use | Version source |
 |---|---|---|
-| `chess-rules` | `Fen` (validated position text) as the position type `[ASM-EN-1: type name and `AsRef<str>`/`Display` to be reconciled with SDD-chess-rules]` | workspace |
-| `tokio` (features `process`, `io-util`, `sync`, `time`, `rt`, `macros`) | child process, async pipes, timers, channels | 1.54.1 `[OBS architecture.md §3.4]` |
+| `chess-rules` | `Fen` (validated position text) as the position type; `Fen::as_str` and `Display` are provided by the rules SDD (XC-26, IFP-RUL-4) `[ASM-EN-001: confirmed in the design, not yet in code]` | workspace |
+| `tokio` (features `process`, `io-util`, `sync`, `time`, `rt`, `macros`) | child process, async pipes, timers, channels; feature sets per crate are admitted in §3.4 (D-8, D-47) | 1.54.1 `[OBS architecture.md §3.4]` |
 | `thiserror`, `tracing` | errors, log events | 2.0.21, 0.1.44 `[OBS §3.4]` |
 | Test only: `proptest`, `cargo-fuzz`, `insta` | parser properties, fuzzing, snapshots | 1.12.0, 0.13.2, 1.49.0 `[OBS §3.4]` |
 
-No other crate is needed: the seeded generator is a ten-line SplitMix64 in the crate (no `rand`), and line splitting is a small bounded reader (no `tokio-util`). `tokio` appears under `chess-app` only in §3.2 (FIND-EN-10). `#![forbid(unsafe_code)]` applies to the whole crate; process groups use the safe `std::os::unix::process::CommandExt::process_group` `[UNV: exists in the pinned toolchain; stable since Rust 1.64 from recall]`.
+No other crate is needed: the seeded generator is a ten-line SplitMix64 in the crate (no `rand`; the same published constants and a shared test-vector file as `chess-domain`, FF-8), and line splitting is a small bounded reader (no `tokio-util`). `tokio` appears under `chess-app` only in §3.2 (FIND-EN-010, RESOLVED by D-47: feature sets are listed per crate). `#![forbid(unsafe_code)]` applies to the whole crate; process groups use the safe `std::os::unix::process::CommandExt::process_group` `[UNV: exists in the pinned toolchain; stable since Rust 1.64 from recall]`.
 
 ### 3.5 Patterns-use viewpoint
 
@@ -237,7 +253,7 @@ No other crate is needed: the seeded generator is a ten-line SplitMix64 in the c
 
 | ID | Interface | Consumer | Contract |
 |---|---|---|---|
-| IFP-EN-01 | `Engine` trait: `search`, `stop`, `health` | `EngineGateway` | Architecture §5.7: "Async, cancellable. `search(position, SearchLimits, multipv) → SearchResult{best, pv, score, depth}`, `stop()`, `health()`. Only the gateway holds an `Engine`." `[OBS]` |
+| IFP-EN-01 | `Engine` trait: `search`, `stop`, `health` | `EngineGateway` | Architecture §5.7 as amended (AMD-3): "Async, cancellable. `search(SearchRequest) -> SearchResult{best, pv, lines, score, depth}`, `stop()`, `health()`. `SearchRequest{position, limits, multipv, new_game, seed, updates}`. Only the gateway holds a handle." `[OBS]` |
 | IFP-EN-02 | `EnginePool` | `EngineGateway` | `computer_side`, `analysis(priority)`, `release_game`, `shutdown` |
 | IFP-EN-03 | `MoveSelector::select_move` and `SearchLimits::for_move`, `clock_budget` | `EngineGateway` / `GameSession` | Pure planning plus one call to an `Engine` |
 | IFP-EN-04 | `BinaryLocator::locate` | `Core` start-up | Path and provenance, or `BinaryMissing` |
@@ -248,9 +264,9 @@ Semantics fixed by this design:
 - **`search`** returns when the engine sends `bestmove`. If `stop()` was called, or the soft deadline fired, the result has `stopped_early = true` and still carries the best move found so far. The future is **cancel-safe**: dropping it stops the search and drains (3.10.3), and the instance is ready again when the next call begins. A dropped search never returns a result.
 - **`stop()`** returns immediately after queueing UCI `stop` ahead of any other pending command; it has no result. Calling it with no search running does nothing.
 - **`health()`** answers from the driver's state without a round trip; `Ready` after a successful `isready`, `Dead` when the process exited or was killed.
-- `SearchRequest.updates` receives throttled `SearchInfo` (depth, multipv, score, pv) with `try_send`; a full channel drops the update. It feeds `AnalysisProgress` and Training live analysis (§4.8 "streamed, refined until the user leaves"). It is additive to §5.7 (FIND-EN-07).
+- `SearchRequest.updates` receives throttled `SearchInfo` (depth, multipv, score, pv) with `try_send`; a full channel drops the update. It feeds `AnalysisProgress` and Training live analysis (§4.8 "streamed, refined until the user leaves"). `updates`, `lines` and `SearchPosition::Moves` are now documented in §5.7 (AMD-3, UR-40; FIND-EN-007 RESOLVED). `SearchPosition::Moves{start, moves}` carries the game history, so the engine sees repetitions and the fifty-move count (FIND-EN-006 RESOLVED); the gateway chooses between `Fen` and `Moves`.
 - **`SearchResult.best` is a `UciMove`, a syntactic move, not a legal `Move`.** Legality is checked by the gateway with `chess-rules` (§4.5). This lets `FakeEngine` return an illegal move to test that path.
-- `Score` is from the side to move's point of view, as UCI sends it. Callers that store evaluations normalise (FIND-EN-09).
+- `Score` is from the side to move's point of view, as UCI sends it. **`chess-app` normalises it to White's point of view** before it stores or shows an evaluation (decision 12, UR-15, CR-9.3; FIND-EN-009 RESOLVED). The engine does no normalisation and never stores.
 
 #### 3.6.2 Required
 
@@ -276,10 +292,10 @@ Semantics fixed by this design:
 | `SearchTimeout` | no `bestmove` by limit + 2 s, process killed | `timeout` | `RetryEngine` |
 | `BadOutput` | unparsable `bestmove`, line over the cap, `bestmove (none)` | `bad_output` | `RetryEngine` |
 | `Preempted{partial}` | background analysis yielded to an interactive request | not an engine failure | the worker retries the ply |
-| `InvalidPersonality{..}` | `uci_elo` outside the reported range, option unsupported | **`Internal{id}`**, a defect, not an engine outage | none |
+| `InvalidPersonality{..}` | an option the plan needs is not advertised, or `Skill Level` is outside the advertised range (a `uci_elo` outside the handshake range is clamped for the search, not rejected, 3.10.7) | **`Internal{id}`**, a defect, not an engine outage | none |
 | `InvalidRequest` | e.g. `multipv` 0 or above the cap | `Internal{id}` | none |
 
-The `cause` strings are proposed; the catalogue gives no list (FIND-EN-11). Illegal moves are detected by the gateway, not here (architecture §4.5, §4.7).
+The `cause` strings are additive catalogue entries (UR-36, AMD-14; FIND-EN-011 RESOLVED in principle). Illegal moves are detected by the gateway, not here (architecture §4.5, §4.7).
 
 ### 3.7 Structure viewpoint
 
@@ -311,7 +327,7 @@ Layering: `uci/*`, `plan.rs` and `select.rs` are pure and know nothing about tok
 
 **Concern:** how do the parts collaborate, including failures?
 
-#### 3.8.1 Lazy start and handshake (SEQ-EN-01)
+#### 3.8.1 Lazy start and handshake (SEQ-EN-001)
 
 ```mermaid
 sequenceDiagram
@@ -344,7 +360,7 @@ sequenceDiagram
     Note over D,P: handshake timeout: kill, restart once, then HandshakeTimeout
 ```
 
-#### 3.8.2 Cancel, drop and failure (SEQ-EN-02)
+#### 3.8.2 Cancel, drop and failure (SEQ-EN-002)
 
 ```mermaid
 sequenceDiagram
@@ -449,7 +465,7 @@ The search reply channel is a `oneshot`. When its receiver is dropped the driver
 #### 3.10.4 Failure and restart policy
 
 - Between searches, before every request the driver calls `try_wait`; if the child exited it is restarted transparently, **once**, as part of `Starting` (architecture §4.7 "restarted transparently").
-- A failure **during** a search (exit, bad output, timeout) is returned to the caller and the instance becomes `Dead`. The next request restarts it. `RetryEngine` is exactly that next request (F-3.7, §4.3 `EngineError → EngineThinking`). No search is silently repeated: the clock keeps running (D-15), and the caller decides.
+- A failure **during** a search (exit, bad output, timeout) is returned to the caller and the instance becomes `Dead`. The next request restarts it. `RetryEngine` is exactly that next request (F-3.7, §4.3 `EngineError → EngineThinking`). No search is silently repeated: the clock keeps running (D-15), and the caller decides. This is the SE interpretation Q-SE-12, confirmed (CR-9.2); the SE rewords F-3.7 "restart once" accordingly (CR-9.7). The app's DD-APP-10 and 4.9 follow this text (XC-18, FIND-EN-012 RESOLVED).
 - `Starting` retries once on handshake timeout (§4.8 "Kill and restart once, then `EngineUnavailable`").
 - Every kill is followed by `wait` so no zombie remains.
 
@@ -470,30 +486,30 @@ locate():
   never read PATH; never download
 ```
 
-`Bundled` binaries must report an `id name` containing the pinned text (`Stockfish 19` `[UNV: exact text, TBC-7]`); `Override` binaries skip that check so the fake can run. The override means a user can point the app at another binary; the architecture accepts this for dev and tests (§8.2) and the check above is the only guard (FIND-EN-10 notes the residual risk).
+`Bundled` binaries must report an `id name` containing the pinned text (`Stockfish 19` `[UNV: exact text, TBC-7]`); `Override` binaries skip that check so the fake can run. The override means a user can point the app at another binary; the architecture accepts this for dev and tests (§8.2) and the check above is the only guard (FIND-EN-010 notes the residual risk).
 
 #### 3.10.7 Option plan (DD-EN-008)
 
 `OptionPlan::for(personality | analysis_config, advertised: &UciOptions) -> Vec<SetOption>`:
 
-- `Threads`, `Hash` from `EngineConfig` (fixed per kind; FIND-EN-04).
-- If `uci_elo = Some(e)`: require the engine advertises `UCI_Elo` with `min ≤ e ≤ max` (values read from the `option name UCI_Elo type spin default .. min .. max ..` line, never hard-coded, architecture §4.6), then `UCI_LimitStrength = true`, `UCI_Elo = e`. Outside the range or not advertised: `InvalidPersonality`.
+- `Threads`, `Hash` from `EngineConfig` (fixed per kind). The values are the placeholders of architecture §4.7 (AMD-12, UR-39): computer 1 thread and 16 MB, analysis 2 threads and 64 MB (`ESTIMATE`), to be fixed before the first calibration run and recorded with each run (FIND-EN-004 RESOLVED as placeholders).
+- If `uci_elo = Some(e)`: require the engine advertises `UCI_Elo` (not advertised: `InvalidPersonality`). Read `min` and `max` from the `option name UCI_Elo type spin default .. min .. max ..` line, never hard-code them in the plan. Send `UCI_LimitStrength = true` and `UCI_Elo = clamp(e, min, max)`: **the clamp is for the search only and never changes the stored value** (D-46; architecture §4.6 says `EngineGateway` clamps, and the gateway asks for it through the plan, so the mechanism sits next to the option table). When the value was clamped, or when the handshake range differs from `PINNED_UCI_ELO_RANGE`, the plan reports it in `PlanReport { clamped, differs_from_pinned }` and the gateway logs an installation defect (OQ-EN-002).
 - If `uci_elo = None`: `UCI_LimitStrength = false` (when advertised), `Skill Level = skill_level` checked against the advertised `min`/`max`.
 - `MultiPV` is set per search from the request, only when it changes.
 - Only options advertised by the engine are sent. The instance remembers the applied map and sends the difference, then `isready`.
 
-The handshake result `EngineInfo{id_name, uci_elo_range: Option<(u32,u32)>, options}` is exposed so `chess-app` can pass the `UCI_Elo` range to `RosterGen` and `chess calibrate` (architecture §4.6).
+The handshake result `EngineInfo{id_name, uci_elo_range: Option<(u32,u32)>, options}` is exposed for the clamp report above, for EI-EN-002 and for diagnostics. It is **not** used to generate Players: `chess-app` passes `PINNED_UCI_ELO_RANGE` to `RosterGen` and to `chess calibrate` (D-46, architecture §4.6), so the first-launch roster does not wait for the engine.
 
 #### 3.10.8 Search limits and the move selector (DD-EN-009)
 
 `SearchLimits::for_move(personality, max_think, clock_budget)`: `movetime = min(personality.movetime_ms, max_think?, clock_budget?)`, `depth = personality.depth_limit`. The result never exceeds any of the three, which is ENG-3 and "it can only shorten a limit, never lengthen it" (§4.6). The request is sent as `go movetime T [depth D]`: time limits, not wtime/btime, for clocked games (R-12).
 
-`clock_budget(remaining, increment, ply) -> Duration`: `min(remaining / 30 + 3·increment / 4, remaining / 2)`, floored at 50 ms `ESTIMATE`. The architecture names "a clock-derived budget" and gives no formula (FIND-EN-05). The constants are placeholders for the Systems Engineer to confirm (test-strategy "computer budgets from remaining time").
+`clock_budget(remaining, increment, ply) -> Duration`: `min(remaining / 2, max(50 ms, remaining / 30 + 3·increment / 4))` `ESTIMATE`, with **the cap applied last** so that with under 100 ms remaining the 50 ms floor never exceeds half the remaining time (SE desk answer Q-SE-10). This crate owns the formula (UR-14, FIND-EN-005 RESOLVED). The intent, confirmed by the SE, is that the budget is an upper limit and never a target: the computer must not lose on time in the RULE-4 test. The constants are design values checked by that test.
 
-`select_move(engine, MoveRequest{position, personality, limits, seed}) -> MoveChoice{ mv: UciMove, kind: Best | Error, result }`:
+`select_move(engine, MoveRequest{search: SearchRequest (its `seed` is the error-pick seed), personality: EnginePersonality}) -> MoveChoice{ mv: UciMove, kind: Best | Error, result }`:
 
 ```
-draws = SplitMix64(seed)                       -- seed = (game_id, ply) hash supplied by the caller
+draws = SplitMix64(seed)                       -- seed = chess_domain::error_pick_seed(game_id, ply), computed by chess-app and carried in SearchRequest.seed (TR-12); this crate never sees a GameId
 u = draws.next_f64()
 if personality.error_rate > 0 and personality.error_multipv >= 2 and u < personality.error_rate:
       r = engine.search(req with multipv = error_multipv)
@@ -507,7 +523,7 @@ The same seed gives the same roll and the same pick (reproducible replays, §4.6
 
 #### 3.10.9 Analysis arbiter (DD-EN-010)
 
-The shared analysis instance serves two priorities. `Interactive` requests (Training live analysis, what-if, post-game on demand) are served first-in first-out among themselves; a newer live-analysis request replaces an older one by dropping its future. A `Background` request (per-move evaluation, 200 ms per ply) runs only when no interactive request is waiting; when one arrives, the arbiter calls `stop()` and the background caller gets `Err(Preempted{partial})`, then retries the ply later. The architecture's "Low (`nice`)" cannot be implemented on a shared instance (a process cannot raise its own priority again without privilege), so priority is scheduling, not operating-system priority (FIND-EN-03).
+The shared analysis instance serves two **lanes** (architecture §4.7, AMD-12). `Interactive` requests (Training live analysis, what-if, post-game on demand) are served first-in first-out among themselves; a newer live-analysis request replaces an older one by dropping its future. A `Background` request (per-move evaluation, 200 ms per ply) runs only when no interactive request is waiting; when one arrives, the arbiter calls `stop()` and the background caller gets `Err(Preempted{partial})`, then retries the ply later. The architecture's "Low (`nice`)" cannot be implemented on a shared instance (a process cannot raise its own priority again without privilege), so priority is scheduling by preemption lanes, not operating-system priority (UR-39; FIND-EN-003 RESOLVED).
 
 #### 3.10.10 Pool (DD-EN-007)
 
@@ -515,7 +531,16 @@ The shared analysis instance serves two priorities. `Interactive` requests (Trai
 
 #### 3.10.11 Fakes (DD-EN-011, DD-EN-012)
 
-`FakeEngine` implements `Engine` in process. Behaviours (set per instance or as a script of replies): `FirstLegalMove` (via a move list supplied by the test), `Fixed(UciMove)`, `Scripted(Vec<Reply>)`, and injected faults `Crash`, `Hang` (answers only after `stop`), `Timeout`, `IllegalMove(UciMove)`, `Garbage`, `BinaryMissing`, plus latency. It records every call, so tests of the gateway can assert "no call was made" (the ANA-1 spy sits in the gateway; this is the underlying record). `fake-uci` is a small executable that reads UCI lines and answers with the same logic, so the **real** `UciEngine`, `Spawner`, pool and timers are exercised end to end, and the CLI and GUI end-to-end suites select it with `CHESS_STOCKFISH=<path>` (architecture §8.2 "dev and tests only"). It is built only with `--features fake-uci-bin` and is not part of `Chess.app` (packaging check, F-8.6).
+`FakeEngine` implements `Engine` in process. Behaviours (set per instance or as a script of replies): `FirstLegalMove` (via a move list supplied by the test), `Fixed(UciMove)`, `Scripted(Vec<Reply>)`, and injected faults `Crash`, `Hang` (answers only after `stop`), `Timeout`, `IllegalMove(UciMove)`, `Garbage`, `BinaryMissing`, plus latency. It records every call, so tests of the gateway can assert "no call was made" (the ANA-1 spy sits in the gateway; this is the underlying record). `fake-uci` is a small executable that reads UCI lines and answers with the same logic, so the **real** `UciEngine`, `Spawner`, pool and timers are exercised end to end, and the CLI and GUI end-to-end suites select it with `CHESS_STOCKFISH=<path>` (architecture §8.2 "dev and tests only"). It is built only with `--features fake-uci-bin` and is not part of `Chess.app` (packaging check, F-8.6). **Reaching the fake from a front-end crate (FIND-JR-006, architecture §5.7 "Test support").** `FakeEngine` is compiled with this crate's Cargo feature `test-support`. `chess-app` has its own feature `test-support`, which enables this one and offers `Core::open(cfg, Seams)`, a `FakeEngine` factory and a temp-directory-store helper. The tests of `chess-cli`, `chess-server` and `src-tauri` therefore build a `Core` over a `FakeEngine` through `chess-app` only, with no edge to `chess-engine`. Neither feature is compiled into a release build. The factory itself is a `chess-app` item (its design is the app SDD's); this crate only guarantees the feature and the `FakeEngine` constructor it needs.
+
+#### 3.10.12 Pinned `UCI_Elo` range (DD-EN-015)
+
+`chess_engine::PINNED_UCI_ELO_RANGE` is a constant of the bundled engine, set from the engine build step (ASM-3). It exists so that a permanent computer Player depends on the pin and not on the binary found at run time: two machines, or an engine bump, would otherwise generate different Players from the same seed and index and break D-34 (TR-9, D-46).
+- **Value.** Unknown until the Stockfish 19 build is run (ASM-3). **No number is written in this document or in any other until then** `[UNV]`. The source file that declares the constant is the first deliverable that carries the value.
+- **Check.** The engine integration test EI-EN-002 compares the constant with the `min` and `max` of the `option name UCI_Elo type spin ...` line in the real binary's `uci` handshake and fails CI on a mismatch, so a change of the engine pin without a change of the constant cannot merge (FF-7). The same test asserts that every stored `COMPUTER_PROFILE.uci_elo` lies inside the range (the stored-value half is run from `chess-app`).
+- **Type bridge (FIND-JR-009).** `EloRange` is this crate's type; `RosterGen::new` takes the domain's `UciEloRange { min, max }`. There is no edge between the two crates, so `chess-app` converts once (a `From`-style conversion) and carries the unit test; this crate names neither the domain type nor the conversion.
+- **Use.** `chess-app` passes the constant (after the conversion above) to `RosterGen` and to the calibration run it owns (`chess_app::calibration`, D-57; the `chess calibrate` subcommand only calls it). This crate does not use it to build requests; `OptionPlan` uses the live handshake range for the search clamp (3.10.7).
+- **If an engine bump changes the range.** CI fails, the constant is edited, and calibration is re-run before release (architecture §4.6).
 
 ### 3.11 Resource viewpoint
 
@@ -524,8 +549,8 @@ The shared analysis instance serves two priorities. `Interactive` requests (Trai
 | Resource | Rule | Value and source |
 |---|---|---|
 | Child processes | one per computer side, one shared analysis instance, per app process | architecture §4.7; up to three typical, nine across three app processes (R-12) |
-| Threads per instance | `Threads` option fixed per kind | computer: 1; analysis: 2. **`ESTIMATE`, unspecified upstream (FIND-EN-04)** |
-| Hash per instance | fixed per kind | computer: 16 MB; analysis: 64 MB. **`ESTIMATE`, FIND-EN-04** |
+| Threads per instance | `Threads` option fixed per kind | computer: 1; analysis: 2. **`ESTIMATE`**, placeholders of architecture §4.7 (AMD-12), fixed before the first calibration run |
+| Hash per instance | fixed per kind | computer: 16 MB; analysis: 64 MB. **`ESTIMATE`**, same status |
 | Memory ceiling | accounting hook `hash_in_use_mb()`; no ceiling enforced | Should (CR-7.4, architecture §4.8) |
 | Driver tasks | one tokio task per instance; no blocking calls | D-13 |
 | Pipes | stdin writes are tiny; stdout read line by line, line cap 64 KiB | `ESTIMATE` (mine) |
@@ -539,14 +564,14 @@ The shared analysis instance serves two priorities. `Interactive` requests (Trai
 
 | ID | Decision | Alternatives rejected | Cost / risk |
 |---|---|---|---|
-| R-EN-1 | `EnginePersonality` is defined in this crate, converted from the domain type by `chess-app` | Define `Personality` in `chess-domain` and add an edge `engine → domain` (G2, Q4); define it here and make `domain` depend on `engine` (breaks purity) | One conversion function in `chess-app` (FIND-EN-01) |
-| R-EN-2 | The child is started by `tokio::process` from the path next to the executable, for the desktop app too | Starting it through Tauri's shell plugin as a sidecar (a second launch path, a Tauri capability, and a different way to read stdout) | Architecture §2 says "Tauri starts it as a sidecar"; this design treats the sidecar as a bundling mechanism only (FIND-EN-02, OQ-11) |
-| R-EN-3 | Syntactic `UciMove` result | Return a legal `Move` (then the fake cannot test the illegal path, and the crate needs more of `chess-rules`) | Gateway converts |
-| R-EN-4 | Drop-as-cancel with drain | Separate `cancel(id)` calls (UCI has no search ids) | Needs the 2 s drain bound |
-| R-EN-5 | `movetime` mandatory | Optional time with depth-only searches (no basis for ENG-4's "2 s after the limit") | Fixtures use a generous `movetime` with a depth cap |
-| R-EN-6 | Own SplitMix64 | `rand` crate (new dependency, API drift, stream stability between versions would change replays) | About ten lines to test |
-| R-EN-7 | Scheduling priority on a shared analysis instance | A second, `nice`d instance (more processes and memory in a three-process machine, R-12) | Preempted work is redone |
-| R-EN-8 | A `fake-uci` executable in addition to `FakeEngine` | In-process fake only (end-to-end suites could not use it; the driver and pool would be untested by them) | One more test binary, excluded from packaging |
+| DR-EN-001 | `EnginePersonality` is defined in this crate, converted from the domain `Personality` (`error_permille: u16`) by `personality_to_engine` in `chess-app`; **accepted by D-43** | Define `Personality` in `chess-domain` and add an edge `engine → domain` (G2, Q4); define it here and make `domain` depend on `engine` (breaks purity) | One conversion function in `chess-app` (FIND-EN-001) |
+| DR-EN-002 | The child is started by `tokio::process` from the path next to the executable, for the desktop app too | Starting it through Tauri's shell plugin as a sidecar (a second launch path, a Tauri capability, and a different way to read stdout) | Architecture §2 says "Tauri starts it as a sidecar"; "sidecar" means a bundled helper binary only and the core spawns it (UR-37, accepted; FIND-EN-002 RESOLVED; OQ-11 still applies to the bundle layout) |
+| DR-EN-003 | Syntactic `UciMove` result | Return a legal `Move` (then the fake cannot test the illegal path, and the crate needs more of `chess-rules`) | Gateway converts |
+| DR-EN-004 | Drop-as-cancel with drain | Separate `cancel(id)` calls (UCI has no search ids) | Needs the 2 s drain bound |
+| DR-EN-005 | `movetime` mandatory | Optional time with depth-only searches (no basis for ENG-4's "2 s after the limit") | Fixtures use a generous `movetime` with a depth cap |
+| DR-EN-006 | Own SplitMix64, duplicated from `chess-domain` with shared test vectors | `rand` crate (new dependency, API drift, stream stability between versions would change replays; rejected, D-31); an `engine -> domain` edge | About ten lines to test, plus a CI diff of the vector file (FF-8) |
+| DR-EN-007 | Preemption lanes on a shared analysis instance (AMD-12) | A second, `nice`d instance (more processes and memory in a three-process machine, R-12) | Preempted work is redone |
+| DR-EN-008 | A `fake-uci` executable in addition to `FakeEngine` | In-process fake only (end-to-end suites could not use it; the driver and pool would be untested by them) | One more test binary, excluded from packaging |
 
 ## 4 Design entities
 
@@ -568,19 +593,20 @@ All entities: Rust 1.99.1 edition 2024, `#![forbid(unsafe_code)]`, no `unwrap`/`
 | DD-EN-012 `fake-uci` | UCI on stdio | exits on end of file | single thread | none | CT-EN-051 | `src/bin/fake_uci.rs` |
 | DD-EN-013 `EngineError` | 3.6.3 | n/a | n/a | none | UT-EN-060, CT-EN-060 | `src/error.rs` |
 | DD-EN-014 `EngineConfig` | defaults of 3.11, overridable | validation of ranges | immutable after build | none | UT-EN-050 | `src/config.rs` |
+| DD-EN-015 `PINNED_UCI_ELO_RANGE` | 3.10.12 | CI fails if it differs from the handshake (EI-EN-002) | constant | none | EI-EN-002, UT-EN-061 | `src/pinned.rs` (not yet written) |
 
 ## 5 Traceability: requirement to design to verification
 
 | Requirement | DD | Tests | Notes |
 |---|---|---|---|
-| ENG-1 | DD-EN-003, 004, 005, 006 | CT-EN-001, 010, 011, 020; EI-EN-01 | handshake, legal `bestmove` from standard positions (EI = engine integration) |
-| ENG-2 (options, range) | DD-EN-008, 009 | UT-EN-020..027, EI-EN-02 | the "every stored `uci_elo` inside the reported range" test is in `chess-app` using `EngineInfo` |
-| ENG-3 | DD-EN-002, 009 | UT-EN-030..034, EI-EN-04 | measured latency on the baseline Mac |
+| ENG-1 | DD-EN-003, 004, 005, 006 | CT-EN-001, 010, 011, 020; EI-EN-001 | handshake, legal `bestmove` from standard positions (EI = engine integration) |
+| ENG-2 (options, range) | DD-EN-008, 009, 015 | UT-EN-020..027, UT-EN-061, EI-EN-002 | the "every stored `uci_elo` inside the range" test is in `chess-app` using `PINNED_UCI_ELO_RANGE`; EI-EN-002 compares the constant with the real handshake (FF-7) |
+| ENG-3 | DD-EN-002, 009 | UT-EN-030..034, EI-EN-004 | measured latency on the baseline Mac |
 | ENG-4 | DD-EN-004, 013, 014 | CT-EN-012..016 | crash, hang, missing; retry restarts |
-| ENG-5 | DD-EN-001, 004 | CT-EN-003, EI-EN-05 | ≤ 200 ms `ESTIMATE` (TBD-12) |
-| IF-4 | DD-EN-006 | UT-EN-044, CT-EN-017, EI-EN-01 | pinned `id name`; `lipo` check belongs to packaging |
+| ENG-5 (supporting; primary `GameSession`) | DD-EN-001, 004 | CT-EN-003, EI-EN-005 | ≤ 200 ms `ESTIMATE` (TBD-12) |
+| IF-4 | DD-EN-006 | UT-EN-044, CT-EN-017, EI-EN-001 | pinned `id name`; `lipo` check belongs to packaging |
 | NFR-1 | DD-EN-007 | CT-EN-030 | no spawn at construction; `warm()` |
-| NFR-3 | DD-EN-002, 003 | UT-EN-010..019, fuzz FZ-EN-01 | malformed output is a failure |
+| NFR-3 | DD-EN-002, 003 | UT-EN-010..019, fuzz FZ-EN-001 | malformed output is a failure |
 | NFR-8 | DD-EN-004 | CT-EN-004 | stop while searching; no blocking |
 | PLAT-3 / NFR-4 | DD-EN-005 | CT-EN-020; offline engine test in packaging | empty environment, no sockets |
 | PLY-4 | DD-EN-002 | UT-EN-035 | personality is never mutated |
@@ -595,50 +621,60 @@ No test has been written or run `[UNV]`. Levels per test-strategy and architectu
 |---|---|---|
 | UT-EN-001..006 | unit | `UciMove` syntax, `SearchLimits` constructors, request validation |
 | UT-EN-010..019 | unit / property | parse tables for `id`, `option` (spin, check, combo, button, string), `info` with bounds and `string`, `bestmove` variants; `parse(format(x))` round trips; arbitrary bytes never panic |
-| FZ-EN-01 | fuzz | `cargo-fuzz` on `parse_line` and the bounded reader |
-| UT-EN-020..027 | unit | option plan: `UCI_Elo` inside and outside the range, absent option, `Skill Level` bounds, difference-only sending |
-| UT-EN-030..039 | unit | minimum of three limits; clock budget vectors; SplitMix64 vectors; same seed same pick; error pick never chooses line 0; one-line result falls back to best |
+| FZ-EN-001 | fuzz | `cargo-fuzz` on `parse_line` and the bounded reader |
+| UT-EN-020..027 | unit | option plan: `UCI_Elo` inside the range, outside the range (clamped for the search, stored value untouched, `PlanReport` set), absent option, `Skill Level` bounds, difference-only sending |
+| UT-EN-030..039 | unit | minimum of three limits; clock budget vectors (including the cap applied last with under 100 ms remaining); SplitMix64 vectors from the shared file (FF-8); same seed same pick; error pick never chooses line 0; one-line result falls back to best |
 | UT-EN-040..046 | unit | locator: override absolute only, relative rejected, `PATH` never read (a fake `PATH` containing a decoy), mode checks, symlinked executable resolved |
 | UT-EN-050, 060 | unit | config validation; no `Display` contains a path |
 | CT-EN-001..006 | component (scripted process, paused time) | handshake order; search; `stop` before queued commands; drop-then-drain; no `go` before drain ends; concurrent `stop` |
 | CT-EN-010..017 | component | spawn failure; handshake timeout then one restart then error; crash mid-search; hang until soft stop then hard kill at +2 s; garbage output; line over cap; wrong `id name` for a bundled path |
-| CT-EN-020 | component (real child `fake-uci`) | `kill -9` of the parent leaves no child; process group; no zombies after kill `[UNV: end-of-file exit of Stockfish itself is checked in EI-EN-06]` |
+| CT-EN-020 | component (real child `fake-uci`) | `kill -9` of the parent leaves no child; process group; no zombies after kill `[UNV: end-of-file exit of Stockfish itself is checked in EI-EN-006]` |
 | CT-EN-021 | component | `RetryEngine` path: dead instance restarted by the next request |
 | CT-EN-030..034 | component | no spawn at pool creation; `warm()`; self-play gets two processes; `release_game`; `shutdown` bound |
 | CT-EN-040..042 | component | preemption, no starvation of background work after interactive work ends, newer live analysis replaces older |
 | CT-EN-050..051 | component | `FakeEngine` fault modes; `fake-uci` through the real driver |
 | CT-EN-060 | component | every `EngineError` maps to a documented cause |
-| EI-EN-01..06 | engine integration (`--features stockfish-tests`) | real Stockfish 19: handshake and `id name`; `UCI_Elo` range exposed; legal moves on fixtures; mate-in-1/2/3 with `Threads=1` and fixed depth; cancel latency; end-of-file exit; crash recovery. Run on the development Mac; the Intel slice is "not run: hardware unavailable" (CR-7.6) |
+| UT-EN-061 | unit | `PINNED_UCI_ELO_RANGE` has `min <= max` and is not derived from any handshake value; the roster path of the app never calls `EngineInfo` | review plus compile check |
+| UT-EN-062 | unit | The `SplitMix64` vector file is byte-identical to the one in `chess-domain` (CI diff) | file compare (FF-8) |
+| EI-EN-001 to EI-EN-006 | engine integration (`--features stockfish-tests`) | real Stockfish 19: handshake and `id name`; **`PINNED_UCI_ELO_RANGE` equals the `min` and `max` of the real `UCI_Elo` option and CI fails on a mismatch (EI-EN-002, FF-7)**; legal moves on fixtures; mate-in-1/2/3 with `Threads=1` and fixed depth; cancel latency; end-of-file exit; crash recovery. Run on the development Mac; the Intel slice is "not run: hardware unavailable" (CR-7.6) |
 
 Coverage target for `uci/*`, `plan.rs`, `select.rs`, `locate.rs`: at least 90 % line coverage (the test-strategy gate lists rules, Elo, clock, policy and parser modules; the UCI parser is a parser). The driver is covered by scripted tests, not by percentage.
 
-## 7 Open issues / upstream findings (for the System Architect and Systems Engineer)
+## 7 Open issues / upstream findings
 
-No upstream document was modified.
+Findings from v0.1, with the ruling that settled them. A RESOLVED finding is kept for traceability.
 
-| ID | Sev | Finding | Evidence | Proposed resolution / owner |
+| ID | Sev | Finding (summary) | Status | Ruling and what changed here |
 |---|---|---|---|---|
-| FIND-EN-01 | Major | `Personality` has no home that respects the dependency graph. §4.6 has pure `RosterGen` in `chess-domain` produce it, §10.1 ENG-2 allocates it to `chess-domain`, and §3.3 lists it as a key type of `chess-engine`. But `chess-domain` cannot depend on `chess-engine` (purity, §3.2) and `chess-engine` has no edge to `chess-domain`. | architecture §3.2, §3.3, §4.6, §10.1 | This SDD defines `EnginePersonality` in the engine and has `chess-app` convert (R-EN-1). Alternative: a new edge `engine → domain` (G2). SA / Brian Prascher. |
-| FIND-EN-02 | Minor | §2 and §6.3 say Tauri starts Stockfish "as a sidecar", but the core owns the UCI driver. Starting through Tauri's shell plugin would need a second spawn path. | architecture §2 key points, §6.3, OQ-11 | Treat the sidecar as bundling only; `chess-engine` launches `<exe dir>/stockfish` directly (R-EN-2). SA to confirm; OQ-11 (sidecar naming) still applies to the bundle layout. |
-| FIND-EN-03 | Minor | §4.7 gives background analysis "Low (`nice`)" on the same instance as interactive analysis. An OS priority cannot be lowered per request and raised back without privilege. | architecture §4.7 | Scheduling priority via preemption (3.10.9, R-EN-7). SA to restate. |
-| FIND-EN-04 | Minor | No value is given for `Threads` and `Hash` of computer and analysis instances, yet calibration depends on them ("recorded with each calibration run") and R-12 on CPU use. | architecture §4.6, §4.7, R-12 | Placeholders in 3.11: computer 1 thread, 16 MB; analysis 2 threads, 64 MB (`ESTIMATE`). Set before the first calibration run. SA / core developer. |
-| FIND-EN-05 | Minor | The "clock-derived budget" in the minimum rule has no formula. | architecture §4.6; test-strategy "Clocks"; ENG-3 | Placeholder formula in 3.10.8. SE to specify or delegate. |
-| FIND-EN-06 | Minor | §5.3 sends `position fen ...` only. The engine then cannot see repetitions or the fifty-move count from the game history, which matters for play and for the "eval ≤ 0" draw decision. | architecture §5.3, §4.4 | `SearchPosition::Moves{start, moves}` is supported; the gateway chooses. SA. |
-| FIND-EN-07 | Minor | §5.7 gives `Engine` three methods and a result of `{best, pv, score, depth}`. Training live analysis ("streamed") and MultiPV (analysis 3 lines, error pick) need streamed updates and all lines. | architecture §5.7, §4.8, §4.6 | Additive: `updates` channel and `lines` field (3.6.1). SA. |
-| FIND-EN-08 | Minor | A legal-move type cannot represent an illegal engine move, but §4.5 requires the gateway to detect one. | architecture §4.5, §4.7 | Result carries a syntactic `UciMove` (R-EN-3). Recorded for SDD-chess-app and SDD-chess-rules (`Move::from_uci`). |
-| FIND-EN-09 | Minor | `MOVE_EVAL.cp` and `mate` do not state a point of view; UCI reports the side to move's. | architecture §7.2 | Engine reports side to move; the caller normalises (propose White's). Same as FIND-ST-12. SA. |
-| FIND-EN-10 | Minor | `tokio` appears only under `chess-app` in §3.2, and `CHESS_STOCKFISH` lets any executable be run in place of the pinned engine (accepted for dev and tests, D-18). | architecture §3.2, §8.2 | Record `tokio` as a dependency of this crate; keep the bundled-path `id name` check (3.10.6). SA. |
-| FIND-EN-11 | Minor | `EngineUnavailable{cause}` has no list of causes. | architecture §5.5 | Proposed cause strings in 3.6.3. SA. |
-| FIND-EN-12 | Minor | §4.7 says engines are "restarted transparently" while F-3.7 says "restart once"; neither says whether a failed search is repeated. | architecture §4.7; functional_decomp F-3.7 | 3.10.4: transparent restart before a request; a failure in flight is reported, not repeated. SE / SA to confirm. |
+| FIND-EN-001 | Major | `Personality` has no home that respects the dependency graph | **RESOLVED** (TR-6, D-43; ED-4 not needed) | The domain `Personality` (`error_permille`) is the stored type; `EnginePersonality` stays here; one conversion in `chess-app`; no `engine -> domain` edge |
+| FIND-EN-002 | Minor | "Sidecar" wording versus the core owning the UCI driver | **RESOLVED** (UR-37, AMD-9) | "Sidecar" means a bundled helper binary only; this crate spawns `<exe dir>/stockfish` |
+| FIND-EN-003 | Minor | "Low (`nice`)" cannot be implemented on a shared instance | **RESOLVED** (UR-39, AMD-12) | Preemption lanes, not `nice` |
+| FIND-EN-004 | Minor | No `Threads` and `Hash` values | **RESOLVED as placeholders** (UR-39, AMD-12) | Computer 1 thread and 16 MB, analysis 2 threads and 64 MB (`ESTIMATE`); set before the first calibration run |
+| FIND-EN-005 | Minor | No formula for the clock-derived budget | **RESOLVED** (UR-14, Q-SE-10) | This crate owns the formula; constants are `ESTIMATE`; the cap is applied last |
+| FIND-EN-006 | Minor | `position fen` hides repetitions and the fifty-move count | **RESOLVED** (UR-40, AMD-3) | `SearchPosition::Moves` is part of §5.7; the gateway chooses |
+| FIND-EN-007 | Minor | §5.7 had no streamed updates or all MultiPV lines | **RESOLVED** (UR-40, AMD-3) | `updates` and `lines` documented in §5.7 |
+| FIND-EN-008 | Minor | A legal-move type cannot represent an illegal engine move | **RESOLVED** (XC-26) | Syntactic `UciMove`; the gateway converts with `Move::from_uci` (rules) |
+| FIND-EN-009 | Minor | `MOVE_EVAL` point of view | **RESOLVED** (decision 12, UR-15, CR-9.3) | The engine reports the side to move's score; `chess-app` normalises to White's point of view |
+| FIND-EN-010 | Minor | `tokio` only under `chess-app` in §3.2; `CHESS_STOCKFISH` runs any executable | **RESOLVED in part** (D-47); residual accepted (D-18) | Tokio feature sets are listed per crate; the bundled-path `id name` check stays the only guard for the override |
+| FIND-EN-011 | Minor | `EngineUnavailable{cause}` has no list | **RESOLVED in principle** (UR-36) | Cause strings are additive catalogue entries |
+| FIND-EN-012 | Minor | "Restart transparently" versus "restart once" | **RESOLVED** (XC-18, UR-41, Q-SE-12 confirmed) | An in-flight failure is reported; `RetryEngine` is the next request; the SE rewords F-3.7 (CR-9.7) |
+
+Open items for other owners (none blocks drafting):
+
+| ID | Item | Owner |
+|---|---|---|
+| OQ-EN-001 | The value of `PINNED_UCI_ELO_RANGE` is unknown until the Stockfish 19 build is run (ASM-3). It is written first in the source file that declares it, never earlier in a document | engine build step owner |
+| OQ-EN-002 | Where the `UCI_Elo` clamp runs. *What architecture §4.6 says (addendum A text, read):* "At run time `EngineGateway` also clamps `UCI_Elo` into the handshake range for the search only, never for the stored value, and logs a mismatch with the constant as an installation defect." It names the actor (the gateway in `chess-app`) and the effect; it does not say which crate holds the arithmetic. This SDD puts `clamp(e, min, max)` in `OptionPlan` (next to the option table, with `PlanReport`), and the gateway requests the plan and logs the report. The two readings give the same observable behaviour. *Not closed:* the architecture does not rule that the arithmetic may sit in this crate, so the placement stays open for the app owner and the SA desk review (G1). If the architecture is read strictly, the clamp moves to the gateway, which reads `EngineInfo.uci_elo_range`, and `OptionPlan` sends the value it is given | app owner, SA desk review (G1) |
+| OQ-EN-003 | **RESOLVED** (CR-9.9; architecture addendum A, FF-7 and §4.6 now cite `EI-EN-002`). Closed |
 
 ## 8 Assumptions and not analyzed
 
 | ID | Assumption | Validation |
 |---|---|---|
-| ASM-EN-1 | `chess_rules::Fen` exists and converts to text | Reconcile with SDD-chess-rules |
-| ASM-EN-2 | Stockfish 19 follows the UCI behaviour recalled in 3.10 (answers `isready` during a search, quits on end of file, `UCI_Elo` and `Skill Level` options exist, `id name` contains "Stockfish 19") | The first run of the engine build script (ASM-3, TBC-7, TBC-8) and EI-EN-01..06 |
-| ASM-EN-3 | `process_group` and `kill_on_drop` behave as recalled on the pinned toolchain and macOS | CT-EN-020 |
-| ASM-EN-4 | The numbers marked `ESTIMATE` in 3.11 are acceptable placeholders | Measure at implementation step 2 (ASM-2) |
+| ASM-EN-001 | `chess_rules::Fen` exists and converts to text | Rules SDD v0.2 provides `Fen::as_str` and `Display` (IFP-RUL-4, UT-RUL-027); confirm when the rules code exists |
+| ASM-EN-002 | Stockfish 19 follows the UCI behaviour recalled in 3.10 (answers `isready` during a search, quits on end of file, `UCI_Elo` and `Skill Level` options exist, `id name` contains "Stockfish 19") | The first run of the engine build script (ASM-3, TBC-7, TBC-8) and EI-EN-001 to EI-EN-006 |
+| ASM-EN-003 | `process_group` and `kill_on_drop` behave as recalled on the pinned toolchain and macOS | CT-EN-020 |
+| ASM-EN-004 | The numbers marked `ESTIMATE` in 3.11 are acceptable placeholders | Measure at implementation step 2 (ASM-2) |
 
 **Not run:** no build, test or scan, because no code exists; only the Mermaid validator was run. **Not analyzed:** the Stockfish 19 source and documentation (no network use, no download); the use cases beyond the names of UC-14, UC-15 and UC-19; behaviour on Intel (no hardware, CR-7.6); the final API of sibling SDDs (written in parallel).
 
@@ -646,15 +682,15 @@ No upstream document was modified.
 
 | Item | Tier when implemented | Reason | Approver |
 |---|---|---|---|
-| Implementing the crate with the §3.2 edges and §5.7 contract unchanged, including the additive `updates`, `lines` and `SearchPosition` | G1 | One existing component; additive fields of an interface are still a change to a provided interface (Q2), so confirm with the SA | System-architect agent (desk review) |
-| Resolving FIND-EN-01 by a new edge `engine → domain` | G2 | Q4 | Brian Prascher |
-| Launching Stockfish through Tauri instead (FIND-EN-02) | G2 | Process model, second crate (Q1, Q6) | Brian Prascher |
-| A second analysis instance (alternative in R-EN-7) | G2 | Process model (Q6) | Brian Prascher |
+| Implementing the crate with the §3.2 edges and §5.7 contract unchanged, including `updates`, `lines`, `SearchPosition` and `seed` (documented in §5.7, AMD-3) | G1 | One existing component; the interface additions are approved text (D-38 to D-50 package, AMD-3) | System-architect agent (desk review) |
+| A new edge `engine → domain` (FIND-EN-001 alternative) | G2 | Q4. **Rejected** by D-43; listed only so that nobody adds it as a shortcut | Brian Prascher |
+| Launching Stockfish through Tauri instead (FIND-EN-002) | G2 | Process model, second crate (Q1, Q6). Rejected by UR-37 | Brian Prascher |
+| A second analysis instance (alternative in DR-EN-007) | G2 | Process model (Q6) | Brian Prascher |
 
 ## 10 Review and approval record
 
 Reviewer pass: **not performed.** Engineer stance only. A Reviewer pass is required before an approval request.
 
-Approval record: none. Status PENDING.
+Approval record: the v0.2 rulings (D-43, D-46, FF-7, FF-8, AMD-3, AMD-12) were approved by Brian Prascher on 2026-10-31 (triage decisions 1 to 13; CR-9.1). This SDD itself: none. Status PENDING.
 
-Mermaid: `node validate-mermaid.mjs docs/design/SDD-chess-engine.md` from the `swe-governance` skill `[RAN 2026-10-30 -> 5 block(s) checked, 0 failed]`. A parse pass proves syntax, not readability.
+Mermaid: `node validate-mermaid.mjs docs/design/SDD-chess-engine.md` from the `swe-governance` skill `[RAN 2026-10-30 -> 5 block(s) checked, 0 failed]` for v0.1; re-run for v0.2, see the delivery message. A parse pass proves syntax, not readability.

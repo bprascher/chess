@@ -3,12 +3,12 @@
 | Field | Value |
 |---|---|
 | Document | docs/design/SDD-ui.md |
-| Version | 0.1 DRAFT |
-| Date | 2026-10-30 |
-| Status | **DRAFT.** Not reviewed. Not approved. No code exists yet |
+| Version | **0.3.1 DRAFT** (0.2 DRAFT and 0.1 DRAFT were 2026-10-31 and 2026-10-30) |
+| Date | 2026-10-31 |
+| Status | **DRAFT** (v0.3.1, 2026-11-01). Not reviewed. Not approved. No code exists yet. v0.2 applied the architect's triage rulings that Brian Prascher approved on 2026-10-31; v0.3 aligns to architecture Addendum A (D-51 to D-58) and D-59; v0.3.1 aligns to addendum B and C (D-60 to D-62, agreed 2026-11-01), see section 13c |
 | Owner | Software engineer role (Claude), for Brian Prascher |
-| Approver | **Pending.** Gate G0 for this document (documents only). The implementation is G1 (System-architect agent, desk review) inside `ui/` with the `CoreClient` and `Board` contracts and the protocol unchanged; swapping the board adapter behind the `Board` contract is two-way (D-4) and stays G1 |
-| Gate record | G0, status DRAFT. `GATE-1nn` assigned when filed (SWE-001 ASM-S5). Not filed here |
+| Approver | **Pending.** Gate G0 for this document (documents only). The implementation is G1 (System-architect agent, desk review) inside `ui/` with the `CoreClient` and `Board` contracts and the protocol unchanged; swapping the board adapter behind the `Board` contract is two-way (D-4) and stays G1. The decisions this version implements were approved by Brian Prascher on 2026-10-31 (triage section 5, requirements CR-9.1); that approval does not approve this document |
+| Gate record | G0, status DRAFT. The gate record is filed by the gate register (SWE-001 ASM-S5); no gate ID is written here (XC-30). Not filed here |
 | Allocation names (architecture §2.2) | `Browser tab` and `WKWebView` (one codebase, FG-4) |
 | Path | `ui/` (Vite + React), architecture §3.1 |
 | Languages | TypeScript 7.0.2 strict on Node.js 26.13.0 (build only); runs in the browser and in WKWebView |
@@ -26,27 +26,27 @@ Evidence tags per `swe-governance` §6. `[OBS x]` = read in this session. `[UNV]
 
 In scope: screens, the `Board` component (D-4: chessground adapter, `BoardModel`, `AccessibleOverlay`, `LiveRegion`, `PromotionPicker`, typed SAN input), `CoreClient` and its two transports, client state (snapshot, rewind cursor, local clock countdown), themes, accessibility, layout, help and strings, the build constraints that the CSP imposes.
 
-Out of scope: rules, policy, persistence (core); the HTTP and WebSocket server (chess-server); the Tauri shell (desktop-tauri).
+Out of scope: rules, policy, persistence (core); typed-move parsing (`chess-rules` through `Query::ParseMove`, D-45; the bundle has no matcher); the HTTP and WebSocket server (chess-server); the Tauri shell (desktop-tauri).
 
 ### 1.2 Allocated requirements, functions and decisions
 
 | Kind | IDs | Source |
 |---|---|---|
 | Primary requirements | GUI-1, GUI-2, GUI-3, GUI-4, GUI-5, UI-3 (GUI themes), UI-4 (GUI part), UI-6, UI-7, UI-8, UI-10, UI-11 | [OBS architecture.md §10.1 rows; §3.3 `ui/` row] |
-| Supporting requirements | PLAT-2 (browser matrix), PLAT-3 (bundle has no remote reference), UI-1 (settings take effect in the client), UI-2 and UI-5 (stats screens), UI-9 (help), UI-12 (dialogs), GAME-2 (watch), GAME-3 (rewind view), ENG-5 (Move now button), RULE-4 (local countdown), NFR-8, NFR-9 | [OBS architecture.md §10.1] |
+| Supporting requirements (wording per XC-29 and architecture 10.1 Amd 7: the component named in 10.1 is primary, any other claim is supporting) | PLAT-2 (browser matrix, primary `packaging/`), PLAT-3 (bundle has no remote reference), UI-1 (settings take effect in the client), UI-2 and UI-5 (stats screens), UI-9 (help), UI-12 (dialogs), GAME-2 (watch), GAME-3 (rewind view), ENG-5 (Move now button), RULE-4 (local countdown), NFR-8, NFR-9 | [OBS architecture.md §10.1] |
 | Functions | **F-7.2.1** Render board and game feedback; **F-7.2.2** Accept move input; **F-7.2.3** Expose board to assistive technology; **F-7.2.4** Apply visual themes; **F-7.2.5** Scale layout to window; **F-7.2.6** Count down clocks locally; **F-7.3.1..F-7.3.4** (GUI realisation); **F-2.5.6** Rewind (GUI part); **F-8.4** (the `WKWebView` half: load nothing remote) | [OBS functional_decomp.md lines 103, 184-195, 212] |
-| Decisions | D-4 (chessground + shared layer), D-5 (React + Vite), D-7 (`ts-rs`), D-11 (what-if legal moves from the core), D-14 (tab close suspends), D-21 (Elo chart, DEFERRED), D-1 (Tauri IPC with the WebSocket envelope), D-33 (Move now), D-34 (duplicate prompt) | [OBS architecture.md §11] |
+| Decisions | D-4 (chessground + shared layer), D-5 (React + Vite), D-7 (`ts-rs`), D-11 (what-if legal moves from the core), D-14 (tab close suspends), D-21 (Elo chart, DEFERRED), D-1 (Tauri IPC with the WebSocket envelope), D-33 (Move now), D-34 (duplicate prompt), **Amendment 7:** D-45 (typed moves by `Query::ParseMove`), D-48 (protocol package: envelope kinds, global stream, `ResumeGame` then `subscribe`), D-49 (file transfer), D-50 (wire types), **Addendum A:** D-51 and D-52 (`ParseMove` errors and `ParsedMove`), D-53 (event envelope), D-54 (`MalformedFrame`), D-55 (`ExportedFile`, `ExportWriteFailed`), D-56 (profile switch), D-59 (ECO import dialog, accepted) | [OBS architecture.md §11] |
 | Risks | R-1 (desktop E2E), R-8 (selection desync), R-10 (reload suspends a game) | [OBS architecture.md §12] |
 | Open items owned here | OQ-9 (board spike), OQ-10 (browserslist query), TBD-18 (announcement wording) | [OBS architecture.md §14, requirements UI-6] |
 | Use cases | UC-2, UC-3, UC-5 to UC-9, UC-10 to UC-28 (GUI part of each) | [OBS use_cases/README.md] |
 
 ### 1.3 Inputs read
 
-architecture.md §1 to §3, §4.2 to §4.8, §5 (all), §6.2, §7.2 (data fields the client shows), §8, §8.1, §8.3, §9, §10.1, §11.1 (D-4 design and spike), §12, §14; trade-study-gui-board.md §5.0 (`BoardProps`); trade-study-gui-board-refined.md §4.1, §5, §6.2, §6.3 (chessground findings, reconciliation); functional_decomp.md F-7.2, F-7.3; requirements.md GUI-1 to GUI-5, UI-1, UI-3 to UI-12, PLAT-3, NFR-8, NFR-9; test-strategy.md; SWE-001 §6 (TypeScript rows).
+SDD-architect-triage.md section 2 (TR-1, TR-8, TR-11) and section 5; SDD-SE-desk-answers.md Q-SE-6, Q-SE-13, Q-SE-20; requirements.md Amendment 7 (CR-9.1 to CR-9.5); architecture.md (amended 2026-10-31) §1 to §3, §4.2 to §4.8, §5 (all), §6.2, §7.2 (data fields the client shows), §8, §8.1, §8.3, §9, §10.1, §11.1 (D-4 design and spike), §12, §14; trade-study-gui-board.md §5.0 (`BoardProps`); trade-study-gui-board-refined.md §4.1, §5, §6.2, §6.3 (chessground findings, reconciliation); functional_decomp.md F-7.2, F-7.3; requirements.md GUI-1 to GUI-5, UI-1, UI-3 to UI-12, PLAT-3, NFR-8, NFR-9; test-strategy.md; SWE-001 §6 (TypeScript rows).
 
 ### 1.4 Conventions
 
-`DD-UI-n` entities, `IFP-UI-n` / `IFR-UI-n` interfaces, `UT-UI-nn` unit, `CT-UI-nn` component, `E2E-UI-nn` end-to-end, `UF-UI-n` upstream findings (section 13), `ASM-UI-n`, `IA-UI-n` (assumption about another block's interface), `RAT-UI-n` rationale. Types written below are design sketches, not code; names marked `(arch)` appear in the architecture [OBS], the rest are introduced here.
+`DD-UI-n` entities, `IFP-UI-n` / `IFR-UI-n` interfaces, `UT-UI-nn` unit, `CT-UI-nn` component, `E2E-UI-nn` end-to-end, `UF-UI-n` upstream findings (section 13), `ASM-UI-n`, `IA-UI-n` (assumption about another block's interface), `RAT-UI-n` rationale, `OQ-UI-n` open questions. ID format (XC-30): IDs issued in v0.1 are unchanged; IDs added from v0.2 use three digits (`UF-UI-012`, `CT-UI-015`). Types written below are design sketches, not code; names marked `(arch)` appear in the architecture [OBS], the rest are introduced here.
 
 Standing coding rules for the whole bundle (SWE-001 §1, §6): `strict` plus `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`; no `any` at a boundary; every promise awaited or explicitly voided with a reason (`@typescript-eslint/no-floating-promises`); `eqeqeq`; discriminated unions for states and results; ESLint with `typescript-eslint` strict set and `--max-warnings 0`; a suppression carries a written reason; no `dangerouslySetInnerHTML` (a restricted-syntax rule), so Player names are only ever text nodes.
 
@@ -123,7 +123,7 @@ flowchart TB
         lr["LiveRegion"]
         pp["PromotionPicker"]
         cg["chessground adapter and Reconciler"]
-        san["SanInput and move matcher"]
+        san["SanInput (sends ParseMove)"]
     end
     subgraph transport["transport/"]
         cc["CoreClient interface"]
@@ -149,18 +149,19 @@ flowchart TB
 
 | Entity | Type | Purpose | Traces |
 |---|---|---|---|
-| DD-UI-1 `CoreClient` + `WebSocketCoreClient` | transport | Promise and subscription API over one WebSocket with reconnect | GUI-1, F-7.4.3 (client side), §5.2, §5.6 |
+| DD-UI-1 `CoreClient` + `WebSocketCoreClient` | transport | Promise and subscription API (game and global) over one WebSocket with reconnect and resume | GUI-1, F-7.4.3 (client side), §5.2, §5.6 |
 | DD-UI-2 `TauriCoreClient` | transport | The same API over Tauri `invoke` and `listen` | GUI-1, D-1 |
 | DD-UI-3 Client stores | state | Session, game (snapshot, rewind cursor, clocks), connection | GAME-3, RULE-4, F-7.2.6 |
 | DD-UI-4 `Board` contract and adapter | component | The only way a screen touches the board; chessground inside | GUI-2, GUI-3, GUI-4, D-4 |
 | DD-UI-5 `BoardModel` reducer | pure module | One selection state for pointer, keyboard | GUI-2, R-8 |
 | DD-UI-6 `AccessibleOverlay`, `LiveRegion`, `PromotionPicker` | components | ARIA grid, announcements, promotion choice | UI-4, UI-6, UI-8 |
-| DD-UI-7 `SanInput` and move matcher | component | Typed notation, CLI-3 rules | GUI-2 (c), Q44 |
+| DD-UI-7 `SanInput` | component | Typed text, parsed by `Query::ParseMove`; no matcher in the bundle | GUI-2 (c), Q44, D-45 |
 | DD-UI-8 Screens | components | The screens of §6.2 | GUI-4, UI-1, UI-2, UI-5, UI-9, UI-12 |
 | DD-UI-9 Themes | assets and tokens | 10+ board themes, 5+ piece sets, app colour themes, contrast tests | UI-3, UI-7, UI-10 |
 | DD-UI-10 Layout and scaling | CSS | Fluid layout, square board, resize | GUI-5 |
 | DD-UI-11 Strings, errors, help | modules | English text, error code to message, help from registries | UI-9, UI-11, NFR-9 |
 | DD-UI-12 Build constraints | config | Vite output that satisfies the CSP and the bundle scan | PLAT-3 |
+| DD-UI-014 `EcoMismatchDialog` | component | The choice between the PGN's ECO and the table's for each mismatching imported game (D-59) | IF-2, DAT-3, UI-4, GUI-2 |
 
 ### 3.3 Logical viewpoint (key types)
 
@@ -173,6 +174,7 @@ classDiagram
         +execute(cmd) Promise
         +query(q) Promise
         +subscribe(gameId, onEvent) Unsubscribe
+        +subscribeGlobal(onEvent) Unsubscribe
         +connection ConnectionStore
     }
     class WebSocketCoreClient
@@ -213,7 +215,7 @@ classDiagram
     BoardProps --> BoardModel
 ```
 
-`CoreClient` as given in architecture §5.2 has three methods `(arch)`: `execute`, `query`, `subscribe`. This design adds a read-only `connection` observable (status for the banner). Both implementations provide it; `TauriCoreClient` is always `open`. `BoardProps` is the contract of the first trade study §5.0 [OBS], extended by `turn` (needed for chessground `turnColor`, a presentation fact read from the snapshot) and `syncNonce` (DD-UI-4).
+`CoreClient` as given in architecture §5.2 (Amd 7) has four methods `(arch)`: `execute`, `query`, `subscribe`, `subscribeGlobal`. This design adds a read-only `connection` observable (status for the banner). Both implementations provide it; `TauriCoreClient` is always `open`. `BoardProps` is the contract of the first trade study §5.0 [OBS], extended by `turn` (needed for chessground `turnColor`, a presentation fact read from the snapshot) and `syncNonce` (DD-UI-4).
 
 ### 3.4 Dependency viewpoint
 
@@ -229,7 +231,7 @@ Allowed edges: `ui -> protocol/ (generated)`; `screens -> state, board, strings,
 | Vite / `@vitejs/plugin-react` | 8.3.5 / 6.1.2 | build | [OBS §3.4] |
 | TypeScript | 7.0.2 | build, strict | [OBS §3.4] |
 | Vitest 5.0.5, Playwright 1.64.1, `@axe-core/playwright` 4.14.0, ESLint 10.13.0, `typescript-eslint` 8.72.1, Prettier 3.9.10 | dev | [OBS §3.4] |
-| a component-test library and a DOM environment (D-5 rationale names Testing Library) | not in §3.4 | dev | UF-UI-5 |
+| a component-test library and a DOM environment (D-5 rationale names Testing Library) | admitted in principle, review row D-27; **no version stated, lookup pending `[UNV]`** | dev | UF-UI-5, TR-10 |
 
 No router, state-management, schema-validation, chart or CSS-in-JS library. State uses `useSyncExternalStore` over small stores; the Elo chart is hand-built SVG pending D-21. Fewer dependencies means fewer entries in the SBOM and in `npm audit` (SWE-001 §5).
 
@@ -288,10 +290,14 @@ sequenceDiagram
         W->>S: open socket
         S-->>W: accepted
         W->>S: hello
-        S-->>W: hello result
+        S-->>W: hello with protocol_version and build_version (no id)
     end
-    W->>S: subscribe for each active game
-    S-->>W: event GameSnapshot (authoritative)
+    W->>S: subscribe_global
+    W->>S: SelectProfile first, if the new session needs it
+    W->>S: ResumeGame for each game the page held
+    S-->>W: ok, the game resumes and the 5 s attach window starts
+    W->>S: subscribe for each such game
+    S-->>W: event EventEnvelope with GameSnapshot (authoritative)
     W->>UI: connection = open, snapshot replaces game state
     UI->>UI: banner hidden, inputs enabled per allowed_actions
     Note over W,S: if ServerStopping arrived first, state is stopped:<br/>"server stopped" is shown and there is no retry
@@ -356,41 +362,43 @@ Rejected pointer moves: chessground has already moved the piece. The Play screen
 
 **A3. Local clock countdown** (RULE-4, F-7.2.6, §4.2). A `ClockModel` stores `{whiteMs, blackMs, running: Side | null}` and the `performance.now()` value at receipt of the last `ClockSync`, `MoveApplied.clocks` or `GameSnapshot`. Displayed value: `max(0, ms - (running === side ? now - receivedAt : 0))`. Display refresh every 100 ms by one timer while a clock runs and the document is visible; on `visibilitychange` to visible it recomputes at once (hidden-tab timers are throttled; the arithmetic uses timestamps, not accumulated ticks). The wall-clock `as_of` field of `ClockSync` is not used for the countdown (UF-UI-9). The client never declares a flag fall: `GameEnded` does, and `Paused` and `DrawOffered` arrive as `running = null`. Screen-reader clock announcements fire once when a side's remaining time first crosses 60 s and 10 s (fixed thresholds, no per-second announcements, §8.3 [OBS]; the thresholds themselves are `ESTIMATE` examples).
 
-**A4. Typed-move matcher** (GUI-2 (c), CLI-3, Q44). `resolveTypedMove(text, legalMoves)`, `legalMoves = {uci, san}[]` from the snapshot. Normalise (trim; `0-0` and `0-0-0` to castling; strip `+`, `#`, `x` from both sides for comparison; files in either case). Piece letters only uppercase. A leading lowercase `b` is always the b-file. A leading uppercase `B` means bishop when a bishop move matches, otherwise the b-file. Exactly one match returns its `uci`; none returns a message built from `strings`; several returns an ambiguity message naming candidates. This is a **matcher over core-supplied legal moves**, not a rules engine. It exists in two places (this one and the Rust one used by the CLI); both are tested against one shared table `e2e/vectors/typed-move.json` (proposed file, UF-UI-2).
+**A4. Typed-move input** (GUI-2 (c), CLI-3, Q44, D-45). There is no matcher in the bundle. `SanInput` sends `Query::ParseMove{game_id, ply, text}` on Enter (or after a debounce) and acts on the reply: `ParsedMove{uci, san}` becomes `MakeMove{game_id, ply, mv: uci}` (the wire type has no `Move` object, D-52); `IllegalMove{reason}`, `ParseError{kind: move, reason, ...}` (D-51) and `StalePosition{live_ply}` become a message and change nothing. The extra fields of each `ParseError` reason are shown as in DD-UI-7. `chess-rules` is the only parser (TR-8). The snapshot's `legal_moves` (`[{uci, san}]`, XC-21) are still used for board destinations, overlay labels and promotion detection of pointer and keyboard moves, not for typed text. Details in DD-UI-7.
 
 **A5. Contrast** (UI-7). `contrastRatio(a, b) = (L1 + 0.05) / (L2 + 0.05)` with relative luminance as defined in WCAG 2.2. The constants of the luminance function are copied by the test author from the WCAG 2.2 text when the test is written (UI-7 verification says exactly this) and are not recalled here. Known pairs checked: black on white is 21:1, identical colours 1:1 [OBS requirements UI-7].
 
-**A6. Message decoding.** Every frame passes `decodeFrame(unknown) -> Frame | DecodeError` (hand-written guards: object, string `id`, `kind` in the known set, object `body`). Events are narrowed by their discriminant; an **unknown event kind is ignored** (§5.6 [OBS]); an unknown result shape is a `DecodeError` surfaced as an internal-error banner. Payload fields are trusted at the type level because bundle and core come from one build (D-16) and the generated types are the single source (D-7); no schema library is in the baseline, so field-by-field validation is not done (UF-UI-8 records the gap against SWE-001 §6 "validate every message").
+**A6. Message decoding.** Every frame passes `decodeFrame(unknown) -> Frame | DecodeError` (hand-written guards): a frame is `{id?, kind, body}`: a response is `kind: "result"` or `kind: "error"` (body `{code, message, details}`) with the string `id` of its request; an event is `kind: "event"` with body `EventEnvelope{game_id, seq, event}` and **no `id`** (D-53); `hello` frames also carry no `id`; a global event has `game_id` null and a per-subscription `seq` that may show gaps. A decode failure on the wire side is the error `MalformedFrame{reason}` (D-54). Events are narrowed by their `kind`; an **unknown event kind is ignored** (architecture 5.6); an unknown result shape is a `DecodeError` surfaced as an internal-error banner. On a **game** stream a `seq` that is not the previous `seq` plus one marks the game store `stale` and resubscribes (DD-UI-3). On the **global** stream a gap is allowed (D-53): the client does not resubscribe and re-queries what the event concerns (the lists and stats it shows). Payload fields are trusted at the type level because bundle and core come from one build (D-16) and the generated types are the single source (D-7). No schema library is used (review row D-28 rejected, TR-10): envelope and discriminant checks only (UF-UI-8).
 
 ---
 
 ## 4. Design entities
 
 ### DD-UI-1 `CoreClient` and `WebSocketCoreClient`
-
-> **Consistency review XC-19 (2026-10-30):** the frame kinds (`result`, `error`, `event`), the reconnect rule ("subscriptions are re-sent after `hello`") and gap detection by `ply` in this entity and in DD-UI-3 are **superseded** by section 13a (SDD-chess-app governs: envelope `{id, ok, body}` / `{id, error}` / `{game_id, seq, kind, body}`, `ResumeGame` then `subscribe`, gap detection by `seq`). The bodies were not rewritten.
-- Traces: GUI-1, §5.2, §5.6, PLAT-5, F-7.4.3 (client end). Counterpart: [SDD-chess-server](SDD-chess-server.md) section 5.1 (wire frames).
-- `execute(cmd)` and `query(q)` send `{id, kind: "command"|"query", body}` with `id` from a counter, and return a promise settled by the frame with that `id`. A `result` resolves; an `error` rejects with `CoreError{code, message, details}`.
-- `subscribe(gameId, onEvent)` sends `subscribe`, registers the listener, returns an `Unsubscribe` that sends `unsubscribe` once. The first event is `GameSnapshot`. Active subscriptions are remembered so they can be re-sent after a reconnect.
-- Timeouts: a request without a reply in **10 s** rejects with `TransportError{kind: "timeout"}`, the banner says "core not responding", and the client re-sends the active subscriptions [OBS §4.8 "Client command timeout"].
-- Reconnect: on an unexpected close, state `Reconnecting`; backoff 0.5, 1, 2, 4 s, capped at 4 s [OBS §5.6]; pending requests reject with `TransportError{kind: "connection_lost"}` and are never replayed; subscriptions are re-sent after `hello`; the next snapshot replaces game state.
-- `ServerStopping` (event) or close code 1001: state `Stopped`; the shell shows "server stopped"; no retry (D-36). `ProtocolMismatch`: state `NeedsReload`; the shell asks for a reload.
+- Traces: GUI-1, architecture 5.2, 5.6, PLAT-5, F-7.4.3 (client end). Counterparts: [SDD-chess-server](SDD-chess-server.md) section 5.1 (wire frames) and [SDD-chess-app](SDD-chess-app.md) IFP-APP-03 (the envelope; it governs).
+- Interface (architecture 5.2, Amd 7): `execute(cmd)`, `query(q)`, `subscribe(gameId, onEvent)`, `subscribeGlobal(onEvent)`, plus this design's read-only `connection` observable. `ResultOf<C>` is this bundle's helper, derived from the generated `Reply` type with `Extract`.
+- `execute` and `query` send `{id, kind: "command"|"query", body}` with `id` from a counter (at most 64 characters), and return a promise settled by the frame with that `id` (`id` is on requests and their replies only, D-53): a `result` frame (`{id, kind: "result", body}`) resolves, an `error` frame (`{id, kind: "error", body: {code, message, details}}`) rejects with `CoreError{code, message, details}`. Every frame is `{id, kind, body}` (SDD-chess-app IFP-APP-03, v0.2).
+- `subscribe(gameId, onEvent)` sends `subscribe{game_id}`, registers the listener, returns an `Unsubscribe` that sends `unsubscribe` once. The first event is `GameSnapshot`; every event frame is `{kind: "event", body: EventEnvelope{game_id, seq, event}}` with no `id`. Active subscriptions are remembered so they can be resumed after a reconnect.
+- `subscribeGlobal(onEvent)` sends `subscribe_global` once per connection, right after `hello`. It delivers `ServerStopping`, `StoreBacklog`, `AnalysisProgress` of stored games and `RatingsUpdated`; these four events are not part of a game subscription (architecture 5.1). Their envelope has `game_id` null and a `seq` counter per subscription that may show gaps after a lag; the listener treats each as a notification and re-queries (D-53).
+- Timeouts: a request without a reply in **10 s** rejects with `TransportError{kind: "timeout"}`, the banner says "core not responding", and the client runs the resume sequence below [OBS architecture 4.8 "Client command timeout"].
+- Reconnect (architecture 5.6, UR-30): on an unexpected close, state `Reconnecting`; backoff 0.5, 1, 2, 4 s, capped at 4 s; pending requests reject with `TransportError{kind: "connection_lost"}` and are never replayed. After the socket opens: `hello`, then `subscribe_global`, then for **each game the page held** `ResumeGame{game_id}` and only then `subscribe{game_id}`. The core suspended the game when the socket dropped (D-14), so resume comes first; the backoff can exceed the 5 s attach window, and resume handles a game that has already suspended. The page shows "resuming" until the first `GameSnapshot` arrives; that snapshot is authoritative and replaces game state. `SelectProfile{player_id}` is sent first if the new session needs it (`[INF]`, UF-UI-012): D-56 refuses `SelectProfile` with `Denied{state_not_allowed, details.game_ids}` once the session has a game open, so it can only come before `ResumeGame` and `subscribe`, never after. A pending ECO import (D-59) is lost with the old session; the dialog is closed with the message "the import was interrupted, choose the file again" and nothing was written.
+- `ServerStopping` (global event) or close code 1001: state `Stopped`; the shell shows "server stopped"; no retry (D-36). `ProtocolMismatch`: state `NeedsReload`; the shell asks for a reload.
 - Origin: the URL is built from `location.host`, `ws://` + host + `/api`, so the page always connects back to the origin that served it (matching the server's Host/Origin set).
 - Errors never contain a stack or internals; `message` comes from the core.
-- Fresh ids and UUIDs: request ids from a counter; `game_uuid` for `StartGame` from `crypto.getRandomValues` formatted as UUID v4. `crypto.randomUUID()` is avoided because it needs a secure context and whether `http://127.0.0.1` counts as one in Safari is `[UNV]`.
+- Fresh ids and UUIDs: request ids from a counter; `game_uuid` for `StartGame` from `crypto.getRandomValues` formatted as UUID v4 (the GUI keeps Web Crypto, architecture 5.6, TR-1). `crypto.randomUUID()` is avoided because it needs a secure context and whether `http://127.0.0.1` counts as one in Safari is `[UNV]`.
 - Verification: CT-UI-01 to CT-UI-06 against a fake WebSocket server.
 
 ### DD-UI-2 `TauriCoreClient`
-- Traces: GUI-1, D-1, §5.2.
+- Traces: GUI-1, D-1, architecture 5.2.
 - Chosen at start-up: `main.tsx` asks whether the page runs inside Tauri (`isTauri()` from `@tauri-apps/api/core`, `[UNV: function name]`, with a fallback test of the injected global) and then `await import("./transport/tauri")`. In the browser that module is never fetched, which keeps `@tauri-apps/api` out of the web runtime path.
-- `execute` and `query` call `invoke("core", {envelope})` with the **same envelope** as the WebSocket (§5.2 [OBS]); `subscribe` sends the `subscribe` kind through the same command and demultiplexes one `listen("core-event")` by `game_id`. No handshake is needed because the bundle and the core are one build; the client does not reconnect (there is no socket).
-- On start it unsubscribes nothing and trusts the shell to drop stale subscriptions on page load (SDD-desktop-tauri DD-TAU-4).
+- `execute` and `query` call `invoke("core", {envelope})` with the **same envelope** as the WebSocket (architecture 5.2 [OBS]); `subscribe`, `unsubscribe` and `subscribe_global` use the same command. Events arrive on one `listen("core-event")`: game events are demultiplexed by `game_id`, global events (no `game_id`) go to the `subscribeGlobal` listeners. No handshake is needed because the bundle and the core are one build; the client does not reconnect (there is no socket).
+- On every page load, first or reload, the shell has dropped all forwarders (SDD-desktop-tauri A2), so the core has already suspended any game this page held. A reloaded page starts at the profile chooser (Q48); it sends `subscribe_global` at start, and `ResumeGame` then `subscribe` when the user resumes the game from the list.
+- Exports return `ExportedFile` with `content: Saved{path}`: the shell rewrites the core's `Bytes{base64}` before the page sees it (D-55, DD-UI-13). A failed write is `ExportWriteFailed{cause}`.
+- A reload does not end the window's `FrontEndSession` (one session per window). The reloaded page has lost any `import_id` it held; a `ResolveImport` for it either still works or gets `NotFound{entity: import}`, and the page starts again from `ImportPgn` (D-59).
 - Behaviour must equal the WebSocket client for every case in the shared contract suite CT-UI-10 (GUI-1 "two implementations with identical behaviour").
 
 ### DD-UI-3 Client stores
 - Traces: GAME-3, RULE-4, F-7.2.6, F-2.5.6, PLY-2/3 (profile).
 - **Session store:** `activePlayerId` (from `SelectProfile`), the screen stack (in memory, no URL routing, no history API: a reload returns to the profile chooser as Q48 says "each GUI session starts at the profile chooser", and a game open at reload is suspended by D-14 and appears in the resume list).
-- **Game store:** latest `GameSnapshot`; `apply(event)` returns a new value. `MoveApplied` is applied only when `event.ply == snapshot.ply + 1`; any other value means an event was missed, so the store marks itself `stale` and re-subscribes to obtain a fresh snapshot (the core already resynchronises a lagging subscriber; this guards the rest). `ViewCursor = {kind: "live"} | {kind: "ply", ply}`. Board props come from `snapshot.plies[viewedPly]`. While rewound `interactive = false`; a `MoveApplied` while rewound sets `liveChanged = true` (badge, GAME-3) [OBS §6.2]. `allowed_actions` is stored and used as given.
+- **Game store:** latest `GameSnapshot`; `apply(event)` returns a new value. Each event carries a per-game `seq`, strictly increasing and gap-free per subscription (IFP-APP-02); an event whose `seq` is not the previous one plus one means an event was missed, so the store marks itself `stale` and re-subscribes to obtain a fresh snapshot (the core already resynchronises a lagging subscriber with a fresh `GameSnapshot`; this guards the rest). This rule is for game streams only; gaps in the global stream's `seq` are allowed (D-53). `ply` stays for the `MakeMove` guard and the live badge. `ViewCursor = {kind: "live"} | {kind: "ply", ply}`. Board props come from `snapshot.plies[viewedPly]`. While rewound `interactive = false`; a `MoveApplied` while rewound sets `liveChanged = true` (badge, GAME-3) [OBS §6.2]. `allowed_actions` is stored and used as given.
 - **Connection store:** the `CoreClient.connection` value.
 - Rewind and the cursor are view state only; nothing is sent to the core (GAME-3, §4.2).
 - Concurrency: JavaScript main thread only; no worker; no store mutates outside its `apply`/`set` function.
@@ -432,13 +440,15 @@ Draft announcement set (events fixed by §8.3 [OBS]; wording `ASM-UI-3`):
 | rewind | "Viewing move {n} of {total}" |
 | thinking | "{name} is thinking" |
 
-`{spoken}` is built by a pure function from the SAN and piece letters (for example Nf3 becomes "knight to f3"). Whether to speak SAN or the spoken form is the TBD-18 decision; the function is isolated so either is a one-line change.
+`{spoken}` is built by a pure function from the SAN and piece letters (for example Nf3 becomes "knight to f3"). Whether to speak SAN or the spoken form is the TBD-18 decision; the function is isolated so either is a one-line change. TBD-18 stays **open** for Brian Prascher's review (Q-SE-20). The systems engineer's sample wording, for that review and not adopted here: move "White knight to f3", capture "Black bishop takes e5", castling "White castles kingside", check "check", mate "checkmate, White wins", rejected move "illegal move: <reason>" (NFR-9 text) `[UNV: not tested with VoiceOver]`.
 
-### DD-UI-7 `SanInput` and the move matcher
-- Traces: GUI-2 (c), CLI-3, Q44, Q65.
-- A text field under the board. Commits on Enter; no confirmation. Resolves with A4 against the **live** snapshot's legal moves; input is disabled while rewound. Errors appear in a `role="status"` region and the text stays editable. A promotion suffix (`e8=Q`) is resolved by the matcher, so the picker is not opened for typed input.
-- Never captures keys outside the field.
-- Verification: UT-UI-06 (shared vector table), E2E-UI-06 (same move by three methods gives identical state).
+### DD-UI-7 `SanInput` (typed moves through `Query::ParseMove`)
+- Traces: GUI-2 (c), CLI-3, Q44, Q65, D-45 (TR-8).
+- A text field under the board. Typed characters are echoed locally and never wait for the core (NFR-8). The move is parsed on Enter, or after a debounce chosen by the GUI developer; it is not parsed per keystroke (architecture 5.1, Q-SE-6). It commits only on Enter, with no confirmation (GUI-2).
+- Flow: Enter -> `query(ParseMove{game_id, ply: livePly, text})`, with a pending state shown at once -> `ParsedMove{uci, san}` -> `execute(MakeMove{game_id, ply, mv: uci})`, the same path as the other input methods. A promotion suffix (`e8=Q`) is resolved by the parser, so the picker is not opened for typed input. `IllegalMove{reason}` -> the `message` and the `reason` in a `role="status"` region, text stays editable (text that is understood but names no legal move). `ParseError{kind: move, reason, ...}` (D-51) -> the `message` (an English sentence built by the core from `reason`) and, by `reason`, in the same region: `lowercase_piece`: the `suggestion` text with a "Use <suggestion>" button that replaces the field text; `promotion_required`: the `choices` strings as a list of buttons, each replacing the field text (the strings are shown as given and not interpreted; the `PromotionPicker` is not opened for typed input); `ambiguous`: the `candidates` (canonical SAN of each match) as a list of buttons, each replacing the field text; `empty`, `too_long`, `syntax`: the message only. After a button the user presses Enter and a new query runs, so a replaced text is parsed like any other. `StalePosition{live_ply}` -> refresh from the snapshot and show the live badge.
+- Disabled while rewound. Never captures keys outside the field.
+- **There is no TypeScript matcher** and no shared vector table (TR-8, D-45): either-case files, optional `+ # x`, `0-0` and the bishop/b-file rule (Q44) are `chess-rules` behaviour reached through the query.
+- Verification: UT-UI-06 (the `SanInput` state machine against a fake `CoreClient`: echo, pending, each reply kind and each `ParseError` reason), CT-UI-016 (real `ParseMove` over loopback; FF-6 budget NFR-8 100 ms `ESTIMATE`), E2E-UI-06 (same move by three methods gives identical state).
 
 ### DD-UI-8 Screens
 
@@ -446,21 +456,23 @@ All screens are React function components. Controls shown come from `allowed_act
 
 | Screen | Commands / queries | Notes | Traces |
 |---|---|---|---|
-| ProfileChooser | `ListPlayers`, `SelectProfile` | first screen of every session (Q48); `APP_SETTING.last_active_player` only pre-selects | PLY-3 |
+| ProfileChooser | `ListPlayers`, `SelectProfile` | first screen of every session (Q48); `APP_SETTING.last_active_player` only pre-selects. A switch control is not shown on the Play and Watch screens (convenience only; the core refuses a switch while the session has a game open, D-56). `Denied{state_not_allowed, details.game_ids}` is handled as in section 7 | PLY-2, PLY-3 |
 | Register | `RegisterPlayer` | name rules shown from `ValidationFailed.reason`; self-assessment sets starting Elo | PLY-2, PLY-6 |
 | Home | `ListUnfinishedGames` | resume list covers either side and every c-c game (D-33) | GAME-4 |
 | NewGame | `ListPlayers`, `StartGame{game_uuid, GameSetup}` | invalid combinations not offered; `UnfinishedGameExists` shows Resume, Resign, Abort | GAME-1 |
-| Play | `MakeMove`, `Takeback`, `OfferDraw`, `RespondDraw`, `Resign`, `CancelEngine`, `RetryEngine`, `DetachGame` | board, SAN input, move list, captured pieces (derived from the snapshot: material difference at the viewed ply), clocks, thinking indicator with **Move now** (Tab-reachable, label "Move now", Enter or Space, F2) only when `CancelEngine` is allowed (ENG-5, GUI-4) | GUI-2, GUI-4, GAME-3 |
+| Play | `ParseMove` (typed input), `MakeMove`, `Takeback`, `OfferDraw`, `RespondDraw`, `Resign`, `CancelEngine`, `RetryEngine`, `DetachGame` | board, SAN input, move list, captured pieces (derived from the snapshot: material difference at the viewed ply), clocks, thinking indicator with **Move now** (Tab-reachable, label "Move now", Enter or Space, F2) only when `CancelEngine` is allowed (ENG-5, GUI-4) | GUI-2, GUI-4, GAME-3 |
 | Watch | `Pause`, `Resume`, `Step`, `SetMoveDelay`, `Abort` | no rewind, move list scrolls (Q50) | GAME-2 |
-| Analysis | `GetGameAnalysis`, `Analyze`, `LegalMoves`, `SaveVariation`, `DeleteVariation` | "evaluating..." and "n of N plies evaluated"; what-if moves use `LegalMoves{fen}` (D-11); Strict in-progress analysis is not offered and the core would refuse it | ANA-1..4 |
+| Analysis | `GetGameAnalysis`, `Analyze`, `LegalMoves`, `SaveVariation`, `DeleteVariation` | "evaluating..." and "n of N plies evaluated"; evaluations from White's point of view, centipawn loss from the mover's (CR-9.3); what-if moves use `LegalMoves{fen}` (D-11); saving a branch from the final position is refused by the core with `ValidationFailed{field: from_ply, reason: no_move_after_position}` and the page shows the message while the branch stays playable (decision 13, CR-9.4); Strict in-progress analysis is not offered and the core would refuse it | ANA-1..4 |
 | History | `ListGames`, `GetGame`, `ExportPgn` | custom-start games marked; voided marked "voided by reset" or "voided: unreadable" | UI-2 |
 | Stats | `GetPlayerStats`, `GetRatingHistory` | any Player; hand-built SVG chart with a table alternative (D-21 deferred) | UI-2, UI-5 |
 | ComputerPlayers | `ListPlayers{computer}`, `GenerateComputerPlayers{category, count}` | 1 to 25, default 5; label follows Strict Elo | PLY-4, UI-5 |
 | Players | `RenamePlayer`, `ArchivePlayer`, `ResetPlayerData` | human only; confirmations incl. the void list | PLY-4, PLY-7 |
-| ImportExport | `ImportPgn`, `ImportFen`, `PreviewDataImport`, `ApplyDataImport`, `ExportData`, `RestoreBackup`, `CreateFreshStore` | file handling per DD-UI-13 | IF-1..3, DAT-2, DAT-5 |
+| ImportExport | `ImportPgn`, `ResolveImport`, `CancelImport`, `ImportFen`, `PreviewDataImport`, `ApplyDataImport`, `ExportPgn`, `ExportData`, `RestoreBackup`, `CreateFreshStore` | file handling per DD-UI-13 (bytes in frames, Blob download in the browser, saved path in the desktop app, archive size limit message); the ECO mismatch question per DD-UI-014 | IF-1..3, DAT-2, DAT-3, DAT-5 |
 | Settings | `GetPreferences`, `UpdatePreferences` | board theme, piece set, app colour theme, default opponent class and colour, legal hints, flip, coordinates, max think time; applies at once (UI-1) | UI-1 |
 | Help | none | from the `controls` registries and shipped text | UI-9 |
-| Global | | Connection banner; `ConfirmDialog`; `ResultDialog` on `GameEnded`; `GameVoided` leaves the game and shows why; `LeaseLost` makes the board read-only; recovery dialogs for `StoreMissing`, `StoreCorrupt`, `JournalUnreadable` (and the `VoidUnreadableGame` offer, whose dialog is its own confirmation) | UI-12, NFR-9 |
+| Global | | Connection banner; `ConfirmDialog`; `ResultDialog` on `GameEnded`; `GameVoided` leaves the game and shows why; `LeaseLost` makes the board read-only; recovery dialogs for `StoreMissing`, `StoreCorrupt` (the core is then in recovery mode and accepts only `CreateFreshStore`, `RestoreBackup`, `ApplyDataImport`, UR-31), `JournalUnreadable` (and the `VoidUnreadableGame` offer, whose dialog is its own confirmation) | UI-12, NFR-9 |
+
+The ECO mismatch dialog (DD-UI-014) is **not** a `ConfirmationRequired` action: it chooses between two values and confirms no destructive act (architecture 5.8).
 
 Confirmation handling: a command that returns `ConfirmationRequired{action, voids}` opens `ConfirmDialog`; Confirm resends the same command with `confirmed: true` (and `void_game_ids` echoed for a reset); in a hot-seat game `Resign` first asks which side [OBS §5.1, §5.5]. The client never skips the prompt and the core refuses without it.
 
@@ -486,17 +498,33 @@ Confirmation handling: a command that returns `ConfirmationRequired{action, void
 
 ### DD-UI-12 Build constraints (CSP and bundle scan)
 - Traces: PLAT-3, F-8.4, [SDD-chess-server](SDD-chess-server.md) DD-SRV-3.
-- The server's CSP is `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' ws://127.0.0.1:{port} ws://localhost:{port}; object-src 'none'; ...`. The build must therefore emit: external script and stylesheet files only (no inline `<script>` or `<style>`); no `style="..."` attribute written into markup (React's `style` prop uses the CSSOM and is allowed; chessground sets styles the same way `[UNV]`); no `data:` URIs (Vite's `build.assetsInlineLimit` set to 0, `[UNV: name]`); fonts self-hosted; no `eval`, no `new Function`; no remote URL.
+- The server's CSP (a floor of `default-src 'self'` plus pinned directives, Q-SE-13; the Tauri text is in [SDD-desktop-tauri](SDD-desktop-tauri.md) DD-TAU-6) is `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' ws://127.0.0.1:{port} ws://localhost:{port}; object-src 'none'; ...`. The build must therefore emit: external script and stylesheet files only (no inline `<script>` or `<style>`); no `style="..."` attribute written into markup (React's `style` prop uses the CSSOM and is allowed; chessground sets styles the same way `[UNV]`); no `data:` URIs (Vite's `build.assetsInlineLimit` set to 0, `[UNV: name]`); fonts self-hosted; no `eval`, no `new Function`; no remote URL.
 - Output: hashed names under `/assets/`; `index.html` at the root; one build used by both hosts.
 - Browser targets (PLAT-2): a browserslist query for releases of Safari, Chrome, Firefox and Edge from the last 3 years (OQ-10, to be fixed with `npx browserslist` at set-up).
 - Bundle scan (CI): fail on any `http(s)://` resource reference outside the allow-list (licence texts, documentation links shown as text and never fetched) [OBS PLAT-3].
 - Verification: CT-UI-14 (scan), CT-SRV-10/11 (server side, GUI loads under the CSP in five engines).
 
 ### DD-UI-13 File import and export in the browser and webview
-- Traces: IF-1, IF-2, DAT-2, UC-22..25.
-- The GUI has no file-system access (SWE-001 §6). Import: `<input type="file">` -> `File.arrayBuffer()` -> a size check against the limit (10 MB for PGN, TBD-25) -> the contents are placed in the command. Export: the result bytes become a `Blob` and an `<a download>` click saves them.
-- **How a file is represented in `ImportPgn{file, ...}` and `ExportData` is not defined upstream** (UF-UI-3 and UF-SRV-5). This design assumes `{name, data}` with `data` base64 for binary. In the webview `<a download>` may not save files `[UNV]`; the fallback needs a shell-side save (UF-UI-3, [SDD-desktop-tauri](SDD-desktop-tauri.md) section 12).
-- The Import screen shows previews and the Skip/Keep-both prompt with "apply to all remaining" (D-34); Replace is not offered for PGN; for a full-data import each conflict offers Replace or Keep both (D-17).
+- Traces: IF-1, IF-2, DAT-2, UC-22..25; decision 9 (D-49, XC-20, UR-35, CR-9.5).
+- The GUI has no file-system access (SWE-001 §6) and there is no dialog plugin. File contents travel inside frames as base64 bytes (`FileRef::Bytes`); there is no HTTP upload or download route. One message may be at most 32 MiB (architecture 4.8).
+- **Import** (browser and webview alike): `<input type="file">` -> `File.arrayBuffer()` -> base64 -> the command (`ImportPgn`, `PreviewDataImport`). The page checks only the hard transport bound: if the base64 form of the file plus the envelope cannot fit in 32 MiB, the page does not send it and shows the same kind of message as below. Every other limit is the core's decision: PGN 10 MB (TBD-25, `ESTIMATE`), archive about 24 MiB (TBD-35, `ESTIMATE`). Over a limit the core answers `ValidationFailed{field: file, reason: too_large}` and the page shows its `message` verbatim, which names the limit, the file size and, for an archive, the CLI alternative (`chess import data <file>`); the store is unchanged (CR-9.5). The numbers come from that message: architecture 5.2 and 4.8 have the core build it and define no structured field or exported constant for them, so the page holds no limit constants of its own except the 32 MiB transport bound above (FIND-JR-019; OQ-UI-001 narrowed).
+- **Export reply (D-55):** `ExportedFile{name, media_type, content}` with `content` either `Bytes{base64}` or `Saved{path}`. The page branches on `content`, not on the host: `Bytes` becomes a download, `Saved` shows the path. A failed desktop write is `ExportWriteFailed{cause}`; the page shows the `message` (it names the cause and the next step) and the `cause` is `folder_missing`, `permission_denied`, `disk_full` or `io_error`. Nothing was saved and the game and store are unchanged; the user can try again.
+- **Export, browser:** the core returns `Bytes{base64}`; the bytes become a `Blob` named `name` with type `media_type`, and an `<a download>` click saves them. The export is never size-limited.
+- **Export, desktop webview:** `<a download>` is not relied on (`[UNV]` in WKWebView). The Tauri shell writes the export to the user's Downloads folder (temporary file and rename, a name that does not overwrite) and rewrites `content` to `Saved{path}` before the reply reaches the page; the page shows "Saved to <path>" (D-55, [SDD-desktop-tauri](SDD-desktop-tauri.md) DD-TAU-008). No dialog opens.
+- The Import screen shows previews and the Skip/Keep-both prompt with "apply to all remaining" (D-34); Replace is not offered for PGN; for a full-data import each conflict offers Replace or Keep both (D-17). An `ImportConflicts` reply is rendered by entry kind (a PGN reply holds one kind: duplicates first, with no `import_id`, then the ECO question; an archive preview lists both together; D-62, OQ-UI-005 closed): duplicate entries by the prompt above, `eco_mismatch` entries by DD-UI-014. The ECO question is asked for archives too (`PreviewDataImport` lists `eco_mismatch` entries without an `import_id`, and `ApplyDataImport{plan, confirmed}` carries `eco`; there is no `CancelImport` for it), but only for games whose ECO comes from PGN tags (architecture 5.8).
+- Whether the GUI warns at export that the archive is larger than the GUI can import is OQ-UI-002 (a design choice for the architect, CR-9.5).
+- Verification: CT-UI-015 (browser export Blob, desktop saved-path display, `ExportWriteFailed` for each cause, over-size message, large archive imported by the CLI in the same fixture, E2E).
+
+### DD-UI-014 `EcoMismatchDialog` (D-59, CR-9.12, CR-9.13)
+- Traces: IF-2, DAT-3, UI-4, GUI-2, UI-8, UI-12 (not a confirmation), NFR-9. Accepted design (architecture 5.8, D-59; OQ-ECO-1 to 3 decided).
+- **Trigger.** `ImportPgn{file, on_duplicate}` (no `eco`) returns `ImportConflicts{import_id, list}`; `PreviewDataImport` returns `ImportConflicts{list}` with **no `import_id`** (archive imports are stateless, FIND-JR3-004). Both carry `eco_mismatch` entries `{game_index, white, black, tag_eco, table_eco, table_name, ply, moves_san}` (`moves_san`: SAN of the moves up to the matched position, additive, Brian's ruling 2026-11-01; `tag_name` is dropped because the name is empty when the file's code is kept). The page opens the dialog with one row per mismatching game, so the player is asked once, not once per round trip. Names are shown as text nodes only.
+- **Row.** A `role="radiogroup"` with two radio buttons and **no choice preselected**: "Keep the file's ECO ({tag_eco})" = `keep_pgn`, and "Use the position's ECO ({table_eco}, {table_name})" = `keep_table`. The group's `aria-describedby` points to a sentence that states both values, so a screen reader announces the difference: draft "The file says {tag_eco}. The opening table says {table_eco}, {table_name}, found after {moves_san}. If you keep the file's code, the opening name stays empty." (the empty name is the decision of OQ-ECO-2). The sentence is draft wording (`ASM-UI-6`), like the announcements of DD-UI-6. Each row also shows the moves from `moves_san` as text (OQ-UI-004 closed).
+- **Apply to all remaining.** Each row has a button "Use this choice for all games not yet answered" that sets `default` to the row's chosen value (a row must have a choice first). The answer is an `EcoResolutions{default, per_game}`; a row answered by hand goes to `per_game`.
+- **Resolve.** Enabled only when every row is answered, by hand or by `default`. For a PGN it sends `ResolveImport{import_id, eco}`; for an archive the answers are kept in the page and sent as `eco` in `ApplyDataImport{plan, confirmed}` after the final confirmation. It shows the usual report with the counts `eco_kept_pgn` and `eco_kept_table`. If the core answers `ImportConflicts` again the dialog reopens with the rows still unanswered (nothing was written). `NotFound{entity: import}` (expired, foreign, or lost with a reconnect) shows "The import was interrupted. Choose the file again." and returns to the Import screen.
+- **Cancel.** For a PGN the Cancel button and Esc send `CancelImport{import_id}`; for an archive nothing is sent (there is no held state, no `import_id` and no `CancelImport`). Nothing was written, nothing is undone. Closing the tab sends nothing: the core drops a held PGN import when the session ends.
+- **Accessibility.** `role="dialog"`, `aria-modal`, an accessible name, focus trapped and returned to the Import button on close (like `ConfirmDialog`, UI-12); every control reachable by Tab and operable by Space and Enter; radio groups follow arrow-key behaviour; the choice is not conveyed by colour alone (UI-7, UI-10).
+- **Remembering.** The choice is not remembered in v1 (OQ-ECO-3 decided): no setting, no `localStorage`.
+- Verification: UT-UI-011 (the answer reducer: `default`, `per_game`, enabled state), CT-UI-017 (dialog against a fake `CoreClient`), E2E-UI-13 (keyboard-only and axe).
 
 ---
 
@@ -523,7 +551,7 @@ Not used: `localStorage`, `sessionStorage`, `IndexedDB`, cookies. The reload beh
 
 **IFP-UI-1 `Board` contract** (§5.7 row "Board contract (BoardProps/onMove) -> GUI screens", React props [OBS]): `BoardProps` as in DD-UI-4. Failure behaviour: a rejected move is reverted by re-applying `fen` (`syncNonce`).
 
-**IFP-UI-2 `CoreClient`** (§5.7 row "CoreClient -> GUI client state"; "two implementations with identical behaviour (GUI-1)" [OBS]): `execute`, `query`, `subscribe`, plus `connection`. Failure: `CoreError` (catalogue code) and `TransportError{kind: timeout | connection_lost | server_stopped | mismatch}`.
+**IFP-UI-2 `CoreClient`** (§5.7 row "CoreClient -> GUI client state"; "two implementations with identical behaviour (GUI-1)" [OBS]): `execute`, `query`, `subscribe`, `subscribeGlobal`, plus `connection`. Failure: `CoreError` (catalogue code) and `TransportError{kind: timeout | connection_lost | server_stopped | mismatch}`.
 
 **IFP-UI-3 Static bundle** to hosts: `index.html` and `/assets/*` as constrained in DD-UI-12; consumed by chess-server (embed) and Tauri (bundle).
 
@@ -532,20 +560,23 @@ Not used: `localStorage`, `sessionStorage`, `IndexedDB`, cookies. The reload beh
 | ID | From | What | Reference |
 |---|---|---|---|
 | IFR-UI-1 | `protocol/` (generated by `ts-rs` from `chess-app::protocol`) | `Command`, `Query`, `Event`, `GameSnapshot`, `ErrorCode`, DTOs; CI fails if stale | §5, D-7 [OBS] |
-| IFR-UI-2 | chess-server | WebSocket `/api` framing (envelope kinds `hello`, `command`, `query`, `subscribe`, `unsubscribe`, `result`, `error`, `event`) | [SDD-chess-server](SDD-chess-server.md) section 5.1 |
-| IFR-UI-3 | Tauri shell | `invoke("core", ...)`, `listen("core-event")` | [SDD-desktop-tauri](SDD-desktop-tauri.md) |
+| IFR-UI-2 | chess-server | WebSocket `/api` framing (request kinds `hello`, `command`, `query`, `subscribe`, `unsubscribe`, `subscribe_global`; reply kinds `result` and `error`; `event` frames with body `EventEnvelope{game_id, seq, event}` and no `id`, D-53) | [SDD-chess-server](SDD-chess-server.md) section 5.1 |
+| IFR-UI-3 | Tauri shell | `invoke("core", ...)`, `listen("core-event")`; export results carry `content: Saved{path}` (D-55) | [SDD-desktop-tauri](SDD-desktop-tauri.md) |
 | IFR-UI-4 | chessground 10.5.0 | `Config`, `Api`, `events`, `state.selected` | [OBS refined study §4.1] |
 | IFR-UI-5 | Browser/webview | `WebSocket`, `ResizeObserver`, `matchMedia`, `performance.now`, `crypto.getRandomValues`, `File`, `Blob` | |
 
-### 6.3 Interface assumptions about chess-app (to be reconciled with [SDD-chess-app](SDD-chess-app.md))
+### 6.3 Interface assumptions about chess-app (to be reconciled with [SDD-chess-app](SDD-chess-app.md) v0.2)
 
-| ID | Assumption | If wrong |
+| ID | Assumption | Status |
 |---|---|---|
-| IA-UI-1 | `GameSnapshot` carries, for the current ply, `legal_moves: {uci, san}[]` (not only destinations), every ply's `{san, uci, fen, clocks_after}`, `ply` (count of plies played), `state`, `allowed_actions` as a list of action names, setup, players | Board props and the typed matcher need another source; `LegalMoves{fen}` is a round trip per move (UF-UI-1) |
-| IA-UI-2 | `MoveApplied` carries `ply` as in the §5.3 example (plies after the move) so the gap detection of DD-UI-3 works | Gap detection must use the move list length |
-| IA-UI-3 | `ErrorCode` is exported as a string-literal union by `ts-rs` | Exhaustive message table cannot be type-checked |
-| IA-UI-4 | `ClockSync` and clock fields carry remaining milliseconds and `running_side`; `as_of` is a wall-clock instant the client does not need | A3 changes |
-| IA-UI-5 | The protocol offers some way to carry file contents (UF-UI-3) | DD-UI-13 |
+| IA-UI-1 | `GameSnapshot` carries, for the current ply, `legal_moves: [{uci, san}]` (not only destinations), every ply's `{san, uci, fen, clocks_after}`, `ply` (count of plies played), `state`, `allowed_actions` as a list of `ActionKind`, setup, players, `seq` | **RESOLVED**: XC-21. Board props, the overlay labels and promotion detection use `legal_moves`; the typed text no longer does (D-45) |
+| IA-UI-2 | Events carry a per-game `seq`, strictly increasing and gap-free per subscription; `MoveApplied` also carries `ply` for the `MakeMove` guard | **RESOLVED**: IFP-APP-02, D-48. Gap detection uses `seq` (DD-UI-3) |
+| IA-UI-3 | `ErrorCode` is exported as a string-literal union by `ts-rs` | Assumption, unchanged |
+| IA-UI-4 | `ClockSync` and clock fields carry remaining milliseconds and `running_side`; `as_of` is a wall-clock instant the client does not need | Assumption, A3 |
+| IA-UI-5 | The protocol carries file contents | **RESOLVED**: decision 9. Base64 bytes in frames (`FileRef::Bytes`); the browser saves an export as a Blob; the desktop shell writes it to the Downloads folder (DD-UI-13) |
+| IA-UI-6 | (new) `Query::ParseMove{game_id, ply, text}` returns `ParsedMove{uci, san}`, `IllegalMove{reason}`, `ParseError{kind: move, reason, ...}` or `StalePosition{live_ply}` | **RESOLVED**: D-45, D-51, D-52. Reason-specific fields: `suggestion`, `choices`, `candidates` (architecture 5.1). UF-CLI-014 closed the same way |
+| IA-UI-7 | (new) `subscribe_global` is a request kind; a global event has `game_id` null and a per-subscription `seq` that may show gaps | **RESOLVED**: D-48, D-53; UF-SRV-014 closed |
+| IA-UI-8 | (new) `ImportConflicts{import_id, list}` (PGN only) entries of kind `eco_mismatch` with `moves_san`, `ResolveImport`, `CancelImport` (PGN only) and the `eco: EcoResolutions` field (also on `ApplyDataImport`) exist as in architecture 5.8 and Brian's ruling of 2026-11-01 | **RESOLVED**: D-59 (accepted). Field names are those of architecture 5.8 (`moves_san`, D-60), which the app SDD follows |
 
 ---
 
@@ -558,26 +589,35 @@ Every `Result` error crosses as `{code, message, details}`; the client branches 
 | `ConfirmationRequired` | `ConfirmDialog` (UI-12); resend with `confirmed: true` |
 | `UnfinishedGameExists` | NewGame offers Resume, Resign (human games, side question in h-h), or Abort (c-c), each confirmed |
 | `JournalWriteFailed` | message with cause; move not made; the board reverts; clock keeps running |
-| `StoreMissing` | choose start fresh (`CreateFreshStore`) or import from a file |
-| `ImportConflicts` | per-conflict choices (PGN: Skip default, Keep both, apply to all remaining; data: Replace or Keep both) |
+| `StoreMissing` | recovery mode: choose start fresh (`CreateFreshStore`) or import from a file (`ApplyDataImport`) |
+| `ImportConflicts{import_id, list}` (PGN) / `ImportConflicts{list}` (archive) | by entry kind. Duplicates: per-conflict choices (PGN: Skip default, Keep both, apply to all remaining; data: Replace or Keep both). `eco_mismatch`: the `EcoMismatchDialog` (DD-UI-014); `ResolveImport` or `CancelImport` follows for a PGN; `ApplyDataImport` with `eco` for an archive |
 | `IllegalMove`, `StalePosition` | message, board reverts (A2), "live position has changed" badge for stale; input stays editable |
-| `Denied` | message; should not occur because controls come from `allowed_actions` |
+| `Denied` | message. For most reasons it should not occur because controls come from `allowed_actions`. Two occur in normal use: `archived_player` (another front-end archived a Player between listing and starting; refresh the list and say so; FIND-JR-016) and `state_not_allowed` with `details.game_ids` on `SelectProfile` (D-56, next row) |
+| `Denied{state_not_allowed, details.game_ids}` on `SelectProfile` | ProfileChooser stays; the message names the open games (looked up in `ListUnfinishedGames`, shown as text) and says a profile cannot change while a game is open. Two actions: "Leave the game" sends `DetachGame{game_id}` for each listed id and then repeats `SelectProfile`; "Stay" returns. No automatic retry. `[INF]` (the architecture fixes the reply, not the screen; `ASM-UI-7`) |
 | `ValidationFailed` | highlight the field, name the rule |
-| `ParseError` | list per game; other games still import |
-| `NotFound` | refresh the list |
+| `ParseError{kind: Pgn\|Fen, game_index, line, col, reason}` | list per game; other games still import |
+| `ParseError{kind: move, reason, ...}` | message and reason-specific help under the SAN field (DD-UI-7); text stays editable |
+| `ExportWriteFailed{cause}` | the message (cause and next step); nothing saved; try again (DD-UI-13) |
+| `NotFound` | refresh the list. For `entity: import`: "The import was interrupted. Choose the file again." (D-59) |
 | `GameLeased` | message with the owner kind; read-only view |
 | `LeaseLost` (event) | board read-only; explain |
 | `EngineUnavailable` | Retry (`RetryEngine`) or Leave (`DetachGame`) |
 | `StoreBusy` | retried once by the core; then message |
 | `StoreUnavailable` | message; a live game keeps playing, backlog shown by `StoreBacklog` |
-| `StoreCorrupt` | restore-from-backup flow (`RestoreBackup`, confirmed) |
+| `StoreCorrupt` | recovery mode: restore-from-backup flow (`RestoreBackup`, confirmed) |
 | `SchemaTooNew` | full-screen "update the app", nothing else |
 | `Busy` | "close the other entry points" |
 | `ProtocolMismatch` | `NeedsReload` banner with a reload button |
+| `MalformedFrame{reason}` | should not happen (one build): reasons `bad_json`, `unknown_kind`, `unknown_field`, `before_hello` (D-54). Show "protocol error" and offer a reload (architecture 5.5); the web transport closes after the error frame and the client reconnects only after the reload |
 | `NothingToTakeBack` | message "Nothing to take back" |
 | `PlayerHasUnfinishedGames` | names the games; offer Resume or Resign |
 | `BackupFailed` | cause; Retry or Exit |
-| `JournalUnreadable` | states `recovered_moves`; when nothing is readable, the `VoidUnreadableGame` offer |
+| `JournalUnreadable` | an error only when nothing is readable: the `VoidUnreadableGame` offer. With partial damage `ResumeGame` succeeds and its reply carries `recovered_moves`; the page tells the user the count and play continues (AMD-14, UR-36) |
+| `OtherVersionRunning` | not reached by the page (the core refused to open); the web page cannot load and the desktop "Failed" state shows the message |
+| `ImportInvariantFailed{check}` | message naming the check; nothing was written |
+| `ValidationFailed{field: file, reason: too_large}` | message with the limit, the file size and, for an archive, the CLI alternative (DD-UI-13) |
+| `ValidationFailed{field: from_ply, reason: no_move_after_position}` | message "a variation needs a move to branch from"; the branch stays playable (decision 13) |
+| `StalePosition` from `ParseMove` | refresh from the snapshot, text kept |
 | `ConfigInvalid` | not applicable in the GUI |
 | `Internal{id}` | generic message with the id |
 | unknown code | server `message` |
@@ -598,7 +638,7 @@ Every `Result` error crosses as `{code, message, details}`; the client branches 
 - No Web Workers: nothing heavy exists on the client (legal moves arrive in the snapshot, what-if moves use `LegalMoves`, D-11).
 - Input feedback within 100 ms during an engine search (NFR-8): the page never waits on a core future before showing a press; selection is local reducer state, a command shows a pending state at once.
 - Memory: one snapshot of at most a few hundred plies (FEN per ply is short) `ESTIMATE`; the move list is virtual-scrolled only if measurement shows a need.
-- Bundle size: chessground is about 12 KB gzipped [OBS refined study §4.1]; React and application code size is not estimated. No budget is claimed (UF-UI-6).
+- Bundle size: chessground is about 12 KB gzipped [OBS refined study §4.1]; React and application code size is not estimated. No requirement sets a bundle budget (Q-SE-20); none is claimed (UF-UI-6).
 - Ordering: the client sends commands in user order over one connection; the server preserves arrival order for commands ([SDD-chess-server](SDD-chess-server.md) A2).
 
 ---
@@ -611,16 +651,22 @@ All IDs are **planned**. Nothing has been written or run. Tool names and version
 |---|---|---|---|
 | UT-UI-01..04 | Unit (Vitest) | `BoardModel` action table, commit points, promotion, props change; property test of random mixed sequences (invariants in A1) | GUI-2, R-8 |
 | UT-UI-05 | Unit | square label function; orientation mapping of arrow keys | UI-4 |
-| UT-UI-06 | Unit | typed-move matcher against the shared vector table (bishop/b-file rule, `0-0`, optional `+ # x`, ambiguity) | GUI-2, CLI-3, Q44 |
+| UT-UI-06 | Unit | `SanInput` state machine against a fake `CoreClient`: local echo before any reply, pending state, `ParsedMove` leads to `MakeMove`, `IllegalMove`, `ParseError` and `StalePosition` leave the text editable. No matcher exists, so there is no vector table | GUI-2, CLI-3, D-45 |
 | UT-UI-07 | Unit | contrast function (21:1 and 1:1 known pairs); every theme's token pairs at 4.5:1; board and piece manifests at 3:1; focus rings | UI-7, UI-8, UI-10 |
 | UT-UI-08 | Unit | every `ErrorCode` has a message; unknown code falls back | NFR-9 |
-| UT-UI-09 | Unit | `GameStore.apply`: gap detection, rewind cursor, `liveChanged`; `ClockModel` arithmetic | GAME-3, RULE-4 |
-| UT-UI-10 | Unit | `decodeFrame` accepts valid and rejects malformed; unknown event kind ignored | §5.6 |
-| CT-UI-01..06 | Component | `WebSocketCoreClient` against a fake socket server: id correlation, timeout 10 s, reconnect backoff 0.5/1/2/4, resubscribe, `ServerStopping` no retry, mismatch | §5.6, D-36 |
+| UT-UI-09 | Unit | `GameStore.apply`: gap detection by `seq`, rewind cursor, `liveChanged`; `ClockModel` arithmetic | GAME-3, RULE-4 |
+| UT-UI-10 | Unit | `decodeFrame` accepts `result`, `error` and `event` frames (game, and global with `game_id` null) and `hello` without `id`; rejects malformed ones; an `event` with an `id` is tolerated; unknown event kind ignored; a gap in the global `seq` is accepted and does not resubscribe, a gap in a game `seq` does | §5.6, D-53 |
+| UT-UI-011 | Unit | `EcoMismatchDialog` answer reducer: no row preselected; "apply to all remaining" sets `default` only from an answered row; Resolve is enabled only when every row is answered; the `EcoResolutions` produced is `{default, per_game}` | IF-2, DAT-3 |
+| UT-UI-012 | Unit | `ParseError{kind: move}` rendering: each of `empty`, `too_long`, `syntax`, `lowercase_piece`, `promotion_required`, `ambiguous` shows the message and only its own extra fields; a candidate, choice or suggestion button replaces the field text and sends nothing | GUI-2, D-51 |
+| UT-UI-013 | Unit | `SelectProfile` refusal: `Denied{state_not_allowed, details.game_ids}` shows the games and the two actions; "Leave the game" sends `DetachGame` per id then `SelectProfile` again | PLY-2, D-56 |
+| CT-UI-01..06 | Component | `WebSocketCoreClient` against a fake socket server: id correlation, timeout 10 s, reconnect backoff 0.5/1/2/4, `hello` then `subscribe_global` then `ResumeGame` before `subscribe`, `ServerStopping` no retry, mismatch | §5.6, D-36 |
 | CT-UI-10 | Contract suite | the same behavioural cases against `WebSocketCoreClient` and `TauriCoreClient` (fake `invoke`/`listen`) | GUI-1 |
 | CT-UI-11 | Component | screens render controls exactly from `allowed_actions` (table over mode x matchup x state fixtures) | test-strategy principle 5 |
 | CT-UI-12 | Component | chessground adapter in a real browser (Playwright component mode): `toConfig`, Reconciler, revert by `syncNonce` | D-4 |
 | CT-UI-13 | Component | `ConfirmDialog`: focus trap, Esc, resend with `confirmed` | UI-12 |
+| CT-UI-015 | Component + E2E | file transfer: a `Bytes{base64}` export reply saves a Blob; a `Saved{path}` reply shows the path (reply from the shell harness); `ExportWriteFailed` for each of its four causes shows the core message and saves nothing; an import over the archive limit shows the core's message with the limit, size and CLI alternative and changes nothing; a PGN over 10 MB likewise | DAT-2, IF-1, IF-2, D-55 |
+| CT-UI-017 | Component | `EcoMismatchDialog` against a fake `CoreClient`: `ImportConflicts` with `eco_mismatch` opens it; Resolve sends `ResolveImport{import_id, eco}` (PGN) or `ApplyDataImport{plan, confirmed, eco}` (archive, no `import_id`); Cancel and Esc send `CancelImport` for a PGN and nothing for an archive; each row shows `moves_san`; `NotFound{entity: import}` shows the interrupted message; an unanswered reply reopens it; the dialog is not offered for a `ConfirmationRequired`; focus trap and focus return; radio groups have the `aria-describedby` sentence naming both values | IF-2, DAT-3, UI-4 |
+| CT-UI-016 | Component | real `ParseMove` over loopback through the server: latency recorded for FF-6 (NFR-8 100 ms `ESTIMATE`); local echo does not wait for it | GUI-2, NFR-8 |
 | CT-UI-14 | CI | bundle scan: no `http(s)` resource references outside the allow-list; no inline script or style; no `data:` image | PLAT-3 |
 | E2E-UI-01 | GUI E2E (web: WebKit, `chrome`, `msedge`, Firefox) | scenario files from `e2e/scenarios` through the GUI: same final PGN as CLI and desktop | PLAT-1, GUI-1 |
 | E2E-UI-02 | GUI E2E (desktop) | same suite in Playwright WebKit against the Tauri transport harness plus a smoke test of the real `.app` (R-1) | GUI-1, R-1 |
@@ -632,7 +678,8 @@ All IDs are **planned**. Nothing has been written or run. Tool names and version
 | E2E-UI-09 | GUI E2E | five sizes, both orientations, overlay alignment, no horizontal scroll, live resize | GUI-5 |
 | E2E-UI-10 | GUI E2E | help opens from every screen; settings take effect at once and persist after restart | UI-9, UI-1 |
 | E2E-UI-11 | GUI E2E | emulated `prefers-reduced-motion`; switching appearance switches theme without reload (web and desktop) | UI-10 |
-| E2E-UI-12 | GUI E2E | connection loss: banner, inputs disabled, reconnect, snapshot authoritative; `ServerStopping` shows "server stopped" | §5.6 |
+| E2E-UI-13 | GUI E2E + axe | PGN with a mismatching ECO imported by keyboard only in the web and desktop harnesses: dialog reachable, both values announced, per-game and "apply to all remaining" answers, Resolve writes the chosen values (name empty when the file's code is kept), Cancel writes nothing; an archive without `games.json` asks, one with stored `eco` asks nothing | IF-2, DAT-3, UI-4 |
+| E2E-UI-12 | GUI E2E | connection loss: banner, inputs disabled, reconnect, game resumed then subscribed, snapshot authoritative; `ServerStopping` shows "server stopped" | §5.6 |
 | M-UI-1 | Manual | VoiceOver walk-through in Safari and in the desktop app | UI-4, UI-6 |
 | M-UI-2 | Manual | oldest supported version of each of the four browsers smoke-tested per release (PLAT-2) | PLAT-2 |
 | SPIKE-UI-1 | Spike (OQ-9, two days, first GUI task) | exit criteria: (1) selection equality in scripted mixed-input sequences; (2) axe clean; (3) overlay aligned in both orientations at three sizes; (4) drag works in Safari, Chrome, Firefox, Edge and the Tauri WKWebView; (5) overlay aligned during continuous resize to a narrow width. If (1) cannot be met reliably, switch the adapter to option D1 [OBS §11.1] | D-4, R-8 |
@@ -646,7 +693,7 @@ Platform note: Intel and other Macs without available hardware are deferred, not
 | Requirement | Design entities | Tests |
 |---|---|---|
 | GUI-1 (one codebase, two shells) | DD-UI-1, DD-UI-2, DD-UI-12 | CT-UI-10, E2E-UI-01, 02 |
-| GUI-2 (input methods, commit points) | DD-UI-4, 5, 6, 7 | UT-UI-01..04, 06, E2E-UI-03, 06 |
+| GUI-2 (input methods, commit points; typed text via `ParseMove`) | DD-UI-4, 5, 6, 7 | UT-UI-01..04, 06, E2E-UI-03, 06 |
 | GUI-3 (coordinates) | DD-UI-4 (`showCoordinates`), DD-UI-8 Settings | E2E (labels in both orientations) |
 | GUI-4 (feedback, Move now) | DD-UI-8 Play, DD-UI-4 | E2E-UI-07 |
 | GUI-5 (scalable layout) | DD-UI-10 | E2E-UI-09 |
@@ -683,13 +730,14 @@ Every entity has a driver; no allocated requirement is without an entity.
 | RAT-UI-2 | No router; in-memory screen stack | URL routing: back button and reload would imply states the core does not keep, and unknown paths would need an SPA fallback on the server |
 | RAT-UI-3 | Own tiny stores on `useSyncExternalStore` | A state library (dependency, SBOM entry, no need) |
 | RAT-UI-4 | Theme switching in CSS (`prefers-color-scheme`), not JavaScript | JS listener (extra code, flash on load) |
-| RAT-UI-5 | Typed-move matcher over core-supplied legal moves, with shared test vectors | A full SAN parser in TypeScript (second rules implementation, violates principle 1) |
+| RAT-UI-5 | Typed text is parsed by `Query::ParseMove`; no matcher in the bundle (D-45) | A TypeScript matcher over `legal_moves` with shared vectors (a second rules implementation, weakens principle 1); typed text in `MakeMove.mv` (mixes parse and execute) |
 | RAT-UI-6 | Lazy `import()` of the Tauri module | Always bundling it (needless in the browser) |
 | RAT-UI-7 | Hand-built SVG chart until D-21 is decided | Chart library now (D-21 is DEFERRED, two-way) |
 | RAT-UI-8 | Timestamps, not accumulated ticks, for clocks | `setInterval` decrement (drifts, throttled in hidden tabs) |
 | RAT-UI-9 | `getRandomValues` UUIDs | `crypto.randomUUID` (secure-context uncertainty) |
+| RAT-UI-10 | Files as base64 in frames; Blob download in the browser; the desktop shell writes to Downloads and the page shows the path (D-49) | HTTP upload and download routes (a second endpoint kind); a dialog plugin (widens the webview's reach); relying on `<a download>` in WKWebView |
 
-ADR requests to the System Architect: none by this document. If the D-4 spike fails, the switch to option D1 is already a decision of the architecture (§11.1), not a new one.
+ADR requests to the System Architect: none by this document; D-45, D-48 and D-49 already record the decisions this version implements. If the D-4 spike fails, the switch to option D1 is already a decision of the architecture (§11.1), not a new one.
 
 ---
 
@@ -699,13 +747,16 @@ ADR requests to the System Architect: none by this document. If the D-4 spike fa
 |---|---|
 | ASM-UI-1 | chessground 10.5.0 option and API names beyond the study's table (`selectable`, `premovable`, `drawable.enabled`, the `---cg-width` variable, `api.set({fen})` resetting pieces) are from memory `[UNV]`; the spike confirms them |
 | ASM-UI-2 | Vite, React and `@tauri-apps/api` option names (`build.assetsInlineLimit`, `isTauri`) are from memory `[UNV]` |
-| ASM-UI-3 | Announcement wording in DD-UI-6 is a proposal; TBD-18 stays open until the GUI developer and the VoiceOver walk-through settle it |
+| ASM-UI-6 | The wording of the ECO dialog (DD-UI-014) is a proposal, like the announcement set; it is not a requirement text |
+| ASM-UI-7 | The `SelectProfile` refusal screen (section 7) is this design's: the architecture fixes only the reply `Denied{state_not_allowed, details.game_ids}`. `DetachGame` is assumed to release the session's hold on a game so a repeated `SelectProfile` succeeds `[INF]` |
+| ASM-UI-3 | Announcement wording in DD-UI-6 is a proposal; TBD-18 stays open for Brian Prascher's review (Q-SE-20) until the GUI developer and the VoiceOver walk-through settle it |
 | ASM-UI-4 | CSS-only theme switching follows macOS appearance inside WKWebView (the shell must not force a window theme) `[UNV]` |
 | ASM-UI-5 | Mouse-selected focus transfer to the overlay works the same in all five engines `[UNV]`; part of the spike |
 | RSK-UI-1 | R-8 selection desync; mitigated by A1, the property test and the spike |
-| RSK-UI-2 | WKWebView drag quirk (`jsHover`) and file download behaviour differ from the browsers (R-1) |
+| RSK-UI-2 | WKWebView drag quirk (`jsHover`) differs from the browsers (R-1). File download is no longer a risk of this kind: the desktop app does not use `<a download>` (DD-UI-13) |
 | RSK-UI-3 | The CSP may block a library behaviour not seen yet (inline styles); CT-SRV-10 and the five-engine E2E catch it |
 | RSK-UI-4 | R-10: a page reload suspends a timed game; accepted by the user |
+| RSK-UI-5 | The archive limit (about 24 MiB, TBD-35) is an `ESTIMATE`; a user with a very large store can export but not import in the GUI and must use the CLI (decision 9, accepted) |
 
 **Not analysed:** exact bundle size, memory use of long games, behaviour on touch hardware (Macs without touch screens; the touch requirement is tested by emulation), right-to-left names, text scaling beyond browser zoom, Intel Macs (no hardware; deferred, CR-7.6), the spoken form of promotion and castling announcements.
 
@@ -713,45 +764,67 @@ ADR requests to the System Architect: none by this document. If the D-4 spike fa
 
 ## 13. Open issues and upstream findings
 
-| ID | Finding | Evidence | Assumed meanwhile | Gate if changed |
-|---|---|---|---|---|
-| UF-UI-1 | **Snapshot contents.** §5.1 says the snapshot carries "the current ply's legal moves (for highlighting and keyboard input)" and "allowed_actions" but gives no shape. The board needs destination lists; the typed matcher and the overlay labels need SAN per legal move, and promotion detection needs the promotion piece in the `uci` | architecture.md §5.1, D-11 | IA-UI-1 | G1 (chess-app DTO) |
-| UF-UI-2 | **Typed-move rules exist twice** (Rust for the CLI, TypeScript here) although principle 1 says the front-ends hold no rules and Q44 says typed GUI input uses the CLI-3 parser. Options: a core query `ParseMove{fen, text}` (single implementation, one more round trip, one more protocol item) or this matcher with shared vectors (proposed new file `e2e/vectors/typed-move.json`) | requirements.md GUI-2 (c), CLI-3; architecture.md §3.3, §6.2 | A4 and shared vectors | G1 / G2 if a protocol item is added |
-| UF-UI-3 | **File transfer for the GUI is undefined** (see [SDD-chess-server](SDD-chess-server.md) UF-SRV-5). Also whether `<a download>` saves files inside WKWebView is unknown; if not, the desktop needs a shell-side save (a native dialog needs a Tauri plugin, a new dependency) | architecture.md §5.1, §5.7; SWE-001 §6 | DD-UI-13 | G2 if routes or plugins are added |
-| UF-UI-4 | `BoardProps` in the first study §5.0 has no `turn` and no way to force a revert when `fen` has not changed. Added `turn` and `syncNonce`. This is internal to `ui/board`, noted so the contract in the study is not read as final | trade-study-gui-board.md §5.0 | DD-UI-4 | G1 (inside `ui/`) |
-| UF-UI-5 | D-5's rationale cites Testing Library, and the unit/component tests need a DOM environment; neither is in the §3.4 baseline table | architecture.md §3.4, §11 D-5 | listed in section 3.4 as an open dependency | G1 |
-| UF-UI-6 | No bundle-size or render budget exists for the GUI; NFR-1 covers startup of the entry point (web: `chess serve` to first screen accepting input) | requirements.md NFR-1 | none claimed | SE |
-| UF-UI-7 | TBD-18 (announcement wording) is still open and owned by the GUI developer at step 3; a draft is proposed here | requirements.md UI-6; architecture.md §14 | ASM-UI-3 | none |
-| UF-UI-8 | SWE-001 §6 asks the GUI to validate every message from the core; no schema library is in the baseline and `ts-rs` generates types, not validators | SWE-001 §6; architecture.md §3.4, D-7 | A6: envelope and discriminant checks only | G1 (dependency) |
-| UF-UI-9 | `ClockSync.as_of` is not defined (wall clock or monotonic, which process). The client cannot compare it with its own clock reliably | architecture.md §4.2 | A3 uses receipt time | G0 text |
-| UF-UI-10 | GUI-2 (b) says "Space selects piece, arrows pick destination, Enter confirms"; architecture §6.2 says "Enter/Space on the destination". This design accepts Space or Enter for both selecting and committing | requirements.md GUI-2; architecture.md §6.2 | A1 `Activate` | SE to confirm |
-| UF-UI-11 | The CSP of architecture §8.1 and the Tauri `csp` setting are to be equivalent; the exact policy for Tauri IPC (custom protocol scheme in `connect-src`) is not stated | architecture.md §8.1, §6.3 | see [SDD-desktop-tauri](SDD-desktop-tauri.md) | G1 |
+Status key. **RESOLVED** means a ruling that Brian Prascher approved on 2026-10-31 ([SDD-architect-triage](SDD-architect-triage.md) section 5, requirements Amendment 7 / CR-9) or a desk answer he confirmed ([SDD-SE-desk-answers](SDD-SE-desk-answers.md)) settles the finding and this document follows it. **OPEN** means no approved ruling covers it. ID format (XC-30): IDs issued in v0.1 are kept; new IDs use three digits (`UF-UI-012` on).
 
----
+| ID | Finding (short) | Status and ruling | Where applied |
+|---|---|---|---|
+| UF-UI-1 | Shape of the snapshot's legal moves and `allowed_actions` | **RESOLVED**: XC-21 (UR-33). `legal_moves` is `[{uci, san}]` for the current ply; `allowed_actions` is a list of the domain's `ActionKind`; the UI follows the generated types | IA-UI-1, DD-UI-3, DD-UI-4 |
+| UF-UI-2 | Typed-move rules exist twice | **RESOLVED**: decision 5 (TR-8, D-45; XC-11, UR-10). `Query::ParseMove` is the only parser. The TypeScript matcher and `e2e/vectors/typed-move.json` are not written | A4, DD-UI-7 |
+| UF-UI-3 | File transfer for the GUI | **RESOLVED**: decision 9 (D-49; XC-20, UR-35; CR-9.5). Base64 in frames, 32 MiB cap, Blob download in the browser, the desktop shell writes to the Downloads folder and the page shows the path, no dialog plugin | DD-UI-13 |
+| UF-UI-4 | `BoardProps` gained `turn` and `syncNonce` | **RESOLVED (internal)**: UR-52 and Q-SE-20: `BoardProps` is internal to `ui/board`; no systems-engineer input | DD-UI-4 |
+| UF-UI-5 | Testing Library and a DOM environment are not in 3.4 | **RESOLVED**: TR-10, D-47 (review row D-27): admitted in principle as dev dependencies; **no version stated, lookup pending `[UNV]`** | 3.4 |
+| UF-UI-6 | No bundle-size or render budget | **RESOLVED**: Q-SE-20 (confirmed): no requirement; at most a design `ESTIMATE` to protect NFR-1. None is claimed here | section 8 |
+| UF-UI-7 | TBD-18 announcement wording | **OPEN (design)**: Q-SE-20: the sample wording stays open for Brian Prascher's review (requirements TBD-18). The SE's sample is listed in DD-UI-6 beside this design's draft | DD-UI-6, ASM-UI-3 |
+| UF-UI-8 | Validate every message from the core | **RESOLVED**: TR-10, D-47 (review row D-28 rejected): no schema validator; envelope and discriminant checks only; types are generated | A6 |
+| UF-UI-9 | `ClockSync.as_of` meaning | **RESOLVED in substance** by SDD-chess-app (ASM-APP-04, wall timestamp, not used for the countdown). Not a triage item | A3 |
+| UF-UI-10 | GUI-2 (b): Space or Enter to select and to confirm | **OPEN (narrowed)**: Q-SE-20 makes key bindings design within GUI-2 and UI-9 (no shortcut may consume a character that begins a typed move while the move input has focus; F2 and Esc are fixed; every binding is in the help). The reading "Space or Enter for both" still wants the SE's confirmation | A1 |
+| UF-UI-11 | CSP of the web server and the Tauri `csp` setting | **RESOLVED**: Q-SE-13 (confirmed): `default-src 'self'` is a floor, extra directives allowed, no non-loopback origin; the Tauri text is [SDD-desktop-tauri](SDD-desktop-tauri.md) DD-TAU-6 | DD-UI-12 |
 
-## 13a. Reconciliation with SDD-chess-app v0.1
+## 13a. Rulings applied in v0.2
 
-Read at 2026-10-30 after this draft: IFP-APP-02, IFP-APP-03, DD-APP-03, UF-APP-05, UF-APP-08. Where it speaks, it governs.
+| Ruling | Effect on this document |
+|---|---|
+| XC-19, decision 10 (D-48; UR-29 to UR-31) | The stale frame kinds, the reconnect rule and gap detection by `ply` are replaced: every frame `{id, kind, body}` with kinds `result`, `error` and `event` out (event body `EventEnvelope{game_id, seq, event}`); reconnect is `hello`, `subscribe_global`, then `ResumeGame` and `subscribe` for each held game; gap detection by `seq`; `CoreClient.subscribeGlobal`. The banner (review edit E-14) is removed |
+| TR-8, decision 5 (D-45) | No TypeScript matcher (UF-UI-2 matcher removed). `SanInput` sends `Query::ParseMove` |
+| Decision 9 (D-49) | File transfer as in DD-UI-13 |
+| XC-21 | Snapshot `legal_moves` and `allowed_actions` shapes |
+| TR-1, decision 1 | The GUI keeps Web Crypto for `game_uuid` (architecture 5.6) |
+| Decision 13 (CR-9.4) | `SaveVariation` from the final position is refused with `ValidationFailed{field: from_ply, reason: no_move_after_position}`; the Analysis screen shows the message and the branch can still be played and discarded |
+| Decision 12 (CR-9.3) | Evaluations are shown from White's point of view; centipawn loss from the mover's |
+| Q-SE-13 | CSP floor and loopback origins (DD-UI-12) |
+| Q-SE-20 | TBD-18 open; key bindings are design; no bundle requirement |
+| TR-10 | Dependencies: no version stated for new ones |
+| XC-29, CR-9.7 | Primary and supporting wording follows architecture 10.1 |
+| XC-30 | New IDs have three digits; nothing renumbered |
 
-| Item here | SDD-chess-app says | Effect |
+## 13b. New findings and open questions
+
+| ID | Item | Owner and gate |
 |---|---|---|
-| Gap detection by `ply` (DD-UI-3) | Every event carries a per-game `seq`, strictly increasing and gap-free per subscription; a lagging receiver is resynchronised by a fresh snapshot | Use `seq` for gap detection (a gap means resubscribe); `ply` stays for the `MakeMove` guard. IA-UI-2 changes accordingly |
-| Reconnect (DD-UI-1, 3.6) | After a WebSocket drop the session has already suspended (D-14); reconnect is `ResumeGame` then `subscribe`, within a 5 s attach window (UF-APP-05, ASM-APP-03) | **DD-UI-1 is wrong as drafted.** After `hello` the client must send `ResumeGame{game_id}` for each game it had open, then `subscribe`. The 0.5/1/2/4 s backoff can exceed 5 s in total, so a slow reconnect finds the game suspended; resume handles that. The UI shows "resuming" until the snapshot arrives |
-| Envelope | `{id, kind, body}` / `{id, ok, body}` / `{id, error}` / `{game_id, seq, kind, body}`, `Hello` | `decodeFrame` (A6) follows these shapes, not the `result`/`error`/`event` kinds drawn in [SDD-chess-server](SDD-chess-server.md) 5.1 |
-| `ResultOf<C>` | "the `ResultOf<C>` helper is the client's, SDD-ui" and `Reply` has one variant per command and query | DD-UI-1 owns `ResultOf`, derived from the generated `Reply` by `Extract` |
-| Global events | `subscribe_global`: `ServerStopping`, `StoreBacklog`, `RatingsUpdated`, `AnalysisProgress` of stored games | `CoreClient` gains `subscribeGlobal(onEvent)`; for the WebSocket it is a kind of `subscribe` with no game id (kind name still to be defined) |
-| File transfer (UF-UI-3) | `FileRef`; remote sessions use `Bytes` only | DD-UI-13 sends bytes; encoding and size cap open |
-| Snapshot (UF-UI-1) | `GameSnapshot` carries setup, players, every ply (SAN, UCI, FEN, timestamp, clock after), the current ply's legal moves, clocks, state, `allowed_actions`, `seq` | Matches IA-UI-1 except that the shape of "legal moves" (destinations only, or `{uci, san}`) is still not stated |
-| `ClockSync` | `as_of` is a wall timestamp; sent on transitions of `running_side` and on subscribe, not periodically (ASM-APP-04) | Confirms A3 (receipt time, local countdown). UF-UI-9 is answered in substance |
+| UF-UI-012 | After a reconnect the new `FrontEndSession` has no active Player (it is session state, architecture 5.1). **Narrowed by D-56:** `SelectProfile` is refused once the session has a game open, so if it is needed it must be sent before `ResumeGame` and `subscribe`; this design does that. **Still open:** whether `ResumeGame` needs an active Player at all, which architecture does not state | `chess-app` owner, G1 |
+| UF-UI-013 | Desktop export reply carrying a saved path. **RESOLVED** by **D-55**: `ExportedFile{name, media_type, content: Bytes{base64}\|Saved{path}}`; the shell rewrites `content` to `Saved{path}`; `ExportWriteFailed{cause}` for a failed write. Agrees with [SDD-desktop-tauri](SDD-desktop-tauri.md) DD-TAU-008 | none |
+| OQ-UI-001 | Where the numbers in the "too large" message come from (FIND-JR-019). **Aligned with the architecture:** the core builds the message and it names the limit, the file size and the CLI alternative (architecture 4.8, 5.2); there is no structured field or exported constant, and the page shows the message verbatim. **Left open:** whether `details` should also carry the numbers (additive) for a client that wants to format them; not needed by this design | `chess-app` owner (info) |
+| OQ-UI-002 | Whether the GUI warns at export when the archive is larger than the GUI can import (CR-9.5 interpretation: a design choice for the architect) | System architect |
+| OQ-UI-004 | **CLOSED (2026-11-01, Brian Prascher):** the `eco_mismatch` entry gains `moves_san` (additive) and drops `tag_name?`; the dialog shows the moves. Field name per the ruling unless architecture 5.8 names it otherwise | none |
+| OQ-UI-005 | **CLOSED (2026-11-01, D-62, OQ-23):** a PGN `ImportConflicts` reply holds one kind of entry; an archive preview lists both together. The dialog handles each kind it finds | none |
+| OQ-UI-003 | **CLOSED** by CR-9.9: each SDD keeps its own prefix (`UF-` here); FIND-JR3-012 | none |
 
+## 13c. Change log
+
+| Version | Date | Change |
+|---|---|---|
+| 0.1 DRAFT | 2026-10-30 | First draft; reconciliation 13a against SDD-chess-app v0.1; banner E-14 |
+| 0.3 DRAFT | 2026-11-01 | Aligned to architecture Addendum A and D-59 (accepted): event envelope, no `id` on `hello` and `event`, global `game_id` null and gap rule (D-53; IA-UI-7); `MalformedFrame` (D-54); `ParsedMove{uci, san}` and `ParseError{kind: move}` rendering with suggestion, choices, candidates (D-51, D-52; IA-UI-6); `ExportedFile` `Bytes`/`Saved` and `ExportWriteFailed` (D-55; UF-UI-013 closed); `SelectProfile` refusal screen and reconnect order (D-56; UF-UI-012 narrowed); `Denied{archived_player}` can occur (FIND-JR-016); too_large numbers come from the core message (FIND-JR-019); new DD-UI-014 ECO mismatch dialog with `ResolveImport` and `CancelImport` (D-59); tests UT-UI-011 to 013, CT-UI-017, E2E-UI-13; OQ-UI-004. No code exists; nothing verified by running |
+| 0.3.1 DRAFT | 2026-11-01 | Brian's rulings: `eco_mismatch` entry gains `moves_san`, drops `tag_name` (OQ-UI-004 closed); archive imports stateless, no `import_id`, no `CancelImport`, answers in `ApplyDataImport` (FIND-JR3-004); OQ-UI-005; OQ-UI-003 closed and A6 wording fixed, status line fixed (FIND-JR3-012). Closed later the same day by D-60, D-61 and D-62 (architecture addendum B and C): OQ-UI-005 closed, IA-UI-8 wording, Status row and version label updated (FIND-JR4-003 to -005) |
+| 0.2 DRAFT | 2026-10-31 | Applied the approved triage rulings and desk answers listed in 13a. Replaced the stale protocol bodies (DD-UI-1 to DD-UI-3, A6, 3.6, 6.2, 6.3), removed the TypeScript matcher (A4, DD-UI-7), rewrote file transfer (DD-UI-13), removed banner E-14, gave every finding UF-UI-1 to 11 a status, added 13b. No code exists; nothing verified by running |
 
 ## 14. Review and approval record
 
 | Item | Status |
 |---|---|
-| Engineer self-check against guardrails | Done for this draft: library option names that were not read from a source are marked `[UNV]` |
+| Engineer self-check against guardrails | Done for v0.2: library option names not read from a source stay `[UNV]`; no dependency version added; no result claimed |
 | Reviewer pass | **Not done** |
 | System Architect desk review | **Pending** |
-| Systems Engineer review (UF-UI-2, 3, 6, 10) | **Pending** |
-| Human approval | **Pending**; none claimed |
-| Mermaid | validated, 7 of 7 blocks parsed, 2026-10-30 |
+| Systems Engineer review | **Pending** for UF-UI-10 and the TBD-18 wording |
+| Human approval | **Pending**; none claimed for this document. TBD-18 wording stays with Brian Prascher |
+| Mermaid | `[RAN node ~/.claude/skills/architecture-governance/scripts/validate-mermaid.mjs docs/design/SDD-ui.md]` -> 7 of 7 blocks parsed OK, 2026-11-01 (after the v0.3 edits). A parse pass proves syntax, not readability |
