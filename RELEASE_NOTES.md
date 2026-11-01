@@ -1,5 +1,61 @@
 # Release Notes
 
+
+## Amendment 7, addendum C: PGN import stays two steps: 2026-11-01
+
+Documentation-only. Brian Prascher ruled on OQ-23 and on the findings of `docs/design/SDD-v0.4-consistency-pass.md`.
+
+### Changed: architecture
+- **D-62, §5.8, OQ-23 closed:** duplicates and the ECO mismatch question stay two steps. A PGN `ImportConflicts` reply holds one kind of entry: duplicates come first with no `import_id`, then the ECO question with an `import_id`. `ResolveImport{import_id, eco}` has no `on_duplicate`; the held state keeps the policy of the creating `ImportPgn`. The archive preview is one stateless list that holds conflicts and `eco_mismatch` entries together. No protocol shape changes; the wording that allowed both kinds in one PGN reply is withdrawn.
+
+### Changed: SDDs (all nine, G0)
+- New review documents: `docs/design/SDD-v0.2-joint-review.md`, `SDD-v0.3-joint-review.md`, `SDD-v0.4-consistency-pass.md` (findings and dispositions) and `SDD-SE-desk-answers.md`.
+- Version label unified to 0.3.1 DRAFT; Status rows of the CLI, server, UI and Tauri SDDs updated; D-60, D-61 and D-62 cited. App IFP-APP-03 `eco_mismatch` entry corrected to `moves_san` (no `tag_name?`); stale "architecture is being updated" wording removed; OQ-CLI-006 and OQ-UI-005 closed. Nothing is approved.
+
+## Triage decisions and desk answers resolved, Amendment 7: 2026-10-31
+
+Documentation-only release. No application code exists yet. The user (Brian Prascher) resolved the system-architect's 13 triage decisions and the systems engineer's 26 desk questions. Requirements Decision Log entry: CR-9 (CR-9.1 to CR-9.13; CR-9.8 to CR-9.13 added later the same day, see below).
+
+### Changed: requirements (Amendment 7, CR-9)
+- **ANA-1, ANA-3:** evaluations are shown and stored from White's point of view; centipawn loss stays from the mover's point of view (CR-9.3).
+- **ANA-2:** a what-if branch started from the final position can't be saved; the save is refused with a message. This limits "optionally saves the branch" (CR-9.4).
+- **DAT-2, IF-5:** the browser and desktop front-ends have an archive import size limit, stated as an estimate (TBD-35, about 24 MiB, not measured), with a message that names the limit, the file size and the CLI alternative. The CLI imports by path with no limit. PGN import stays 10 MB (TBD-25) (CR-9.5).
+- **RULE-4, CLI-5:** notes pointing to the new register entries.
+- **Register:** TBD-34 (custom clock limits, EST), TBD-35 (archive import size limit, EST) and TBD-36 (exit status of TUI/plain-mode signals, non-headless subcommands and extra setup flags; open, deferred) added. TBD-18 and TBD-25 noted.
+- **Interpretations confirmed** with no text change: Q-SE-1, 2, 3, 4, 5, 12, 13, 18, 19, 22, 25. Q-SE-6, 7, 10, 11, 14, 15, 16, 21, 23, 24, 26 recorded as already answered by existing requirements (CR-9.2).
+
+### Added to Amendment 7: rulings on the SDD v0.2 joint review (CR-9.8 to CR-9.13)
+- **DAT-3 (CR-9.8):** an imported PGN that is a custom start (`SetUp`/`FEN`) and carries an `ECO` tag keeps the file's code, with no name from the table. A custom start without a tag stays unclassified. A sub-bullet and one verification case were added; no statement was deleted. Q-SE-24 in docs/design/SDD-SE-desk-answers.md is marked superseded (text kept).
+- **ID policy (CR-9.9):** the one-time ID normalisation in the rules, domain and engine SDDs (zero-padding, `R-EN-n` to `DR-EN-nnn`, `EI-EN-02` to `EI-EN-002`) is an accepted exception to "do not renumber". Each SDD keeps its own finding prefix (`FIND-` or `UF-`). CLAUDE.md itself was not edited.
+- **Recorded by reference (CR-9.10):** `content_hash` in the `GameEnd`, `Abort` and `Voided` journal payloads; the domain `Fact` carries the `DrawDropped` and state-change payloads; the store returns the highest stored `roster_index` and the app calls `first_k_after`; `chess-app` owns the calibration run; the architect settles the `ParseMove` error shape and the global event envelope. The rulings are applied by the other agents; this release records them only.
+- **docs/design/SDD-v0.2-joint-review.md:** disposition section added marking the 7 items for Brian as DECIDED. Findings unchanged.
+- **DAT-3 (CR-9.11):** a custom start that later reaches a named position is classified by it (code and name from the table), and a FEN equal to the standard start counts as a standard start. Two verification cases added. This removes the "standard start only" restriction in domain 3.11.9 (`EcoTable::observe`), rules FIND-RUL-7 / `eco_for_import` and app CT-APP-18; those owners must follow.
+- **DAT-3, IF-2 (CR-9.12):** when an imported PGN's `ECO` tag does not match the table's classification of the position (any import, not only custom starts), the app flags it and asks the player to keep the PGN's ECO or the position classification. This supersedes "the file's code is kept" only for a mismatch; agreement, "table finds nothing" and "no tag" are unchanged. Verification cases added.
+- **DAT-3, IF-2, CLI-5 (CR-9.13):** the three open ECO questions are closed. Interactive imports ask per game with "apply to all remaining"; non-interactive imports (CLI plain mode, headless) need `keep-pgn` or `keep-table`, else exit 1 with the mismatches listed and nothing written; keeping the PGN's ECO stores an empty name; the choice is not remembered in v1. Architecture D-59 (two-step import flow) accepted as proposed, which also confirms that in an archive only games without stored ECO in `games.json` are asked. DAT-3 verification gets the expected results and a non-interactive case.
+- Downstream, not edited: use cases and test cases for import; exact option spelling (CLI design, G3).
+
+### Added to Amendment 7 on 2026-11-01: corrections to the ECO import rulings (CR-9.14)
+- **DAT-3, IF-2, CLI-5 (CR-9.14):** plain mode **asks** the ECO mismatch question when stdin is a terminal. Only runs with stdin not a terminal (piped or scripted) and headless runs need an explicit option, else they exit 1, list the mismatches and write nothing. This corrects the CR-9.13 and CLI-5 wording that called "CLI plain mode" non-interactive.
+- CLI option values are hyphenated: `--eco keep-pgn` or `--eco keep-table` (protocol values `keep_pgn` and `keep_table`; the CLI maps).
+- A kept PGN ECO is stored normalised (trimmed, upper-cased) if well-formed (A00 to E99); a malformed tag is treated as no tag; the stored name is empty.
+- The start position of a custom start (ply 0) is looked up in the ECO table too. The `eco_mismatch` entry carries an additive SAN `moves` text. Archive imports are stateless and `CancelImport` is for PGN imports only. The pending-import idle time-out is a 10 minute estimate (design value, not a requirement).
+- Verification cases added for plain mode at a terminal, plain mode with stdin not a terminal, ply 0, malformed tag and normalisation. Decision Log entry CR-9.14. docs/design/SDD-SE-desk-answers.md notes that OQ-DOM-009 is answered; docs/design/SDD-v0.3-joint-review.md gains a short Disposition section (findings unchanged).
+- Downstream, not edited: architecture D-59 and the domain, rules, app, CLI and UI SDDs, use cases and test cases must follow.
+
+### Changed: architecture and design
+- **Architecture amendments AMD-1 to AMD-14 applied** to docs/architecture.md (the approved decisions: `chess-app -> chess-rules` edge and front-ends on `chess-app` only, concrete `Store`, UUID identities, the stored-format batch, `Query::ParseMove`, domain-computed statistics, pinned `UCI_Elo` range, feature-gated `ts-rs` and `GameCommand`, file transfer, protocol additions, dependencies in principle, White's-point-of-view scores, variation tree). The architect owns that text; see architecture.md for its change log.
+- **SDDs updated to v0.2** to follow the approved decisions and the desk answers.
+- **docs/design/SDD-architect-triage.md:** approver recorded as APPROVED by Brian Prascher, 2026-10-31, decisions 1 to 13, with modifications to 9 (archive size limit as an estimate), 11 (single-instance mechanism dropped; not a requirement) and 13 (no `player_id`; saving a what-if branch from the final position is refused). The recommendation text is kept.
+- **docs/design/SDD-SE-desk-answers.md:** approver recorded as resolved.
+- **docs/functional_decomp.md:** amendment note (change log) for F-8.1, F-8.2 and F-3.7. No function ID, name, allocation or trace changed; the document stays v1.0 (CR-9.7).
+
+### Open at this release
+- **TBD-36:** exit status for the TUI and plain mode on SIGTERM and SIGHUP, for the non-headless subcommands, and any extra setup flags. The user deferred it (public CLI surface, G3). It must be decided before the CLI front-end (step 5).
+- **TBD-35** is an estimate that is not measured. **TBD-34** is an estimate of limits. **TBD-18** sample wording still awaits the user's review.
+- Dependency versions are not looked up. Each crate needs a lookup before it enters architecture 3.4.
+- No SDD has had a reviewer pass or desk review.
+- Intel Mac verification remains not run (CR-7.6).
+
 ## Detailed design drafts (SDDs) and Amendments 5 and 6: 2026-10-30
 
 Documentation-only release. No application code exists yet.
