@@ -3,13 +3,13 @@
 | Field | Value |
 |---|---|
 | Document | docs/design/SDD-chess-store.md |
-| Version / status | **0.3.1 DRAFT** (0.2 DRAFT of 2026-10-31 superseded; change log in section 11) |
-| Date | 2026-10-31 |
+| Version / status | **0.4 DRAFT** (0.3.1 DRAFT of 2026-11-01 superseded; change log in section 11) |
+| Date | 2026-11-04 |
 | Standard basis | IEEE 1016-style (no conformance claim; `implementation-design-1016` skill) |
 | Owner | Software engineer role (Claude), for Brian Prascher |
-| Approver | PENDING for this document. Nothing in this document is approved. The **decisions it implements** were approved by Brian Prascher on 2026-10-31 ([SDD-architect-triage](SDD-architect-triage.md) section 5, decisions 1 to 13; requirements Amendment 7, CR-9.1; architecture amendment 7, D-38 to D-50). That approval covers the decisions, not this text. |
+| Approver | PENDING for this document. Nothing in this document is approved. The **decisions it implements** were approved by Brian Prascher on 2026-10-31 ([SDD-architect-triage](SDD-architect-triage.md) section 5, decisions 1 to 13; requirements Amendment 7, CR-9.1; architecture amendment 7, D-38 to D-50). That approval covers the decisions, not this text. Architecture Amendment 8 (D-63 to D-73, SF-01 to SF-22) was approved by Brian Prascher at gate G-2 on 2026-11-04; version 0.4 carries it into this text. **Version 0.4 has had no desk review**: the OQ-16 closing condition (a desk review by the system-architect and the systems engineer, in separate invocations from the author) is not met, and OQ-16 stays open. D-77: no `chess-store` code of any kind starts before OQ-16 closes. |
 | Gate | Drafting this version is text edits that implement approved decisions: **G0**, no approver (SWE-001 §3). No `GATE-` file was created here (gate numbers are assigned by the coordinator, SWE-001 ASM-S5). Implementing the crate is G1 (system-architect desk review) as long as the §3.2 edges and §5.7 contracts stay as amended; anything beyond them needs the approver named in section 9. |
-| Rulings applied | TR-2, TR-3, TR-4, TR-5, TR-6, TR-7, TR-9 (store side), XC-16, XC-27, UR-15, UR-19, UR-36, UR-51, decisions 2, 3, 4, 6, 7, 12, 13 and SE interpretations Q-SE-2, Q-SE-9, Q-SE-19, as listed in section 11 |
+| Rulings applied | **Amendment 8, 2026-11-04: D-63 to D-73, SF-01 to SF-22 (section 11, 0.4); D-76 for the test tools**; TR-2, TR-3, TR-4, TR-5, TR-6, TR-7, TR-9 (store side), XC-16, XC-27, UR-15, UR-19, UR-36, UR-51, decisions 2, 3, 4, 6, 7, 12, 13 and SE interpretations Q-SE-2, Q-SE-9, Q-SE-19, as listed in section 11 |
 | ID format (XC-30) | Existing IDs are not renumbered: `FIND-ST-01` and `FIND-ST-001` name the same finding. New IDs use `PREFIX-nnn` (`FIND-ST-015`, `OQ-ST-001`, `ASM-ST-6`). Findings use one prefix family, `FIND-` |
 | Engineering profile | [SWE-001](../engineering/SWE-001-engagement-profile.md): Rust 1.99.1 / edition 2024, CERT-informed practice with no conformance claim, warnings are errors |
 | Crate / allocation name | `crates/chess-store`; architecture §2.2 block `chess-app core :: chess-store` (also the data store block `chess.db + journals`, files only) |
@@ -67,7 +67,7 @@ Requirement allocation is architecture §10.1 `[OBS architecture.md §10.1 rows 
 
 D-2 (per-process core, coordination through the data dir), D-12 (SQLite, WAL), D-13 (store thread), D-14 (suspend, via the journal), D-16 (one version; `SchemaTooNew`), D-17 (exclusive import), D-23 (move journal), D-26 and D-30 (reset and void transactions), D-27 (unfinished slots), D-28 (two rating tracks), D-29 (archive; row side only), D-34 (content hash, UUIDs), D-35 (backups, restore, damaged journals). Risks mitigated: R-3, R-9, R-11, R-15, R-17, R-19.
 
-Amendment 7 decisions implemented by this version (all approved by Brian Prascher, 2026-10-31): D-39 (`Store` is a concrete handle; no `dyn`, no fake store), D-40 (UUID newtypes outside the store; integer ids internal), D-41 (journal contract and stored-format batch), D-42 (`content_hash` nullable until terminal), D-43 (`error_permille INTEGER`), D-44 (statistics rows, no SQL views), D-46 (`roster_indexes()`, pinned `UCI_Elo` range). Addendum A decisions applied by version 0.3 (D-41 and D-42 as amended; Brian Prascher's rulings 1 to 3 of 2026-10-31): `content_hash` in the `GameEnd`, `Abort` and `Voided` payloads and in `VoidSpec`; the exact payload fields per kind of architecture §7.6; `roster_indexes() -> Vec<u32>` (option C, no `roster_class` column).
+Amendment 7 decisions implemented by this version (all approved by Brian Prascher, 2026-10-31): D-39 (`Store` is a concrete handle; no `dyn`, no fake store), D-40 (UUID newtypes outside the store; integer ids internal), D-41 (journal contract and stored-format batch), D-42 (`content_hash` nullable until terminal), D-43 (`error_permille INTEGER`), D-44 (statistics rows, no SQL views), D-46 (`roster_indexes()`, pinned `UCI_Elo` range). Amendment 8 decisions implemented by version 0.4 (approved by Brian Prascher at G-2, 2026-11-04; architecture §11 and §11.4): D-63 (`GameEnd` time totals, SF-01), D-64 (`custom_start`, SF-02, SF-13), D-65 part 2 and D-66 (durable prefix; a store ahead of the journal is damage, not a torn tail), D-67 (the hash of a voided game is advisory; `get_game` and `LeaseBeat` return the columns the session needs; `void_unreadable_game` hashes zero or more readable moves), D-68 (`sha256:v1:<hex>`, SF-03, SF-04), D-69 (`Voided.ended_at`, `journal_seq` of a voided game, SF-05, SF-06), D-70 (SF-07 to SF-22), D-71 (refuse a volume without `F_FULLFSYNC`), D-72 (startup finalize order, D-58 wording). D-76 (stable toolchain only) is applied to the tests: `proptest` replaces `cargo-fuzz`. Addendum A decisions applied by version 0.3 (D-41 and D-42 as amended; Brian Prascher's rulings 1 to 3 of 2026-10-31): `content_hash` in the `GameEnd`, `Abort` and `Voided` payloads and in `VoidSpec`; the exact payload fields per kind of architecture §7.6; `roster_indexes() -> Vec<u32>` (option C, no `roster_class` column).
 
 ### 1.4 Definitions
 
@@ -215,7 +215,7 @@ Crate edges, exactly as architecture §3.2 after amendment 7: `chess-app → che
 | `rusqlite` (bundled) | all SQL | 0.41.1 `[OBS architecture.md §3.4]` |
 | `tokio` (features `sync`, `rt`, `time`) | `oneshot` replies, `spawn_blocking`, retry timer | 1.54.1 `[OBS §3.4]` |
 | `thiserror`, `serde`, `tracing` | errors, journal and row DTOs, log events | 2.0.21, 1.0.229, 0.1.44 `[OBS §3.4]` |
-| `serde_json`, `uuid` (v5 feature), `crc32fast` | journal payloads, UUID text parsing, record checksum | admitted in principle by decision 11; no version is stated, each needs a registry lookup, licence check and CVE scan before it enters §3.4 `[UNV]` |
+| `serde_json`, `uuid` (v5 feature), `crc32fast` | journal payloads, UUID text parsing, record checksum. The checksum is CRC-32 ISO-HDLC (SF-08); that `crc32fast` computes exactly this variant is `[UNV]` and is checked by the check-value test UT-ST-081 | admitted in principle by decision 11; no version is stated, each needs a registry lookup, licence check and CVE scan before it enters §3.4 `[UNV]`. `uuid` was looked up on 2026-11-04 for `chess-rules` and `chess-domain` ([dependency-lookup-step1.md](../engineering/dependency-lookup-step1.md) F8, P1); that lookup does not cover this crate's use of the `v5` feature `[UNV]` |
 | File locking and `F_FULLFSYNC` (`sys` module) | `flock`, `fcntl(F_FULLFSYNC)` | **deferred, spike first** (review row D-7, OQ-14): the standard library may provide `File::lock` and a full sync on macOS `[UNV]`. A 30-minute spike on the target toolchain decides. A safe wrapper crate (`rustix`) is added only if the standard library is not enough, and `libc` last, with one documented `unsafe` module |
 
 Dependencies not in the §3.4 table are admitted in principle only (decision 11, accepted with modifications). Before use each must be verified (exists, intended crate, maintained, licence compatible with GPL-3.0-or-later, pinned, in the SBOM) per `swe-governance` guardrail 5. `libc` defines `F_FULLFSYNC` for Apple targets (value 51) and `flock` `[OBS ~/.cargo/registry libc-0.2.174 src/unix/bsd/apple/mod.rs:3248, src/unix/mod.rs:1689]`; that is a locally cached version, not a pin. `rustix` is an alternative with safe wrappers `[UNV: not present locally, API names not checked]`. The use of `tokio` features `sync`, `rt` and `time` in this crate is part of the per-crate tokio feature sets of architecture §3.4 (FIND-ST-10).
@@ -244,7 +244,7 @@ The data directory is created `0700`, the database `0600` (architecture §8 Secu
 
 #### 3.5.2 Schema
 
-The tables and columns are those of architecture §7.2 `[OBS architecture.md §7.2 ER]`. This section adds the types, constraints and indexes that the ER does not carry. Deviations from the ER are listed explicitly in 3.5.3.
+The tables and columns are those of architecture §7.2 `[OBS architecture.md §7.2 ER]`, as amended by Amendment 8 (D-64, D-68, SF-02, SF-12, SF-17 to SF-20); the DDL below equals the architecture §7.2 note "Stored-format batch, second part" and the architecture §7.2 ER block. This section adds the types, constraints and indexes that the ER does not carry. Deviations from the ER are listed explicitly in 3.5.3.
 
 Conventions: every `datetime` is `INTEGER` Unix epoch milliseconds in UTC; every `bool` is `INTEGER` with `CHECK (x IN (0,1))`; text identifiers are compared with the default `BINARY` collation (case-sensitive); `PRAGMA foreign_keys=ON`.
 
@@ -254,7 +254,7 @@ Conventions: every `datetime` is `INTEGER` Unix epoch milliseconds in UTC; every
 -- migrations/0001_init.sql (design-level; the constraints are normative, formatting is not)
 CREATE TABLE player (
   id INTEGER PRIMARY KEY,
-  uuid TEXT NOT NULL UNIQUE,
+  uuid TEXT NOT NULL UNIQUE CHECK (uuid = lower(uuid) AND length(uuid) = 36),   -- SF-12
   kind TEXT NOT NULL CHECK (kind IN ('human','computer')),
   name TEXT NOT NULL UNIQUE COLLATE BINARY CHECK (length(name) > 0),
   start_category TEXT NOT NULL,
@@ -274,6 +274,7 @@ CREATE TABLE computer_profile (
   uci_elo INTEGER,
   error_permille INTEGER NOT NULL CHECK (error_permille BETWEEN 0 AND 1000),   -- TR-6: integer, never REAL
   error_multipv INTEGER NOT NULL,
+  CHECK (error_permille = 0 OR error_multipv >= 2),                              -- SF-19 (D-70)
   UNIQUE (roster_seed, roster_index)
 );
 -- ENG-2 backstop: no two computers share a parameter set (NULL uci_elo made comparable;
@@ -286,13 +287,15 @@ CREATE TABLE preferences (
 );
 CREATE TABLE game (
   id INTEGER PRIMARY KEY,
-  uuid TEXT NOT NULL UNIQUE,
+  uuid TEXT NOT NULL UNIQUE CHECK (uuid = lower(uuid) AND length(uuid) = 36),    -- SF-12
   white_id INTEGER REFERENCES player(id), black_id INTEGER REFERENCES player(id),
   matchup TEXT CHECK (matchup IN ('hh','hc','cc')),
   mode TEXT CHECK (mode IN ('training','strict')),
   rated INTEGER NOT NULL CHECK (rated IN (0,1)),
   self_play INTEGER NOT NULL CHECK (self_play IN (0,1)),
-  start_fen TEXT, clock_spec TEXT,
+  custom_start INTEGER NOT NULL DEFAULT 0 CHECK (custom_start IN (0,1)),         -- D-64, SF-02: 1 iff the start differs from the standard start (all six FEN fields)
+  start_fen TEXT,                    -- NULL exactly for the standard start; never the standard FEN (SF-02, SF-13)
+  clock_spec TEXT,                   -- NULL | '<base>+<inc>' whole seconds, e.g. '300+0' (SF-11)
   white_clock_ms INTEGER, black_clock_ms INTEGER,
   status TEXT NOT NULL CHECK (status IN ('in_progress','completed','aborted','voided','imported')),
   result TEXT CHECK (result IN ('1-0','0-1','1/2-1/2')),
@@ -302,9 +305,13 @@ CREATE TABLE game (
   white_time_used_ms INTEGER, black_time_used_ms INTEGER, total_active_ms INTEGER,
   analysis_used INTEGER NOT NULL DEFAULT 0 CHECK (analysis_used IN (0,1)),
   white_elo_before INTEGER, white_elo_after INTEGER, black_elo_before INTEGER, black_elo_after INTEGER,
-  content_hash TEXT,                 -- TR-5: NULL while in_progress; "sha256:<hex>" once terminal
+  content_hash TEXT,                 -- TR-5, SF-03: NULL while in_progress; "sha256:v1:<64 lowercase hex>" once terminal; advisory for 'voided' (D-67)
   journal_seq INTEGER NOT NULL DEFAULT 0,
-  CHECK (status <> 'in_progress' OR content_hash IS NULL),
+  CHECK ((status = 'in_progress') = (content_hash IS NULL)),                     -- SF-17: every terminal row has a hash (premise ASM-9)
+  CHECK (custom_start = (start_fen IS NOT NULL)),                                -- SF-02
+  CHECK (custom_start = 0 OR rated = 0),                                         -- SF-02
+  CHECK ((white_clock_ms IS NULL) = (black_clock_ms IS NULL)),                   -- SF-18
+  CHECK (status = 'imported' OR (white_id IS NOT NULL AND black_id IS NOT NULL)), -- SF-20 (self-play uses one id twice)
   CHECK (CASE status WHEN 'completed' THEN result IS NOT NULL
                      WHEN 'imported' THEN 1 ELSE result IS NULL END),
   CHECK (status <> 'imported' OR (matchup IS NULL AND mode IS NULL AND rated = 0)),
@@ -318,7 +325,8 @@ CREATE TABLE move (
   game_id INTEGER NOT NULL REFERENCES game(id), ply INTEGER NOT NULL CHECK (ply >= 1),
   san TEXT NOT NULL, uci TEXT NOT NULL, fen_after TEXT NOT NULL,
   think_ms INTEGER, white_clock_ms INTEGER, black_clock_ms INTEGER, played_at INTEGER,
-  PRIMARY KEY (game_id, ply)
+  PRIMARY KEY (game_id, ply),
+  CHECK ((white_clock_ms IS NULL) = (black_clock_ms IS NULL))                    -- SF-18
 ) WITHOUT ROWID;
 CREATE TABLE move_eval (
   game_id INTEGER NOT NULL, ply INTEGER NOT NULL, cp INTEGER, mate INTEGER,
@@ -394,6 +402,10 @@ The v0.1 list of deviations is closed: the architecture now carries the stored-f
 | 7 | `MOVE_EVAL.cp` and `mate` are from White's point of view | **RESOLVED** (decision 12, CR-9.3) | FIND-ST-12, UR-15 |
 | 8 | Integer `player.id`, `game.id` are internal; the API uses UUID newtypes | **RESOLVED** (TR-3, D-40) | XC-7, UR-03 |
 | 9 | The SQL views `player_stats` and `head_to_head` are dropped | **RESOLVED** (TR-7, D-44) | XC-13, UR-09 |
+| 10 | `GAME.custom_start INTEGER NOT NULL DEFAULT 0`, defined once; `start_fen` NULL exactly for the standard start; CHECKs `custom_start = (start_fen IS NOT NULL)` and `custom_start = 0 OR rated = 0`. The comparison is all six FEN fields, made in `chess-domain`, not in the store | **RESOLVED** (Amd 8; APPROVED by Brian at G-2, 2026-11-04; G3) | D-64, SF-02, SF-13 |
+| 11 | `content_hash` is `sha256:v1:<64 lowercase hex>`; CHECK `(status = 'in_progress') = (content_hash IS NULL)`, so every terminal row (completed, aborted, voided, imported) has one; the store treats the value as an opaque string and does not parse the version | **RESOLVED** (Amd 8, G3); the premise that an imported row always gets a hash is ASM-9, still open | D-68, SF-03, SF-17 |
+| 12 | Clock-pair CHECKs on `MOVE` and `GAME`; `COMPUTER_PROFILE` `error_permille = 0 OR error_multipv >= 2`; `white_id` and `black_id` NOT NULL unless `imported`; uuid columns lower-case, 36 characters | **RESOLVED** (Amd 8, G3) | D-70, SF-12, SF-18, SF-19, SF-20 |
+| 13 | `white_time_used_ms`, `black_time_used_ms`, `total_active_ms` are written by finalize from the `GameEnd` record (`FinalizeRequest`) and never recomputed from `MOVE.think_ms` | **RESOLVED** (Amd 8, G3) | D-63, SF-01 |
 
 #### 3.5.4 Ownership and transaction boundaries
 
@@ -407,8 +419,9 @@ The table of architecture §7.4 `[OBS]` stands. The store methods that realise e
 | Roster batch | `insert_computers` | one transaction for N Players and 2N rating rows, each Player carrying its `roster_index`. The read of the stored indices (`roster_indexes()`) is a **separate call** before the insert, not part of this transaction (architecture §4.6, Addendum A ruling 3); `UNIQUE(roster_seed, roster_index)` is the arbiter and a unique violation returns `RosterIndexTaken` so the caller (`PlayerService`) can repeat the read and the insert once, then report `StoreBusy` (TR-9, UR-49, D-46) |
 | Start | `start_game` | `BEGIN IMMEDIATE`: `GAME` + slots; idempotent on `GameId`. The journal is created **after** this transaction commits (start order, 3.9.2) |
 | Move | `apply_records` | one transaction per applied batch: rows, clocks, `journal_seq` |
-| Finalize, c–c abort | `finalize_game`, `abort_game` | `BEGIN IMMEDIATE`; skipped if already final; both set `content_hash` |
-| Void unreadable | `void_unreadable_game` | `BEGIN IMMEDIATE`; sets `content_hash` |
+| Finalize, c–c abort | `finalize_game`, `abort_game` | `BEGIN IMMEDIATE`; skipped if already final; both set `content_hash`; finalize also writes the three time totals from the request (D-63) |
+| Void unreadable | `void_unreadable_game` | `BEGIN IMMEDIATE`; sets `content_hash` (hash of whatever moves are readable, zero moves allowed, D-67 (iv); the column is never NULL for a terminal row, SF-17) |
+| Apply a `Voided` record | `apply_records` | one transaction: sets `journal_seq` to the record's `seq`; only if the row is not yet `voided`, re-runs the void from the record (D-69, SF-06; 3.11.4) |
 | Evals | `upsert_move_eval` | one upsert per ply |
 | Import, restore, migrate | `RowIo::apply_import`, `RestoreService`, `Migrator` | exclusive, see DD-ST-021, 022, 006 |
 
@@ -436,7 +449,7 @@ The table of architecture §7.4 `[OBS]` stands. The store methods that realise e
 |---|---|---|---|
 | IFP-ST-01 | `Store` methods (the `StoreApi` list of 3.7.2; one concrete type, D-39) | async fns; writes through the store thread, reads through the read pool. Ids are `GameId`/`PlayerId` (UUID) | `PlayerService`, `GameSetupService`, `SessionRegistry`, `GameSession`, `StatsService`, `AnalysisWorker`, `AnalysisService` |
 | IFP-ST-02 | `MoveJournal`, `JournalWriter`, `Recovered` | async `append`; sync open and probe | `GameSession`, `SessionRegistry`, `PlayerService` (void of a suspended game) |
-| IFP-ST-03 | `Store::open`, `DataDir`, `OpenReport` | async open | `Core` start-up, `chess-cli`, `src-tauri` |
+| IFP-ST-03 | `Store::open`, `DataDir`, `OpenReport` | async open; refuses a directory on a volume without `F_FULLFSYNC` with `DurabilityUnsupported{path, errno}` (D-71, 3.11.5) | `Core` start-up, `chess-cli`, `src-tauri` |
 | IFP-ST-04 | `BackupManager`, `RestoreService` | async | `Core` start-up, `ImportExportService` |
 | IFP-ST-05 | `RowIo` (export snapshot, import apply, lookups) | blocking iterators plus one async apply | `ImportExportService` |
 | IFP-ST-06 | `FaultPlan` | test-only | tests in all crates |
@@ -461,23 +474,23 @@ Names are design proposals. "W" = write on the store thread. "R" = read pool. Al
 | | `get_player`, `list_players(kind, include_archived)`, `find_player_by_name`, `get_preferences` | R | |
 | | `get_app_setting`, `set_app_setting` | R, W | |
 | Games | `start_game(NewGame)` | W | inserts `GAME` + slot rows; returns the existing game when the `GameId` exists; `SlotTaken{game_id, mode, player_id}`. A game with a row and no journal (a crash between this call and `MoveJournal::create`) is a game with zero moves, replayed from `start_fen`; no new state exists for it |
-| | `apply_records(game_id, Vec<JournalRecord>)` | W, queued | applies a batch in order; see 3.11.3 and the backlog rule in 3.12 |
+| | `apply_records(game_id, Vec<JournalRecord>)` | W, queued | applies a batch in order; see 3.11.3 and the backlog rule in 3.12. DB effect of a `Voided` record (D-69, SF-06): set `journal_seq` to the record's `seq`; only if the row is not yet `voided` (a restore), re-run the void from the record's `reason`, `reset_player`, `ended_at` and `content_hash`. The holder passes the `Voided` record it appended to this method, and the startup scan applies an unapplied `Voided` the same way |
 | | `finalize_game(FinalizeRequest)` | W | see 3.11.4; returns `FinalizeOutcome` |
-| | `abort_game`, `void_unreadable_game`, `reset_player` | W | `abort_game` and `void_unreadable_game` take the `content_hash` computed by the caller. `reset_player(player, voids: Vec<VoidSpec{game, content_hash}>, ...)` sets the hash of each voided game in the same transaction (the store cannot compute it: it has no `chess-rules`; carried in the journal records too, ruling 1, D-42) |
+| | `abort_game`, `void_unreadable_game`, `reset_player` | W | `abort_game` and `void_unreadable_game` take the `content_hash` computed by the caller. `void_unreadable_game` takes the hash of whatever moves are readable, **zero moves allowed**, and a non-NULL hash is always stored (D-67 (iv), SF-17); `chess-app` must pass it (the app SDD call that passed none is corrected there). `reset_player(player, voids: Vec<VoidSpec{game, content_hash}>, ...)` sets the hash of each voided game in the same transaction (the store cannot compute it: it has no `chess-rules`; carried in the journal records too, ruling 1, D-42) and writes the commit time to `GAME.ended_at` of each voided game; that time is the `ended_at` of the `Voided` record (D-69, SF-05). The hash of a voided game is advisory (D-67 (i)) |
 | | `set_analysis_used(game_id)` | W | idempotent |
 | | `list_unfinished(player_id)` | R | reads `GAME`, not the slot table (architecture §4.4 resume list) |
-| | `get_game`, `list_games(filter)`, `game_moves(game_id)` | R | |
+| | `get_game`, `list_games(filter)`, `game_moves(game_id)` | R | `get_game` and `list_games` return the whole `GAME` row as a DTO, including `custom_start`, `content_hash`, `voided_by` (as a `PlayerId`) and `ended_at`, so statistics and history can mark and exclude custom starts (D-64) and the session that was voided elsewhere can build its `Voided` record (D-67 (iii)). The time totals are returned too |
 | Ratings | `rating_history(player, track)`, `check_rating_invariant(player_ids)` | R | invariant: current = last reset point (or initial) + Σ later deltas |
 | Analysis | `upsert_move_eval(MoveEvalRow)`, `get_game_analysis(game_id)` | W, R | `get_game_analysis` returns evals, job state, `evaluated` and `total` ply counts |
 | | `save_variation(game, from_ply, pgn)`, `delete_variation`, `list_variations(game)` | W, R | one saved line, its anchor ply and `created_at` (from the injected clock). Backstop for decision 13: `from_ply >=` the game's stored ply count (a branch from the **final position**) returns `VariationAnchor`, which `chess-app` maps to `ValidationFailed{field: from_ply, reason: no_move_after_position}`. The app refuses first; this is the second guard. Storage of imported nested variations is OPEN (OQ-ST-003) |
 | Jobs | `enqueue_job(game_id)`, `enqueue_unevaluated_games()`, `claim_job(owner)`, `job_heartbeat`, `complete_job`, `fail_job` | W | 3.11.7 |
 | Coordination | `register_process`, `process_heartbeat`, `deregister_process`, `list_live_processes` | W, R | 3.11.6 |
-| | `lease_beat(game, owner) -> LeaseBeat` | W | `RowGone{status}` tells a session that it was voided (architecture §7.2 reset sequence) |
+| | `lease_beat(game, owner) -> LeaseBeat` | W | `RowGone{status, voided_by, content_hash, ended_at}` tells a session that it was voided (architecture §7.2 reset sequence) and carries what it needs to build its `Voided` record from the `GAME` row without a second call (D-67 (iii), D-69: copied from the row, never `now`). Architecture D-67 (iii) says "added to `get_game` or to `LeaseBeat`"; this design does both (finding XC-ST-A8-1, section 7.3) |
 | | `lease_upsert`, `lease_delete` | W | |
 | Statistics (rows only, D-44) | `stats_rows(player, window, side?, limit?)`, `head_to_head_rows(player, opponent, window, limit?)`, `games_for_history(player, window, limit?)` | R | Return **rows**, filtered only by structural keys: the Player, the reset window `started_at >= reset_at`, the side and a `LIMIT`. They apply **no** predicate (`self_play`, completed, custom start) and compute no aggregate: `chess-domain` (`aggregate`, `rating_series`, `check_history`, `counts_in_aggregates`) owns both the predicate and the empty-state rule (CR-4.15). The SQL views `player_stats` and `head_to_head` do not exist. FF-5 measures the cost on a 10 000-game fixture; if it fails, a SQL fast path may be added behind a differential test against the domain function |
 | Barrier | `sync_backlog(timeout) -> Result<()>` | W | waits until the apply backlog is empty; used before an export (3.11.9) |
 
-`FinalizeRequest` carries every input of the transaction so that a restore can rebuild it from the journal: `{game, result, termination, ended_at, white_time_used_ms, black_time_used_ms, total_active_ms, eco, opening_name, analysis_used, content_hash, final_journal_seq}`. `content_hash` is `"sha256:" + hex(SHA-256(canonical_form))`, computed by `ImportExportService` in `chess-app` (D-42); the store stores the string and does not interpret it. The store builds `GameFacts` and `RatedSide` for `EloCalc` from the rows it re-reads inside the transaction.
+`FinalizeRequest` carries every input of the transaction so that a restore can rebuild it from the journal: `{game, result, termination, ended_at, white_time_used_ms, black_time_used_ms, total_active_ms, eco, opening_name, analysis_used, content_hash, final_journal_seq}`. The three time totals are whole milliseconds `>= 0`, always present, and come from the `GameEnd` record (D-63, SF-01): finalize and restore write them to `GAME` and **nothing recomputes them from `Move.think_ms`**, so a live finalize and a finalize from the journal alone give the same `GAME` row (FF-3, UT-ST-070, UT-ST-082). `content_hash` is `"sha256:v1:" + hex(SHA-256(canonical_form))` (D-68, SF-03), computed by `ImportExportService` in `chess-app` (D-42); the store stores the string and does not interpret it or its version. The store builds `GameFacts` and `RatedSide` for `EloCalc` from the rows it re-reads inside the transaction.
 
 #### 3.7.3 Journal interface (IFP-ST-02)
 
@@ -568,6 +581,7 @@ Layering rule: `repo/*` and `journal/reconcile.rs` know nothing about threads; `
 | `OtherVersionRunning{version, kind}` | a live process of another build version is registered | `OtherVersionRunning{version, kind}` (additive catalogue code, architecture §5.5, UR-36; FIND-ST-04 RESOLVED) |
 | `RosterIndexTaken` | `UNIQUE(roster_seed, roster_index)` violated by a concurrent roster insert | not mapped: `chess-app` retries once, then `StoreBusy` (UR-49) |
 | `VariationAnchor` | `save_variation` with `from_ply` at or beyond the game's last ply | `ValidationFailed{field: from_ply, reason: no_move_after_position}` (decision 13) |
+| `DurabilityUnsupported{path, errno}` | the open probe `fcntl(F_FULLFSYNC)` on the data directory fails with `ENOTSUP` or `ENOTTY` (D-71, BP-014); `Display` prints the category only, so the path and errno travel in the variant for the front-end message and not in the log line (NFR-9) | `DurabilityUnsupported{path, errno}` (additive code, architecture §5.5; no `Core` is returned) |
 | `Leased{owner_kind}` | journal lock held | `GameLeased{owner_kind}` |
 | `Journal(JournalError)` | see 3.7.3 | `JournalWriteFailed{cause}`; `JournalUnreadable` is a report, not an error |
 | `InvariantViolated` | a CHECK, FK or the Elo invariant failed | `Internal{id}` (a bug). For an import post-check the store returns `ImportInvariant{check}`, which `chess-app` maps to `ImportInvariantFailed{check}` (additive code, UR-36; FIND-ST-09 RESOLVED) |
@@ -623,6 +637,8 @@ sequenceDiagram
     O-->>C: OpenedStore + OpenReport (first_launch, recovered games)
     C-)B: maybe_auto_backup() after the first frame
 ```
+
+**Volume probe (D-71, BP-014; Amendment 8).** Not drawn in the diagram above (the diagram is unchanged in version 0.4). After the directory exists with mode `0700` and **before** the write connection, the heartbeat registration or any other write, the `Opener` creates a scratch file `0600` in the data directory, calls `fcntl(F_FULLFSYNC)` on it and removes it. On `ENOTSUP` or `ENOTTY` it returns `Err(DurabilityUnsupported{path, errno})` and leaves the directory as found (a first-launch directory it just created stays, empty). There is no `sync_all` fallback and no "continue anyway". Any other error of the probe is `Unavailable{Io}`. The probe is the only new step of the open path; the order of the rest is unchanged `[UNV]` (the scratch-file name, and whether the probe runs on the file `store.id` instead, are left to implementation; architecture §7.1 allows either). A later `F_FULLFSYNC` failure of the same kind at an append is a write failure (`JournalError::WriteFailed`), not a refusal.
 
 #### 3.9.2 A move: journal first, SQLite second (SEQ-ST-02)
 
@@ -723,28 +739,34 @@ Transition guards: only the descriptor holding the `flock` appends. `Closed → 
 
 #### 3.11.1 Journal format (DD-ST-015)
 
-File header: magic `CHSJ` (4 bytes), `journal_version: u16` (1), `game_uuid` (16 bytes), `store_id` (16 bytes), `header_crc32`. Record: `sync` (2 bytes `A5 5A`), `len: u32` (body length), `crc32: u32` over `len` and the body, then the body: `seq: u64`, `kind: u8`, `wall_ms: i64`, `payload` (UTF-8 JSON, `deny_unknown_fields`). Integers are little-endian.
+File header: magic `CHSJ` (4 bytes), `journal_version: u16` (1), `game_uuid` (16 bytes), `store_id` (16 bytes), `header_crc32`. Record: `sync` (2 bytes `A5 5A`), `len: u32` (body length), `crc32: u32`, then the body: `seq: u64`, `kind: u8`, `wall_ms: i64`, `payload` (UTF-8 JSON, `deny_unknown_fields`). Integers are little-endian.
+
+**Fixed by Amendment 8 (SF-07 to SF-09, approved by Brian at G-2, 2026-11-04; frozen at the first release, D-41).**
+- *Checksum (SF-08).* CRC-32 of the ISO-HDLC / IEEE 802.3 family (the zlib `crc32`): reflected, initial value and final XOR `0xFFFFFFFF`; the check value of the ASCII bytes `123456789` is `0xCBF43926` (architecture SF-08 `[RAN python3 zlib.crc32]`). The record `crc32` covers `len` (4 bytes, little-endian) followed by the body; the `A5 5A` marker is not covered. `header_crc32` covers the header from the magic to the end of `store_id`. A unit test with the check value is UT-ST-081.
+- *Maximum record body (SF-09).* 65 536 bytes. A larger `len` is read as damage (3.11.2); the writer refuses to write a larger body (a `WriteFailed`).
+- *Kind codes (SF-07).* `Start` 1, `Move` 2, `Takeback` 3, `Clock` 4, `DrawOffer` 5, `DrawDeclined` 6, `DrawDropped` 7, `Pause` 8, `Resume` 9, `Suspend` 10, `SuspendResume` 11, `GameEnd` 12, `Abort` 13, `Voided` 14. Code 0 and codes 15 to 255 are invalid (a decode error), so a zero-filled block does not decode as a record. A code is never reused; a new kind takes the next number with `journal_version` 2.
 
 Why JSON payloads: readable with a hex editor and `jq` when a user's data is damaged, and tolerant of additive fields; the size cost is irrelevant at chess rates `[INF]`. Why journal-owned DTOs instead of serialising domain types: a change to a domain type would silently change what old journals mean. **Owners (TR-4):** this crate owns the **format** (records, header, checksum, version); `chess-domain` owns the **vocabulary** of state changes (`Fact`); `chess-app` owns the **conversion** (`JournalCodec`, [SDD-chess-app](SDD-chess-app.md) DD-APP-18). `journal_version` stays 1 (nothing is released).
 
-All identifiers in payloads are UUID text (`GameId`, `PlayerId`), never integer row ids (D-40). A side is the store's own `StoredSide` (`white` | `black`), not a `chess-rules` type. `white_ms` and `black_ms` are **nullable** in `Move` and `Clock` payloads: an untimed game writes `null`, and the matching `GAME`/`MOVE` columns are null too.
+All identifiers in payloads are UUID text (`GameId`, `PlayerId`), never integer row ids (D-40). A side is the store's own `StoredSide` (`white` | `black`), not a `chess-rules` type. `white_ms` and `black_ms` are **nullable** in `Move` and `Clock` payloads: an untimed game writes `null`, and the matching `GAME`/`MOVE` columns are null too. **Text forms (SF-10 to SF-14, SF-15, approved 2026-11-04):** a UUID is lower-case, hyphenated, 36 characters (8-4-4-4-12), in payloads, journal file names and uuid columns, and the decoder rejects any other form (SF-12); `clock_spec` is `<base>+<increment>`, both whole seconds in decimal, no sign, no spaces, no leading zeros (`0` alone is allowed), e.g. `300+0`, `180+2`, both parts always present, `null` when untimed, and the decoder rejects other forms (SF-11; the CLI minutes shorthand `5+0` is input only and is converted by the caller); `white_ms` and `black_ms` are both `null` or both numbers in `Move` and `Clock`, and a half-null pair is a decode error (SF-14; the DDL backstop is the clock-pair CHECK, SF-18); `VoidReason` is the journal string `reset` or `unreadable`, any other value is a decode error, and the codec maps them to the unchanged `GAME.termination` values `voided by reset` and `voided: unreadable` (SF-10); `GameEnd.reason` is a snake_case code (below, SF-15).
 
 Kinds and payloads. **The authority is the table of architecture §7.6 as amended by Addendum A (rulings 1 and 2, D-41, D-42); this table repeats it and must be kept equal to it.** The one-to-one mapping from the domain `Fact` is that table and the app SDD DD-APP-18. The column "Payload" lists every field of the record (`wall_ms` is in the record body, not the payload). Fields of the `Fact` are written into the record; the fields marked + are added by the app codec (from the `RecordCtx` or an assembler) and are not in the `Fact`. The variant names are the domain's (`Ended`, `Aborted`; FIND-JR-004):
 
 | Kind | Domain `Fact` | Payload | DB effect when applied |
 |---|---|---|---|
-| `Start` | `Start{setup, started_at}` | `game`, `white`, `black` (UUIDs), `white_kind`, `black_kind` (`human` or `computer`), `matchup`, `mode`, `custom_start` (bool), `start_fen`, `clock_spec` (null when untimed), `started_at`, and, added by the `Start` assembler, `rated+`, `self_play+` | none if the `GAME` row exists; else creates it (restore only) |
+| `Start` | `Start{setup, started_at}` | `game`, `white`, `black` (UUIDs), `white_kind`, `black_kind` (`human` or `computer`), `matchup`, `mode`, `custom_start` (bool; defined once, D-64, SF-02), `start_fen` (JSON `null` exactly for the standard start, never the standard FEN; SF-02, SF-13), `clock_spec` (null when untimed), and, added by the `Start` assembler, `rated+`, `self_play+` (frozen history, authoritative for a restored row, never recomputed; D-64). **There is no `started_at` field** (SF-16, decided by Brian at G-2, 2026-11-04): `GAME.started_at` is the record's `wall_ms`, the same rule as `Move.played_at` | none if the `GAME` row exists; else creates it (restore only), with `started_at` = the record's `wall_ms` and `custom_start` from the payload |
 | `Move` | `Move{ply, mv, think_ms, clocks_after, played_at}` | `ply`, `uci`, `think_ms`, `white_ms`, `black_ms` (both null when untimed), and `san+`, `fen_after+` from the `RecordCtx`. `played_at` is the record's `wall_ms` | `MOVE` row at `ply` (journal wins), clocks (null when untimed) |
 | `Takeback` | `Takeback{to_ply}` | `to_ply` (the protocol command `Takeback{ply}` is a stale guard; the codec maps the computed target to `to_ply`) | delete `MOVE` rows with `ply > to_ply` |
 | `Clock` | `Clock{clocks, running}` | `white_ms`, `black_ms` (both null when untimed), `running_side` (null when stopped) | `GAME` clock columns |
 | `DrawOffer`, `DrawDeclined` | same names | `by` (side) | none (kept for `GameSession` rebuild) |
-| `DrawDropped` | `DrawDropped{by, cause}` | `by` (the side whose offer was dropped), `cause`: `engine_failure` or `suspend` | none; replay learns that the offer ended without an answer and checks `by` against the pending offer |
-| `Pause`, `Resume`, `Suspend`, `SuspendResume` | `Pause`, `PlayResume`, `Suspend`, `SuspendResume` | none: the payload is `{}`. The kind for `PlayResume` is named `Resume` as in architecture §7.6 | none. **There is no implicit resume**: replay does not infer a resume from a later fact (TR-4). A `Move` while paused is a stepped move, stated once in the domain replay rules; there is no `Step` kind |
-| `GameEnd` | `Ended{outcome}` (`Outcome{result, reason}`) | `result`, `reason` (stable strings of the domain design), and, added by the `GameEnd` assembler as the finalize inputs, `ended_at+`, `eco+`, `opening_name+`, `analysis_used+`, **`content_hash+`** | finalize |
+| `DrawDropped` | `DrawDropped{by, cause}` | `by` (the side whose offer was dropped), `cause`: `engine_failure` or `suspend` | none; replay learns that the offer ended without an answer and checks `by` against the pending offer (a mismatch is logged and replay continues with the pending offer's side, never an error: SF-22, D-70) |
+| `Suspend` | `Suspend{cause}` | `cause`: `detach`, `shutdown` or `recovered` (a D-14 detach, a server stop, a D-58 crash recovery); any other value is a decode error. *Amd 8, SF-21, decided by Brian at G-2, 2026-11-04 (option A)* | none |
+| `Pause`, `Resume`, `SuspendResume` | `Pause`, `PlayResume`, `SuspendResume` | none: the payload is `{}`. The kind for `PlayResume` is named `Resume` as in architecture §7.6 | none. **There is no implicit resume**: replay does not infer a resume from a later fact (TR-4). A `Move` while paused is a stepped move, stated once in the domain replay rules; there is no `Step` kind |
+| `GameEnd` | `Ended{outcome}` (`Outcome{result, reason}`) | `result`, `reason` (snake_case code: `checkmate`, `stalemate`, `insufficient_material`, `threefold_repetition`, `fifty_move_rule`, `time_forfeit`, `timeout_opponent_cannot_mate`, `resignation`, `draw_agreed`; SF-15, decided by Brian at G-2, 2026-11-04; unknown value is a decode error; the codec maps them 1:1 to the unchanged `GAME.termination` strings), and, added by the `GameEnd` assembler as the finalize inputs, `ended_at+`, `eco+`, `opening_name+`, `analysis_used+`, **`content_hash+`**, and, *Amd 8 (D-63, SF-01)*, **`white_time_used_ms+`, `black_time_used_ms+`, `total_active_ms+`** (whole milliseconds, `>= 0`, always present) | finalize, with the three totals written to `GAME` |
 | `Abort` | `Aborted` | none from the `Fact`; `ended_at+`, **`content_hash+`** from the `Abort` assembler; c–c only | abort |
-| `Voided` | `Voided{reason, reset_player}` | `reason` (`VoidReason`), `reset_player` (UUID or null), **`content_hash+`** | none (the store transaction was the reset or the unreadable-game void) |
+| `Voided` | `Voided{reason, reset_player}` | `reason` (`VoidReason`: `reset` or `unreadable`, SF-10), `reset_player` (UUID or null), **`content_hash+`** (advisory, D-67), and, *Amd 8 (D-69, SF-05)*, **`ended_at+`** (epoch ms, the unit of `GAME.ended_at`) | set `journal_seq` to the record's `seq`; only if the row is not yet `voided` (restore), re-run the void from `reason`, `reset_player`, `ended_at`, `content_hash` (D-69, SF-06; replaces the earlier cell "none") |
 
-`wall_ms` is in every record body because `MOVE.played_at` and `GAME.ended_at` need a wall time that the architecture's record list did not carry; it is stated in §7.6 (the record body is `seq`, `kind`, `wall_ms`, payload). **`content_hash` (ruling 1, D-42, G3, decided by Brian Prascher 2026-10-31):** `"sha256:" + hex(...)`, never null in `GameEnd`, `Abort` and `Voided` because the game is terminal. The store cannot compute it (it has no edge to `chess-rules`), and a restore re-runs the finalize, abort or void from the journal, so the value is in the record. `chess-app` computes it before the store transaction and passes it in; for a reset it is also in the `VoidSpec` of each voided game, and the `Voided` record carries the hash that was committed to the `GAME` row. **Not carried (architecture §7.6 flag 1):** `resigning_side` and "times" in `GameEnd` (the resigning side is the loser of `result` when `reason` is resignation; per-move times are in `Move`), and the setup JSON in `Start` (it would give two truths beside the flat fields). `Voided` has no `ended_at` (flag 6, the Review Board decides).
+`wall_ms` is in every record body because `MOVE.played_at` and `GAME.ended_at` need a wall time that the architecture's record list did not carry; it is stated in §7.6 (the record body is `seq`, `kind`, `wall_ms`, payload). **`content_hash` (ruling 1, D-42, G3, decided by Brian Prascher 2026-10-31):** `"sha256:" + hex(...)`, never null in `GameEnd`, `Abort` and `Voided` because the game is terminal. The store cannot compute it (it has no edge to `chess-rules`), and a restore re-runs the finalize, abort or void from the journal, so the value is in the record. `chess-app` computes it before the store transaction and passes it in; for a reset it is also in the `VoidSpec` of each voided game, and the `Voided` record carries the hash that was committed to the `GAME` row. *Amendment 8 (D-67, D-68):* the value is `sha256:v1:<64 lowercase hex>` (SF-03), the hash of the game **as of game end** (SF-04), and for a **voided** game it is advisory. **Not carried (architecture §7.6 flag 1):** `resigning_side` in `GameEnd` (the resigning side is the loser of `result` when `reason` is resignation) and the setup JSON in `Start` (it would give two truths beside the flat fields). The earlier drop of "times" is **rejected** by D-63: the three time totals are in `GameEnd`. `Voided` has `ended_at` (flag 6 resolved by D-69, SF-05): on a reset it is the commit time written to `GAME.ended_at`, for an unreadable void it is the void time, and for a `Voided` appended later (repair, other process) it is copied from the `GAME` row, never `now`; the record's `wall_ms` stays the append time.
 
 A unit test asserts, per kind, that the payload field names equal the table (UT-ST-070). The decoder uses `deny_unknown_fields`, so a field not in the table is a decode error.
 
@@ -758,27 +780,28 @@ pos = end of header; expected_seq = 1
 loop:
   if pos == EOF: done (clean)
   read sync+len+crc+body at pos
-  if sync wrong, or len exceeds remaining bytes, or crc wrong, or seq != expected_seq:
+  if sync wrong, or len exceeds remaining bytes or 65 536 (SF-09), or crc wrong, or seq != expected_seq, or kind invalid (SF-07):
       look ahead: find the next sync marker after pos whose record has a valid crc and seq > last_good_seq
       none found  -> torn tail: drop it silently (never acknowledged), done
       found       -> damaged middle: intact run = records before pos; report DamagedInfo; done
   accept record; last_good_seq = seq; expected_seq += 1; pos += record size
 ```
 
-The look-ahead is bounded by the file size and costs one CRC per sync marker found. A record that was acknowledged was fully written and fsynced before the acknowledgement, so a torn record is by construction an unacknowledged one (NFR-2). A rewritten tail after a crash is possible only if the writer is the new owner; it appends after the last good record, truncating the torn tail first (`ftruncate` to `pos`, then fsync).
+The look-ahead is bounded by the file size and costs one CRC per sync marker found. A record that was acknowledged was fully written and fsynced before the acknowledgement, so a torn record is by construction an unacknowledged one (NFR-2). **That reasoning holds only while the store does not hold a later record (Amd 8, D-66, Board BP-004).** The scan itself classifies by the journal alone, and the caller then applies this rule: if `GAME.journal_seq` (`db_seq`) is greater than the last intact `seq` of the journal, the dropped or missing tail is **not** a torn tail, because the store applied a record that the journal no longer proves (an acknowledged tail damaged or lost after the fact). The case is damage whether the scan ended clean or found a torn tail. `RecoveryReport.damaged` is then `Some(DamagedInfo{kind: StoreAhead})` (a design proposal for the field), reconcile uses the damaged-middle rows of 3.11.3, no stored `MOVE` row beyond the journal's end is deleted, and the app reports `JournalUnreadable{game_id, recovered_moves}`. Only when `db_seq <= last_intact_seq` is a dropped tail silent. A rewritten tail after a crash is possible only if the writer is the new owner; it appends after the last good record, truncating the torn tail first (`ftruncate` to `pos`, then fsync).
 
 #### 3.11.3 Reconcile (DD-ST-018, pure)
 
-Input: `J` = moves and clocks folded from the intact journal records (`Move` sets ply `p` and drops every later ply, `Takeback` drops plies above `to_ply`; `DrawOffer`, `DrawDeclined`, `DrawDropped`, `Pause`, `Resume`, `Suspend` and `SuspendResume` change no row and no clock); `S` = stored `MOVE` rows (ordered); `damaged: bool`; `db_seq`, `last_intact_seq`, stored clocks. Output: a plan `{replace_from: Option<ply>, rows_to_write, rows_to_delete_from, clocks, source}`.
+Input: `J` = moves and clocks folded from the intact journal records (`Move` sets ply `p` and drops every later ply, `Takeback` drops plies above `to_ply`; `DrawOffer`, `DrawDeclined`, `DrawDropped`, `Pause`, `Resume`, `Suspend` and `SuspendResume` change no row and no clock); `S` = stored `MOVE` rows (ordered); `damaged: bool` (true for a damaged middle **and** when `db_seq > last_intact_seq`, D-66); `db_seq`, `last_intact_seq`, stored clocks. Output: a plan `{replace_from: Option<ply>, rows_to_write, rows_to_delete_from, clocks, source}`.
 
 | Case | Rule |
 |---|---|
-| Journal intact (no damage) | Result = `J`. Rows of `S` from the first ply where `S` and `J` differ, and rows beyond `J`'s end, are replaced or deleted. Journal wins. |
+| Journal intact (no damage) **and `db_seq <= last_intact_seq`** | Result = `J`. Rows of `S` from the first ply where `S` and `J` differ, and rows beyond `J`'s end, are replaced or deleted. Journal wins. |
 | Damaged middle, `S` and `J` agree on all common plies | Resume from the longer run. If `S` is longer, the stored rows stay and `source = Store`. |
 | Damaged middle, `S` and `J` differ at ply `d` within `J` | Journal wins from `d`: rows of `S` from `d` are replaced by `J`'s and rows beyond `J`'s end are dropped. `source = Journal`. |
+| `db_seq > last_intact_seq` (D-66, SF-06 context; with or without a torn tail or a damaged middle) | Treated as damage: the two damaged-middle rows above apply. In particular a stored `MOVE` row beyond the journal's end is never deleted when the store is longer and the two agree on the common plies (`source = Store`); the user is told through `JournalUnreadable`. Test: UT-ST-083 |
 | Nothing readable in either | `Unreadable`; the caller offers `VoidUnreadableGame` |
 
-Clocks come from the last `Move` or `Clock` record of the intact run, unless `GAME.journal_seq` is greater than `last_intact_seq`, in which case the stored clocks belong to a later record and are used. This is the architecture's "or from the `GAME` checkpoint when that is later" made precise `[OBS §7.6]`. The function is total, deterministic and idempotent: applying its plan and reconciling again yields an empty plan (property test UT-ST-012). Idempotence is what makes startup replay, resume and restore safe to repeat after a crash in the middle of recovery.
+Clocks come from the last `Move` or `Clock` record of the intact run, unless `GAME.journal_seq` is greater than `last_intact_seq` (the D-66 case above), in which case the stored clocks belong to a later record and are used. This is the architecture's "or from the `GAME` checkpoint when that is later" made precise `[OBS §7.6]`. The function is total, deterministic and idempotent: applying its plan and reconciling again yields an empty plan (property test UT-ST-012). Idempotence is what makes startup replay, resume and restore safe to repeat after a crash in the middle of recovery.
 
 If the journal is damaged, resuming continues on a **rebased journal**: a new file starts with the header, a `Start`, the recovered `Move` records and one `Clock`; `GAME.journal_seq` is set to the new last sequence number in the same transaction; the old file moves to `journal/damaged/`.
 
@@ -793,14 +816,19 @@ BEGIN IMMEDIATE
         Settlement = EloCalc.settle(white RatedSide, black RatedSide, result)   -- whole integers; one call settles both sides (XC-3)
         INSERT rating_history(player, track, game, before, before+delta, k, ended_at)
         UPDATE player SET <track>_elo = before+delta, <track>_rated_games = counter+1
-  UPDATE game: status=completed, result, termination, ended_at, times, eco, opening_name,
-               analysis_used, content_hash, *_elo_before/after on the track (NULL when not rated), journal_seq
+  UPDATE game: status=completed, result, termination, ended_at, white_time_used_ms, black_time_used_ms,
+               total_active_ms (all three from the request, i.e. from the GameEnd record; never recomputed, D-63),
+               eco, opening_name, analysis_used, content_hash, *_elo_before/after on the track (NULL when not rated), journal_seq
   DELETE unfinished_slot WHERE game_id = g.id; DELETE game_lease WHERE game_id = g.id
   INSERT analysis_job(game_id, 'queued')
 COMMIT
 ```
 
-Invariant maintained: for every Player and track, `elo = initial + Σ deltas since the latest reset point` (ELO-1); checked by `check_rating_invariant`. `abort_game` is the same without rating work and also sets `content_hash`. `void_unreadable_game` sets `status='voided'`, `termination='voided: unreadable'`, `voided_by=NULL`, `content_hash`, deletes the slots and queues a job (architecture §7.2).
+Invariant maintained: for every Player and track, `elo = initial + Σ deltas since the latest reset point` (ELO-1); checked by `check_rating_invariant`. `abort_game` is the same without rating work and also sets `content_hash`. `void_unreadable_game` sets `status='voided'`, `termination='voided: unreadable'`, `voided_by=NULL`, `content_hash` (of whatever moves are readable, zero moves allowed; never NULL, SF-17), `ended_at` (the void time), deletes the slots and queues a job (architecture §7.2).
+
+**`Voided` applied from a record (Amd 8, D-69, SF-06).** `reset_player` runs before any `Voided` record exists and cannot set the journal sequence. After the holder appends and syncs `Voided`, it passes the record to `apply_records`, whose effect is: set `GAME.journal_seq` to the record's `seq`; only if the row is not yet `voided` (a restore), re-run the void from the record: `status='voided'`, `termination` from `reason` (`voided by reset` or `voided: unreadable`), `voided_by` from `reset_player`, `ended_at` and `content_hash` from the record, slots and leases deleted, job queued. The startup scan applies an unapplied `Voided` the same way. A `Voided` that a repair appends later (a crash between the reset commit and the journal write) takes `ended_at`, `content_hash` and `reset_player` from the `GAME` row, never from `now` (D-67 (iii), D-69). **`GameEnd` before `Voided` (D-67 (v)):** if the row is already `voided` when a `GameEnd` is applied, finalize returns `AlreadyFinal` and the `GameEnd` is superseded by the committed void; a restore skips the pair.
+
+**Order of startup finalize (Amd 8, D-72, BP-012).** When the startup scan finds several `GameEnd` journals whose finalize did not commit, it finalizes them ascending by `GAME.ended_at` of the record, ties by `game_uuid` (the rule of restore, 3.11.10), because two games against the same computer Player change its rating in order.
 
 `reset_player`: inside one `BEGIN IMMEDIATE`, compare the Player's unfinished games with `void_game_ids`; any extra game rolls back and returns `UnlistedUnfinishedGames`. Otherwise set `reset_at`, restore default preferences (passed in), append one reset point per track (`game_id` NULL, before = after = current), and void each listed game (status, termination `voided by reset`, `voided_by`, `ended_at`, `content_hash` from its `VoidSpec`, delete all slot and lease rows of the game, queue a job); counters and ratings are untouched `[OBS §7.2, §7.4]`.
 
@@ -830,7 +858,7 @@ All descriptors opened by this crate are close-on-exec (`File::open`/`OpenOption
 
 *Writing a backup:* create an empty file `0600`, `VACUUM INTO` it on a **read connection** (so writers continue), open the copy read-only and `PRAGMA quick_check`; on failure delete the partial file and report. Automatic backups run after start-up, only when no other live process exists and the newest backup of any kind is older than 24 h (TBD-33 `ESTIMATE`). "Any kind" is SE interpretation Q-SE-19, confirmed by CR-9.2: **any complete backup copy that was verified to open counts as "the newest backup"**, whichever event wrote it (automatic, pre-upgrade, pre-import); a full-data export is not a store backup and does not count. A pre-import copy needs the same open check before it counts. Consequence: right after an upgrade or an import the next automatic backup is not due for 24 h; and a pre-upgrade copy is at the old schema, so restoring it runs the migrate step again (R-ST-6 order: backup, migrate, replay). they keep the newest 3 files named `backups/chess-*.db` and never touch `chess.db.bak-v*` or `chess.db.pre-import-*`. A failure is logged and never stops the program (F-6.15).
 
-*Collecting `journal/done/`:* a done journal for game `g` is deleted only if the newest verified backup contains `g` as a final game with `journal_seq` equal to the journal's last sequence. This implies the architecture's "a backup written after the game's end time" and is stricter, because it also proves the finalize had committed before the copy was taken `[OBS §7.6 Lifecycle]`.
+*Collecting `journal/done/`:* a done journal for game `g` is deleted only if the newest verified backup contains `g` as a final game with `journal_seq` equal to the journal's last sequence. This implies the architecture's "a backup written after the game's end time" and is stricter, because it also proves the finalize had committed before the copy was taken `[OBS §7.6 Lifecycle]`. *Amd 8 (D-69, SF-06):* a voided game satisfies the rule because applying its `Voided` record advances `GAME.journal_seq` to that record's `seq`; without it `done/` would keep reset-voided journals forever. No exemption for voided games is made.
 
 #### 3.11.9 Row IO (DD-ST-022)
 
@@ -842,7 +870,7 @@ All descriptors opened by this crate are close-on-exec (`File::open`/`OpenOption
 
 #### 3.11.10 Restore (DD-ST-021)
 
-As SEQ-ST-03 and architecture §7.6. Order inside the copy: (1) for each retained journal, matched to its game by `game_uuid`: reconcile if the game exists in the copy; if it does not exist and both Players (matched by **uuid**, FIND-ST-01) exist, create it from the `Start` record; otherwise move the journal to `journal/unrestored/`; (2) finalise, in ascending `ended_at`, every game with a `GameEnd`, `Abort` or `Voided` record that is not already final in the copy with the same `journal_seq`; (3) only then insert unfinished-slot rows for games still in progress; a game whose slot is taken by another game goes to `unrestored/` and is named in the report. Finalising before inserting slots avoids false slot conflicts between a game that ended after the backup and a later game of the same Player. The restore message lists games and moves recovered and every journal in `unrestored/` (DAT-5, R-19).
+As SEQ-ST-03 and architecture §7.6. Order inside the copy: (1) for each retained journal, matched to its game by `game_uuid`: reconcile if the game exists in the copy; if it does not exist and both Players (matched by **uuid**, FIND-ST-01) exist, create it from the `Start` record; otherwise move the journal to `journal/unrestored/`; (2) finalise, in ascending `ended_at` (ties by `game_uuid`, D-72), every game with a `GameEnd`, `Abort` or `Voided` record that is not already final in the copy with the same `journal_seq`; a `Voided` record is applied as in 3.11.4 (its `ended_at` and `content_hash` come from the record, not from `now`); the three time totals of a `GameEnd` come from the record (D-63); (3) only then insert unfinished-slot rows for games still in progress; a game whose slot is taken by another game goes to `unrestored/` and is named in the report. Finalising before inserting slots avoids false slot conflicts between a game that ended after the backup and a later game of the same Player. The restore message lists games and moves recovered and every journal in `unrestored/` (DAT-5, R-19).
 
 ### 3.12 Resource viewpoint
 
@@ -892,13 +920,13 @@ Each entity record is brief: the viewpoints above carry the detail. All entities
 | DD-ST-002 `StoreThread` | internal | panic in a command is caught per command and returned as `Internal`; thread restarts the connection once, then every call returns `Unavailable` | single thread, `std::sync::mpsc` unbounded request channel | write connection, backlog | CT-ST-004, CT-ST-007 | `src/thread.rs` |
 | DD-ST-003 `ReadPool` | internal | pool exhausted waits; closed pool returns `Unavailable` | `Mutex<Vec<Connection>>` + condvar inside `spawn_blocking` | 2 connections | CT-ST-005 | `src/readpool.rs` |
 | DD-ST-004 `DataDir` | `resolve(flag, env, default)`, `ensure()` | permissions wrong on an existing directory: warn, never `chmod` (it is the user's) | n/a | directory tree | CT-ST-010, CT-ST-021 | `src/datadir.rs` |
-| DD-ST-005 `Opener` | 3.9.1 | every error path removes this process's heartbeat row and leaves the files as found | open is serial per process | | CT-ST-010, CT-ST-012..019 | `src/open.rs` |
+| DD-ST-005 `Opener` | 3.9.1, volume probe | every error path removes this process's heartbeat row and leaves the files as found; `DurabilityUnsupported{path, errno}` before any write (D-71) | open is serial per process | | CT-ST-010, CT-ST-012..019, CT-ST-085 | `src/open.rs` |
 | DD-ST-006 `Migrator` | 3.11.5 | `BackupFailed`, `SchemaTooNew`, `Busy`; a failed migration rolls back | exclusive transaction | | CT-ST-017..019 | `src/migrate.rs` |
 | DD-ST-007 `Schema` | 3.5.2 | constraint violations map to typed errors | | | UT-ST-030..034 | `migrations/0001_init.sql` |
 | DD-ST-008..012 repos | 3.7.2 | single transaction; rollback on any error | store thread or read pool | | UT-ST-040..056, UT-ST-060 | `src/repo/*.rs` |
 | DD-ST-013 `JobQueue` | 3.11.7 | stale claim handled; worker that lost ownership gets `NotOwner` | compare-and-set | | CT-ST-030..032 | `src/repo/jobs.rs` |
 | DD-ST-014 `ProcessRegistry`/`Lease` | 3.11.6 | stale rows removed; unknown owner reported as such | atomic register+check | | CT-ST-006, 025..027 | `src/repo/coord.rs`, `src/journal/recover.rs` |
-| DD-ST-015 `JournalFormat` | 3.11.1 | decode errors are typed, never panics (fuzzed) | pure | | UT-ST-070..073, fuzz | `src/journal/format.rs` |
+| DD-ST-015 `JournalFormat` | 3.11.1 | decode errors are typed, never panics (random-input property test `proptest`, D-76) | pure | | UT-ST-070..073, UT-ST-081 | `src/journal/format.rs` |
 | DD-ST-016 `JournalWriter` | 3.7.3 | `WriteFailed{DiskFull \| ReadOnly \| Io}`; state of the caller unchanged | exclusive `flock`; internal mutex | one fd | CT-ST-001..003 | `src/journal/writer.rs`, `src/sys.rs` |
 | DD-ST-017 `JournalReader` | 3.11.2 | torn tail dropped silently; damaged middle reported | read-only | | UT-ST-074..079 | `src/journal/reader.rs` |
 | DD-ST-018 `Reconciler` | 3.11.3 | total function | pure | | UT-ST-010..014 | `src/journal/reconcile.rs` |
@@ -932,17 +960,17 @@ Failpoint names (stable, used by kill-at-every-write-point tests): `journal.befo
 
 ## 6 Verification mapping
 
-Levels follow test-strategy.md and architecture §9: unit, property/fuzz, core integration with a real DB file in a temp dir, fault injection at every write step (NFR-2), fixtures per schema version, and multi-process tests. Every test uses an isolated data directory (test-strategy "Determinism"). No test has been written or run `[UNV]`: no code exists.
+Levels follow test-strategy.md and architecture §9: unit, property (random-input; `proptest`, stable toolchain, D-76), core integration with a real DB file in a temp dir, fault injection at every write step (NFR-2), fixtures per schema version, and multi-process tests. Every test uses an isolated data directory (test-strategy "Determinism"). No test has been written or run `[UNV]`: no code exists.
 
 | ID | Level | Purpose | Requirement |
 |---|---|---|---|
 | UT-ST-010 | unit | reconcile: intact journal wins over differing rows; extra DB rows beyond journal removed | NFR-2 |
 | UT-ST-011 | unit | reconcile: damaged middle, runs agree, store longer: store kept | DAT-7 |
-| UT-ST-012 | property (proptest) | reconcile plan is idempotent for arbitrary journals and stores | R-15 |
+| UT-ST-012 | property (proptest) | reconcile plan is idempotent for arbitrary journals and stores. *Amd 8 (D-66):* extended with the example "journal truncated by one acknowledged record (clean end or torn tail), the store holds that record": the stored `MOVE` row is kept, `source = Store`, `damaged` is reported, and applying the plan then reconciling again gives an empty plan | R-15, NFR-2 |
 | UT-ST-013 | unit | clocks from journal, or from `GAME` when `journal_seq` is later | RULE-5 |
 | UT-ST-014 | unit | `Takeback` folding | D-33 |
 | UT-ST-030..034 | unit | each CHECK/UNIQUE of the schema rejects the bad row (result vs status; Training untimed h–c; parameter-set uniqueness on integer `error_permille`; case-sensitive names; slot key) | DAT-3, ENG-2, PLY-6, GAME-4 |
-| UT-ST-035 | unit | `content_hash` is NULL for `in_progress` (CHECK rejects a hash), set by finalize, abort, void and reset; an imported game keeps its hash | TR-5, IF-2 |
+| UT-ST-035 | unit | `content_hash` is NULL for `in_progress` (CHECK rejects a hash) and non-NULL for every terminal status (CHECK rejects a completed, aborted, voided or imported row without one, SF-17); set by finalize, abort, void and reset; a voided game with zero readable moves still has one; an imported game keeps its hash | TR-5, IF-2, SF-17 |
 | UT-ST-036 | unit | `error_permille` outside 0..=1000 is rejected; two profiles differing only by one permille are distinct | TR-6, ENG-2 |
 | UT-ST-037 | unit | `save_variation` with `from_ply` at the game's ply count returns `VariationAnchor`; below it stores one line with `created_at`; no `player_id` column | decision 13, CR-9.4 |
 | UT-ST-038 | unit | API boundary: no method signature, `StoreError` or DTO exposes an integer game or player id (compile-time review plus a grep test) | TR-3 |
@@ -950,12 +978,18 @@ Levels follow test-strategy.md and architecture §9: unit, property/fuzz, core i
 | UT-ST-040..049 | unit | repo transactions roll back on error (register, roster batch, rename) | DAT-7 |
 | UT-ST-050..056 | unit | finalize: rated Strict/Training, K counters per track, self-play and custom start unrated, idempotent repeat, history sums to rating, integer rounding vectors | ELO-1, ELO-2 |
 | UT-ST-060 | unit | row queries apply only structural keys: Player, `started_at >= reset_at`, side, limit; they do **not** filter self-play, custom start or voided games (that predicate is `chess-domain`'s, UT-DOM-091) | UI-2, D-26, D-44 |
-| UT-ST-070..073 | unit/fuzz | journal codec round trip for **every** record kind (`Start` with UUIDs, `white_kind`, `black_kind` and `custom_start`, `Move` with null clocks, `DrawDropped` with `by` and `cause`, `Pause`, `Resume`, `Suspend` and `SuspendResume` with the empty payload `{}`, `GameEnd`, `Abort` and `Voided` each with `content_hash`); per-kind payload field names equal the architecture §7.6 table; `cargo-fuzz` on the decoder: never panics | NFR-3 spirit, SWE-001 §6, TR-4 |
+| UT-ST-070..073 | unit/property (`proptest`) | journal codec round trip for **every** record kind (`Start` with UUIDs, `white_kind`, `black_kind`, `custom_start`, a null `start_fen` for the standard start and **no `started_at`** (SF-16), `Move` with null clocks, `DrawDropped` with `by` and `cause`, `Pause`, `Resume` and `SuspendResume` with the empty payload `{}`, `Suspend` with each `cause` (SF-21), `GameEnd` with `content_hash` and the three time totals and a snake_case `reason` (SF-01, SF-15), `Abort` with `content_hash`, `Voided` with `content_hash` and `ended_at` (SF-05)); per-kind payload field names equal the architecture §7.6 table; unknown `reason`, `VoidReason`, `Suspend.cause`, kind code 0 or 15 to 255, a half-null clock pair, a malformed UUID or `clock_spec` are decode errors (SF-07, SF-10, SF-11, SF-12, SF-14, SF-15, SF-21). Random-input property test (`proptest`, stable, D-76) on the decoder: arbitrary bytes and arbitrary JSON payloads never panic, `Ok` results round-trip, and memory is bounded by the 65 536-byte limit. **Accepted loss (D-76):** no coverage-guided fuzzing, so a decoder fault that only a corpus-guided fuzzer would find can ship | NFR-3 spirit, SWE-001 §6, TR-4, D-76 |
 | UT-ST-074..079 | unit | torn tail variants (short length, short body, bad crc at end) dropped silently; damaged middle resync; wrong header, wrong store id, higher version | DAT-7 |
-| UT-ST-080 | unit | no `StoreError::Display` contains a path or SQL | NFR-9 |
-| CT-ST-001 | component | append returns only after fsync (failpoints `journal.*`) | NFR-2 |
+| UT-ST-080 | unit | no `StoreError::Display` contains a path or SQL (also for `DurabilityUnsupported`) | NFR-9 |
+| UT-ST-081 | unit | CRC-32 ISO-HDLC: the check value of `123456789` is `0xCBF43926` (SF-08); record CRC covers `len` then the body, not the `A5 5A` marker; `header_crc32` covers magic to the end of `store_id`; kind codes of SF-07; a body above 65 536 bytes is refused by the writer and read as damage by the scan (SF-09) | SF-07, SF-08, SF-09 |
+| UT-ST-082 | unit | finalize live and finalize from the journal's `GameEnd` alone (restore path) give the same `GAME` row: all columns compared, including the three time totals (D-63; the store half of FF-3) | D-63, SF-01 |
+| UT-ST-083 | unit | reconcile with `db_seq > last_intact_seq` for a clean end, a torn tail and a damaged middle: stored `MOVE` rows are kept, `source = Store`, damage reported (D-66) | D-66, NFR-2 |
+| UT-ST-084 | unit | the new CHECKs reject the bad row: `custom_start` not equal to `start_fen IS NOT NULL`; `custom_start = 1` with `rated = 1`; one NULL clock of a pair in `MOVE` and in `GAME`; `error_permille > 0` with `error_multipv < 2`; a non-imported game with a NULL player id (self-play uses one id twice); an upper-case or short uuid (SF-02, SF-12, SF-18, SF-19, SF-20) | D-64, D-70 |
+| UT-ST-085 | unit | `apply_records` of `Voided`: sets `journal_seq`; a row not yet `voided` is voided from the record (`ended_at`, `content_hash`, `reset_player`); an already voided row only gets `journal_seq`; the done-journal rule then holds for a reset-voided game (D-69, SF-06) | D-69, SF-05, SF-06 |
+| UT-ST-086 | unit | `void_unreadable_game` with zero readable moves stores a non-NULL hash; `get_game` and `lease_beat` `RowGone` return `content_hash`, `voided_by` and `ended_at` (D-67 (iii), (iv)) | D-67 |
+| CT-ST-001 | component | append returns only after fsync (failpoints `journal.*`); an `ENOTSUP` or `ENOTTY` from `F_FULLFSYNC` at an append is `WriteFailed` and nothing the reader accepts is written (D-71, last sentence) | NFR-2 |
 | CT-ST-002 | component | disk-full / read-only injected into append: `WriteFailed`, nothing accepted by the reader | NFR-2 |
-| CT-ST-003 | component | kill the process at each `journal.*` failpoint; restart; every acknowledged move present, clocks equal last recorded | NFR-2, RULE-5 |
+| CT-ST-003 | component | kill the process at each `journal.*` failpoint; restart; every acknowledged move present, clocks equal last recorded. *Amd 8 (D-65):* extended with a kill between the `Move` record and the `Ended`/`GameEnd` record for each terminal reason: the journal ends with the `Move` only; the store half is that the scan and reconcile return that state unchanged and apply no `GameEnd`; the terminal re-check itself is in `chess-domain` and `chess-app` | NFR-2, RULE-5 |
 | CT-ST-004 | component | two processes write concurrently to one DB (concurrent-access test) | DAT-1, R-3 |
 | CT-ST-005 | component | readers proceed during a long write | R-11 |
 | CT-ST-006 | component | kill -9 of a process that has a live child process: lock is free at once (close-on-exec) | DAT-4, TBD-28 |
@@ -982,8 +1016,11 @@ Levels follow test-strategy.md and architecture §9: unit, property/fuzz, core i
 | CT-ST-081 | component | restore of a pre-upgrade copy runs migrate before journal replay (order backup, migrate, replay) | UR-51, DAT-5 |
 | CT-ST-082 | component | any verified backup (pre-upgrade, pre-import) postpones the 24 h automatic backup; a full-data export does not | Q-SE-19, DAT-5 |
 | CT-ST-083 | component | untimed game: null clocks in `Move` and `Clock` records survive append, scan, reconcile and restore | TR-4 |
+| CT-ST-084 | component | several pending `GameEnd` journals at startup are finalized ascending by `ended_at`, ties by `game_uuid`; the rating of a computer Player equals the in-order result (D-72, BP-012) | D-72 |
+| CT-ST-085 | component | `ENOTSUP` and `ENOTTY` injected into the open probe (`FaultPlan`): `open` returns `DurabilityUnsupported{path, errno}`, writes no heartbeat row, no database and no journal, and removes the scratch file; any other probe error is `Unavailable` (D-71) | D-71, NFR-2 |
+| CT-ST-086 | component | restore replays a reset-voided journal (`Voided` with `ended_at`) over a backup taken before the reset: the copy gets the same `ended_at`, `content_hash` and `voided_by` as the live reset; the `GameEnd`-before-`Voided` pair is skipped (D-67 (v), D-69) | D-67, D-69 |
 
-Coverage target for `reconcile`, `format`, `reader` and the finalize repo functions: at least 90 % line coverage, plus mutation testing (`cargo-mutants`) on `reconcile` and finalize `ESTIMATE` target, proposed here; test-strategy requires mutation testing only for Elo and mode policy.
+Coverage target for `reconcile`, `format`, `reader` and the finalize repo functions: at least 90 % line coverage (measured with `cargo-llvm-cov`, D-76), plus mutation testing (`cargo-mutants`) on `reconcile` and finalize `ESTIMATE` target, proposed here; test-strategy requires mutation testing only for Elo and mode policy.
 
 ## 7 Findings and open items
 
@@ -1018,6 +1055,17 @@ Version 0.2 applies the rulings of the architect triage approved by Brian Prasch
 | OQ-ST-004 | The D-7 spike: whether the standard library (`File::lock`, a full sync on macOS) is enough, or `rustix`/`libc` is needed | Software engineer, at implementation | G1 |
 | OQ-ST-005 | Whether the apply backlog and heartbeat refresh periods need a different value once measured (BM-ST-01, BM-ST-02) | Software engineer | G0 |
 
+### 7.3 Findings of version 0.4 (alignment with Amendment 8)
+
+These are points where the architecture text leaves a choice or two documents differ. They are findings for the architect; this SDD records the choice it made and does not edit the architecture.
+
+| ID | Sev | Finding | This SDD's choice | Owner |
+|---|---|---|---|---|
+| XC-ST-A8-1 | Minor | D-67 (iii) says the live-elsewhere session reads `content_hash` and `voided_by` "added to `get_game` or to `LeaseBeat`" | Both: `RowGone` carries `voided_by`, `content_hash`, `ended_at`; `get_game` returns the full row. The app SDD must read one of them; its choice is not made here | System architect to pick one |
+| XC-ST-A8-2 | Minor | SF-17 requires a hash on every terminal row including `imported`; ASM-9 (that an imported row always gets one) is still open | The CHECK is written as approved. An import path that cannot supply a hash would fail the CHECK | System architect (ASM-9); import design in the app SDD |
+| XC-ST-A8-3 | Minor | Architecture §7.1 lets the volume probe use `store.id` or a scratch file | Scratch file, removed after the probe; either is allowed | Implementation |
+| XC-ST-A8-4 | Minor | The architecture says the `Voided` DB effect for a restore re-runs the void "from `reason`, `reset_player`, `ended_at`, `content_hash`" but does not say what the restore does for the unlisted columns (slots, leases, job) | The same as the live void (3.11.4); stated here as a design choice | System architect (desk review) |
+
 ## 8 Assumptions and not analyzed
 
 | ID | Assumption | Validation |
@@ -1025,7 +1073,7 @@ Version 0.2 applies the rulings of the architect triage approved by Brian Prasch
 | ASM-ST-1 | `chess-domain` exports `EloCalc` with the shape in IFR-ST-03 (`rating_track`, `settle`, per SDD-chess-domain IFP-DOM-4) and the value types `GameId`, `PlayerId`, `Mode`, `Matchup`, `Track`, `GameResult` named in 3.4. The store uses its own `StoredSide` and does not name `chess-rules` (TR-1.3, ED-8 rejected) | Confirm names against SDD-chess-domain v0.2 before implementation |
 | ASM-ST-2 | File names of pre-import copy and the backup collision suffix | FIND-ST-08 |
 | ASM-ST-3 | Start-up cost (version probe, `quick_check`, journal scan) fits the CLI budget of 1 s on the baseline Mac | BM-ST-02 at implementation step 2 |
-| ASM-ST-4 | `fcntl(F_FULLFSYNC)` is supported on the data directory's volume (APFS). On `ENOTSUP` the writer falls back to `sync_all` and logs once | CT-ST-001 on the development Mac; the fallback weakens NFR-2 and should be an owner decision |
+| ASM-ST-4 | `fcntl(F_FULLFSYNC)` is supported on the data directory's volume (APFS). **Amd 8 (D-71, BP-014; replaces the earlier fallback to `sync_all`):** the open probe refuses a directory where the call fails with `ENOTSUP` or `ENOTTY` and returns `DurabilityUnsupported{path, errno}`; there is no fallback and no "continue anyway" | CT-ST-001 and CT-ST-085 on the development Mac; that the default directory on the internal APFS volume passes is `[UNV]` (the D-7 spike, OQ-ST-004) |
 | ASM-ST-5 | SQLite behaviours recalled, not re-read here: `VACUUM INTO` needs an absent or empty target and cannot run in a transaction; DDL is transactional; WAL and shm files take the database file's mode | Check against the bundled SQLite's documentation when implementing `[UNV]` |
 | ASM-ST-6 | Heartbeat values: process refresh 10 s, claim lease 10 s, lease row 2 s, process staleness 30 s (XC-16 and this document, all `ESTIMATE`) | Unit tests inject the clock; measure at implementation; OQ-ST-001 |
 | ASM-ST-7 | The standard library may offer `File::lock` and a full sync on macOS (D-7) | The 30-minute spike, OQ-ST-004 `[UNV]` |
@@ -1043,15 +1091,18 @@ The G2 and G3 decisions behind this design were approved by Brian Prascher on 20
 | Concrete `Store`, UUID identity, statistics rows, `roster_indexes()` (replaces `next_roster_index`, ruling 3, D-46) | G2 | Approved as decisions 2, 3, 6, 7 (2026-10-31); `roster_indexes()` by Brian Prascher's ruling 3 (option C) the same day | Brian Prascher |
 | New catalogue codes (FIND-ST-04, 09), startup order, `spawn_blocking` journal I/O | G1/G2 | Accepted in the triage (UR-36, UR-51, UR-05) and architecture §5.5 | Brian Prascher / system-architect agent |
 | `content_hash` carried in `GameEnd`, `Abort`, `Voided` and `VoidSpec`; exact payload fields per kind, including `DrawDropped{by, cause}`, empty `Pause`/`Resume`/`Suspend`/`SuspendResume`, and `Start` with `white_kind`, `black_kind`, `custom_start` (OQ-ST-002) | G3 | **Decided** (ruling 1, ruling 2, D-41, D-42; Brian Prascher 2026-10-31). The seven flags of architecture §7.6 remain for the Review Board | Brian Prascher |
+| **Amendment 8 stored-format batch** (`custom_start`, `GameEnd` time totals, `Voided.ended_at`, `Suspend.cause`, kind codes, CRC-32 ISO-HDLC, 65 536-byte limit, text forms, snake_case reason codes, `sha256:v1:<hex>`, no `Start.started_at`, DDL CHECKs; SF-01 to SF-05, SF-07 to SF-21) | G3 | **Approved** by Brian Prascher at G-2, 2026-11-04 (architecture D-63 to D-70). This text carries it; not desk-reviewed | Brian Prascher |
+| Amendment 8 store-internal items (D-66 reconcile clause, SF-06 `Voided` DB effect, SF-22, D-72 startup order, D-71 probe behaviour) | G1 | Confirmed by Brian at G-2 as a batch; the desk review that is part of the OQ-16 closing condition **has not been held** | System-architect agent (desk review) with the systems engineer |
+| `DurabilityUnsupported` additive catalogue code; D-67 (iii) and (iv) (what the store returns and what the app passes) | G2 | Approved at G-2, 2026-11-04 | Brian Prascher |
 | Process staleness threshold value (OQ-ST-001); imported nested variations (OQ-ST-003); dependency versions and the D-7 spike (OQ-ST-004) | G0 / G3 / G1 | **Not decided** | System architect; Brian Prascher for OQ-ST-003 |
 
 ## 10 Review and approval record
 
 Reviewer pass: **not performed.** This is a draft written by the Engineer stance only. A Reviewer pass (`code-review-conformance`, design review) is required before any approval request.
 
-Approval record: none for this document. Status PENDING. The SDD has not been reviewed by the System Architect or the Systems Engineer. The decisions it implements are approved (section 9).
+Approval record: none for this document. Status PENDING. The SDD has not been reviewed by the System Architect or the Systems Engineer. The decisions it implements are approved (section 9). **OQ-16 stays open:** version 0.4 is the alignment text (chess-a0r.1.8); the independent desk review by the system-architect and the systems engineer (separate invocations from the author) has not been held. D-77: no `chess-store` code of any kind starts before it passes.
 
-Mermaid: `node validate-mermaid.mjs docs/design/SDD-chess-store.md` from the `swe-governance` skill `[RAN 2026-10-30 -> 7 block(s) checked, 0 failed]` for v0.1; v0.2 `[RAN 2026-10-31 -> 7 block(s) checked, 0 failed]`. v0.3 `[RAN 2026-11-01 -> 7 block(s) checked, 0 failed]` (no diagram was changed). A parse pass proves syntax, not readability.
+Mermaid: `node validate-mermaid.mjs docs/design/SDD-chess-store.md` from the `swe-governance` skill `[RAN 2026-10-30 -> 7 block(s) checked, 0 failed]` for v0.1; v0.2 `[RAN 2026-10-31 -> 7 block(s) checked, 0 failed]`. v0.3 `[RAN 2026-11-01 -> 7 block(s) checked, 0 failed]` (no diagram was changed). v0.4 `[RAN 2026-11-04 node validate-mermaid.mjs docs/design/SDD-chess-store.md -> 7/7 mermaid blocks parsed OK]` (no diagram was changed; the volume probe is described in text under 3.9.1). A parse pass proves syntax, not readability.
 
 ## 11 Change log
 
@@ -1062,3 +1113,4 @@ Mermaid: `node validate-mermaid.mjs docs/design/SDD-chess-store.md` from the `sw
 | 0.3 DRAFT | 2026-10-31 | Applies architecture amendment 7 addendum A (Brian Prascher's rulings on the joint review, G0 text edits, nothing self-approved). 3.11.1 journal payloads rewritten to equal architecture §7.6: `content_hash` in `GameEnd`, `Abort` and `Voided`; `Start` gains `white_kind`, `black_kind`, `custom_start`; `Pause`, `Resume`, `Suspend`, `SuspendResume` have an empty payload; `DrawDropped{by, cause}`; domain names `Ended` and `Aborted`; `reset_player` (FIND-JR-001, -003, -004). OQ-ST-002 RESOLVED. `roster_indexes() -> Vec<u32>` replaces `next_roster_index`; no `roster_class` column; `RosterIndexTaken` retry sits with `PlayerService` (FIND-JR-008, OQ-21). Codec cited as DD-APP-18, not DD-APP-09 (FIND-JR-004). `player_stats` path wording removed (FIND-JR-018). OQ-ST-001 re-stated: architecture §4.8 confirms the threshold is the store's value; 30 s stays an `ESTIMATE` |
 | 0.3 DRAFT (rev. 2) | 2026-11-01 | Test-ID references corrected so every cited ID is defined (UT-ST-001, UT-ST-020, CT-ST-011, UT-ST-057..059 removed; FIND-JR3-009). No other store change from the rulings of 2026-11-01 (D-59 touches no stored format) |
 | 0.3.1 DRAFT | 2026-11-01 | G0. Applies architecture addendum B and C: no store change (D-60 and D-62 write the same `GAME.eco` and `GAME.opening_name` columns; no journal change). Version label unified. Cites D-60 (ECO import refinements), D-61 (`EngineFactory` owned by `chess-app`) and D-62 (PGN duplicates and the ECO question stay two steps; OQ-23 closed). Nothing is approved; no code exists |
+| 0.4 DRAFT | 2026-11-04 | G0 (text). Carries architecture **Amendment 8** (D-63 to D-73; stored-format batch SF-01 to SF-22; approved by Brian Prascher at G-2, 2026-11-04) into the store design, and applies D-76 to the tests. DDL: `custom_start` with its two CHECKs (D-64, SF-02), hash CHECK `(status = 'in_progress') = (content_hash IS NULL)` (SF-17), clock-pair CHECKs on `GAME` and `MOVE` (SF-18), `COMPUTER_PROFILE` CHECK (SF-19), non-imported games have both player ids (SF-20), lower-case 36-character uuid CHECKs (SF-12), `start_fen` and `clock_spec` and `content_hash` comments (SF-03, SF-11). Journal 3.11.1: kind codes 1 to 14 (SF-07), CRC-32 ISO-HDLC with check value `0xCBF43926` and what it covers (SF-08), 65 536-byte maximum body (SF-09), `VoidReason` strings (SF-10), `clock_spec` form (SF-11), UUID form (SF-12), `Start.start_fen` null for the standard start and no `Start.started_at` (SF-13, SF-16), half-null clock pair is a decode error (SF-14), snake_case `GameEnd.reason` codes (SF-15), `GameEnd` time totals (D-63, SF-01), `Voided.ended_at` and its DB effect (D-69, SF-05, SF-06), `Suspend.cause` (SF-21), `DrawDropped.by` mismatch logged (SF-22); the "times not carried" and "`Voided` has no `ended_at`" text is withdrawn. 3.11.2 and 3.11.3: `db_seq > last_intact_seq` is damage, not a torn tail (D-66). 3.11.4: times from the request; `Voided` applied from a record; startup finalize order (D-72). 3.7.2: `get_game` and `LeaseBeat::RowGone` return `content_hash`, `voided_by`, `ended_at` (D-67); `void_unreadable_game` hashes zero or more moves. 3.9.1 and ASM-ST-4: the open path refuses a volume without `F_FULLFSYNC` with `DurabilityUnsupported` (D-71). 3.11.8: done-journal rule is met by a voided game. Tests: UT-ST-012, 035, 070..073, CT-ST-001, 003 changed; UT-ST-081 to 086 and CT-ST-084 to 086 added; `cargo-fuzz` removed and the decoder test is a `proptest` random-input test (D-76; the loss is stated). `cargo-llvm-cov` named as the coverage tool. No ID renumbered. **Not approved, not desk-reviewed; OQ-16 stays open (D-77).** |

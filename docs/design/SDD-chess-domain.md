@@ -3,14 +3,14 @@
 | Field | Value |
 |---|---|
 | Document | docs/design/SDD-chess-domain.md |
-| Version | **0.3.1 DRAFT** |
-| Date | 2026-10-31 (v0.1: 2026-10-30) |
+| Version | **0.4 DRAFT** |
+| Date | 2026-11-04 (v0.3.1: 2026-11-01; v0.1: 2026-10-30) |
 | Style | IEEE 1016-style (viewpoints and design entities). No conformance to a numbered edition is claimed |
 | Owner | Software engineer role (Claude), for Brian Prascher |
-| Approver | **Pending.** Design-only work (documents, no code) is gate **G0** (SWE-001 §3), so no approval is needed to hold this draft. The rulings applied in v0.2 were approved by Brian Prascher on 2026-10-31 (SDD-architect-triage section 5, decisions 1 to 13; requirements Amendment 7, CR-9.1); this revision applies them as text and adds no new decision. Implementation inside the crate with the §3.2 edges and §5.7 contracts unchanged is G1 (system-architect agent, desk review). Items in section 10 that remain open and touch an edge, a dependency, a journal record kind or a protocol are G2 (Brian Prascher). No approval of this SDD itself is claimed |
-| Status | DRAFT v0.3. Nothing is implemented, built or run. Rust signatures are design-level sketches, not compiled code `[UNV]` |
+| Approver | **Pending.** Design-only work (documents, no code) is gate **G0** (SWE-001 §3), so no approval is needed to hold this draft. The rulings applied in v0.2 were approved by Brian Prascher on 2026-10-31 (SDD-architect-triage section 5, decisions 1 to 13; requirements Amendment 7, CR-9.1); this revision applies them as text and adds no new decision. Implementation inside the crate with the §3.2 edges and §5.7 contracts unchanged is G1 (system-architect agent, desk review). Items in section 10 that remain open and touch an edge, a dependency, a journal record kind or a protocol are G2 (Brian Prascher). No approval of this SDD itself is claimed. **Version 0.4 carries architecture Amendment 8 (D-63 to D-73, SF-01 to SF-22; approved by Brian Prascher at G-2 on 2026-11-04) into the text; it has had no desk review, and OQ-16 stays open until the system-architect and the systems engineer have reviewed the batch in the SDDs.** The domain parts that Amendment 8 marks G2 (`StartPosition`, the terminal re-check on resume, `Suspend.cause`, the SAN policy of replay) were approved by Brian as decisions, not as this text |
+| Status | DRAFT v0.4. Nothing is implemented, built or run. Rust signatures are design-level sketches, not compiled code `[UNV]` |
 | Blocks (architecture §2.2 names) | `chess-app core :: Policy` and `chess-app core :: Game domain` (crate `chess-domain`, pure): `Game`, state machine, `Clock`, `EloCalc`, `RosterGen`, `VariationTree`, `EcoTable`, `BoardGrid`, stats aggregation |
-| Upstream baselines read | architecture.md v1.0 amendment 7 (D-38 to D-50, §3.2, §5.7, §7.6, FF-1 to FF-8); functional_decomp.md v1.0; requirements.md v1.0 Amendment 7 (CR-9); test-strategy.md 1.0 Amendment 6; SWE-001 v1.1; [SDD-architect-triage](SDD-architect-triage.md) (approved 2026-10-31); [SDD-SE-desk-answers](SDD-SE-desk-answers.md) (resolved 2026-10-31) |
+| Upstream baselines read | architecture.md v1.0 amendment 8 of 2026-11-04 (D-63 to D-77, §7.2, §7.6, §11.4) in addition to amendment 7 (D-38 to D-50, §3.2, §5.7, §7.6, FF-1 to FF-8); functional_decomp.md v1.0; requirements.md v1.0 Amendment 7 (CR-9); test-strategy.md 1.0 Amendment 6; SWE-001 v1.1; [SDD-architect-triage](SDD-architect-triage.md) (approved 2026-10-31); [SDD-SE-desk-answers](SDD-SE-desk-answers.md) (resolved 2026-10-31) |
 | Sibling SDDs | [SDD-chess-rules](SDD-chess-rules.md), [SDD-chess-store](SDD-chess-store.md), [SDD-chess-engine](SDD-chess-engine.md), [SDD-chess-app](SDD-chess-app.md), [SDD-chess-server](SDD-chess-server.md), [SDD-chess-cli](SDD-chess-cli.md), [SDD-ui](SDD-ui.md), [SDD-desktop-tauri](SDD-desktop-tauri.md) |
 
 Evidence tags follow `swe-governance` §6: `[OBS file:line]` read in this session, `[INF]` inferred, `[UNV]` not verified, `ESTIMATE` a design value without a measurement. There is no SRS in the repository (SWE-001 "Upstream artifacts"), so the trace runs from requirement and function IDs of the upstream documents straight to design entities `DD-DOM-nnn`. Line numbers in `[OBS architecture.md:n]` refer to the amendment 6 text read for v0.1 and may have shifted in amendment 7 `[UNV]`; re-anchor them at the next full read.
@@ -24,6 +24,7 @@ Evidence tags follow `swe-governance` §6: `[OBS file:line]` read in this sessio
 | 0.3 DRAFT | 2026-10-31 | G0 text edits applying the joint-review rulings ([SDD-v0.2-joint-review](SDD-v0.2-joint-review.md) section 7; requirements CR-9.8 to CR-9.12; architecture amendment 7 addendum A, D-41, D-46, D-50, D-51, D-52, D-58). No new decision. **FIND-JR-003, FIND-JR-004:** the `Fact` table (3.11.1) is rewritten to the architecture §7.6 table, which is authoritative: every payload field the record has is a `Fact` field (`DrawDropped{by, cause}`, `Start` gains `white_kind`, `black_kind`, `custom_start`, `Clock` carries `running_side`); the variant names `Ended` and `Aborted` stay, and the table names the journal kinds `GameEnd` and `Abort`; the `Voided` field is `reset_player`. **FIND-JR-002 (domain part), D-58, OQ-DOM-007 closed:** `Game::decide` is the only emitter of `DrawDropped`; crash recovery is `decide(Suspend)` then `decide(SuspendResume)`. **FIND-JR-008, D-46, OQ-DOM-006 closed:** `first_k_after(category, stored: &[u32])` takes every stored `roster_index`; the store computes nothing (the name `next_roster_index` is dropped). **CR-9.11:** the "standard start only" restriction on `EcoTable::observe` and `eco_for_import` is removed. **CR-9.8, CR-9.11, OQ-DOM-005 closed** as far as they go; **CR-9.12, CR-9.13, D-59 (ACCEPTED; OQ-ECO-1 to OQ-ECO-3 decided):** `eco_for_import` is replaced by an outcome type `EcoImportOutcome` (agree, mismatch, tag only, table only, neither) and a resolve step (IFP-DOM-6, 3.11.9; G1 for this design as architecture §5.8 states); new tests UT-DOM-071, 112, 113. OQ-DOM-009 records the remaining points. **FIND-JR-005, OQ-DOM-008 closed:** `Orientation` is in the curated list (architecture §3.2, §5.7). **FIND-JR-010:** the "`RngFactory`" wording is removed (no such type exists). **OQ-DOM-004** narrowed (D-50). Finding prefixes are unchanged (CR-9.9). |
 | 0.3 DRAFT (addendum) | 2026-11-01 | G0. User rulings of 2026-11-01 and [SDD-v0.3-joint-review](SDD-v0.3-joint-review.md). **FIND-JR3-006:** ECO tag normalisation (`normalize_eco_tag`; A00 to E99; malformed counts as no tag; stored code normalised; name empty when the PGN's ECO is kept) and ply-0 lookup of a custom start; OQ-DOM-009 RESOLVED. **FIND-JR3-005 (domain part):** `Mismatch` needs no tag name. **FIND-JR3-007:** IFP-DOM-6 prints only `classify_import`, `resolve`, `EcoChoice`; `eco_for_import` is retired. **FIND-JR3-008:** the CR-9.11 ECO test is renamed UT-DOM-114 (UT-DOM-111 stays the `Personality` test). **FIND-JR3-013:** `FIND-RUL-1` cited as `FIND-RUL-001`. |
 | 0.3.1 DRAFT | 2026-11-01 | G0. Applies architecture addendum B and C: `normalize_eco_tag`, ply-0 lookup and `classify_import`/`resolve` already follow D-60; no domain change from D-62. Version label unified. Cites D-60 (ECO import refinements), D-61 (`EngineFactory` owned by `chess-app`) and D-62 (PGN duplicates and the ECO question stay two steps; OQ-23 closed). Nothing is approved; no code exists |
+| 0.4 DRAFT | 2026-11-04 | G0 (text). Carries architecture **Amendment 8** into the domain design (approved by Brian Prascher at G-2, 2026-11-04; no desk review; OQ-16 open). **D-64, SF-02, SF-13:** `StartPosition = Standard \| Custom(Fen)` defined once (3.11.6 and DD-DOM-005), the standard-start test compares all six FEN fields, the constructor normalises, `custom_start` is derived from it. **SF-15:** the `EndReason` table gains the journal reason codes (3.5). **SF-10:** `VoidReason` journal strings `reset` and `unreadable`. **SF-16:** `Fact::Start` keeps `started_at` but the journal record has no `started_at` field; it is the record's `wall_ms` (3.11.1). **SF-21:** `Fact::Suspend` and `decide(Suspend)` carry `cause: SuspendCause` (`Detach`, `Shutdown`, `Recovered`). **D-63, SF-01:** the three time totals are not in the `Fact`; the domain states the accrual rule once (new 3.11.13, `TimeTotals`). **D-65 part 1:** a pure terminal check on the replayed position, reported by `replay`, and a command that emits the missing `Ended` (3.11.1, 3.11.2). **D-72 (BP-013):** a SAN mismatch with a legal `uci` is a logged warning, not a replay error. **SF-22:** a `DrawDropped.by` mismatch is logged and replay continues. **D-67 (v), D-69:** T18 also accepts `Voided` after `Ended` when replaying a journal (3.10). **D-64:** `StatsRow.custom_start` and `rating_track` use the one definition. **F6 (D-76 consequence):** `cargo tree -e normal,build` in 3.4 and CT-DOM-003. **P10 (rest):** the `uuid`, `serde` and `thiserror` lookup note (3.4, 11.4). **L5 (D-76):** `FZ-DOM-001` keeps its ID and becomes a `proptest` random-input property test; `cargo-fuzz` removed; the accepted loss is stated. New tests UT-DOM-115 to UT-DOM-122. No ID renumbered. Not approved, not desk-reviewed |
 
 ---
 
@@ -47,7 +48,7 @@ Out of scope (owned elsewhere): move legality, SAN, FEN, PGN ([SDD-chess-rules](
 | Functions supported (allocated to another block, decided or computed here) | F-1.1 (starting ratings from category), F-1.6 (roster generation), F-1.8.3 (view window), F-2.1.1 and F-2.1.2 (setup rules, slot holders), F-2.2.3 (the apply decision), F-2.4.2 (flag result), F-2.4.3 (freeze and restore clocks), F-2.5.1 to F-2.5.5 (takeback, draw offer, resign, pause/step, abort), F-2.6.1, F-2.6.2, F-2.6.4, F-2.6.5, F-2.6.6 (suspend, resume by replay, void, finalise inputs, per-game data), F-3.3 (policy check for the gateway), F-4.5 (aggregation), F-5.2 and F-5.3 (what-if tree), F-7.1.1 and F-7.3.1 (board grid and stats inputs for the CLI) | Supporting |
 | Requirements, primary | PLY-5, RULE-2, RULE-3, RULE-4, ELO-1, ELO-2, PLY-4 (category label, roster), ENG-2 (parameter generation), ANA-2 (variation tree, co-primary with `AnalysisService`), CLI-2 (board orientation and labels; rendering by `chess-cli` is the other half), UI-3 (CLI styles) `[OBS architecture.md:1528,1534-1536,1548-1549,1527,1542,1556,1559,1552]` | |
 | Requirements, supporting | PLY-1, PLY-2, PLY-7, GAME-1, GAME-2, GAME-3, GAME-4, RULE-1, RULE-5, RULE-8, ENG-4, ENG-5, ANA-1, DAT-3 (time accounting, ECO), UI-2, UI-5, CLI-1, NFR-2, NFR-3 | |
-| Decisions | D-13 (actor owns the `Game`), D-14, D-15, D-20, D-26, D-27, D-28, D-30, D-33, D-34, D-35, D-37 (information only); D-38 (`BoardGrid::from_fen`), D-40 (UUID ids), D-41 (journal contract), D-43 (`Personality`), D-44 (statistics), D-46 (roster and pinned range), D-47 (`uuid`), D-50 (wire derives) | |
+| Decisions | D-13 (actor owns the `Game`), D-14, D-15, D-20, D-26, D-27, D-28, D-30, D-33, D-34, D-35, D-37 (information only); D-38 (`BoardGrid::from_fen`), D-40 (UUID ids), D-41 (journal contract), D-43 (`Personality`), D-44 (statistics), D-46 (roster and pinned range), D-47 (`uuid`), D-50 (wire derives); **Amendment 8:** D-63 (time totals), D-64 (`StartPosition`, custom start), D-65 (terminal re-check on resume), D-67 (voided after ended), D-68 (`Date` rule), D-69, D-70 (SF-15 reason codes, SF-21 `Suspend.cause`, SF-22), D-72 (SAN policy), D-75 (ECO lookup lives in `chess-rules`), D-76 (`proptest`, no fuzzer) | |
 | Risks | R-2, R-7, R-15, R-17, R-18, R-20 | |
 
 ### 1.4 Definitions
@@ -217,6 +218,12 @@ classDiagram
       +start StartPosition
       +clock Option_ClockSpec
     }
+    class StartPosition {
+      Standard
+      Custom_Fen
+      +from_fen(Fen) StartPosition
+      +is_custom() bool
+    }
     class Clock {
       +spec Option_ClockSpec
       +remaining_ms two_sides
@@ -244,6 +251,7 @@ classDiagram
     class VariationTree
     class BoardGrid
     Game --> GameSetup
+    GameSetup --> StartPosition
     Game --> Clock
     Game --> Fact
     Game --> Outcome
@@ -264,13 +272,13 @@ classDiagram
 | out | `chess-rules` | yes `[OBS architecture.md:316]` | `Position`, `Move`, `Fen`, `PositionKey`, `PgnNode`, `Termination`. Re-exports nothing (TR-1.3) |
 | out | `serde` 1.0.229 (derive) | admitted in §3.4 (D-47, review row D-3) | `GameSetup`, `Fact`, `Outcome`, `Personality`, `ClockSpec` are received in protocol commands. **They are not written to the journal in this form:** the journal uses the store's own DTOs, and `JournalCodec` in `chess-app` converts between `Fact` and the record (TR-4, D-41). Use `deny_unknown_fields` on externally supplied shapes (SWE-001 §6 row SEC/SER) |
 | out (optional) | `ts-rs`, feature `ts` (version in the §3.4 baseline), enabled by `chess-app` | D-50 | Derives the TypeScript type for exactly `GameSetup`, `Mode`, `Matchup`, `ClockSpec`, `Category` and `Preferences`. A derive macro adds no I/O, so the crate stays pure. No exposed `i64` or `u64` field can exceed 2^53 (timestamps in milliseconds are fine). `Preferences` has no definition in this SDD yet (OQ-DOM-004: ownership is the domain's by D-50; the field list is open) |
-| out | **`uuid` with the `v5` feature** | admitted in principle (D-47, review row D-5); version and feature set `[UNV]`, looked up before it enters §3.4 | `GameId(Uuid)`, `PlayerId(Uuid)` and the UUIDv5 roster identities (D-34, D-46). FIND-DOM-003 RESOLVED in principle |
-| out | `thiserror` 2.0.21 | yes, architecture §8 | |
+| out | **`uuid` with the `v5` feature** | admitted (D-47, review row D-5); looked up on 2026-11-04: `uuid` 1.29.0 with feature `v5` (`serde` per lookup F8), see [dependency-lookup-step1.md](../engineering/dependency-lookup-step1.md) F8, P1 and architecture §3.4 `[OBS lookup file; the registry result itself is not re-run here]` | `GameId(Uuid)`, `PlayerId(Uuid)` and the UUIDv5 roster identities (D-34, D-46). FIND-DOM-003 RESOLVED |
+| out | `thiserror` 2.0.21 | yes, architecture §8; looked up with the step-1 crates (lookup P2) | |
 | in | `chess-app` (`GameSession`, `GameSetupService`, `PlayerService`, `EngineGateway`, `StatsService`, `JournalCodec`), `chess-store` (finalize, journal replay) | yes | |
 | in (none) | `chess-cli` (`BoardGrid`) | no edge, by rule (TR-1.1) | Reached through the curated `chess-app` re-exports: `BoardGrid`, `BoardStyle`, `BoardView`, `Cell`, `Shade`, `Highlight`, `Orientation` (3.8) |
 | none | `chess-engine` | no edge in either direction (D-43, TR-12) | FIND-DOM-005 RESOLVED |
 
-`chess-engine` has no edge to `chess-domain` `[OBS architecture.md:314]`, so it cannot use the `Rng` trait defined here. The error pick receives a plain `u64` seed computed by `error_pick_seed` (3.7, IFP-DOM-10), and the engine keeps its own `SplitMix64` copy with shared test vectors (FF-8). No `tokio`, `rusqlite`, `tracing`, `rand` or clock crate may appear in this crate's dependency tree; a CI `cargo tree` assertion can check it `[UNV: not written]`.
+`chess-engine` has no edge to `chess-domain` `[OBS architecture.md:314]`, so it cannot use the `Rng` trait defined here. The error pick receives a plain `u64` seed computed by `error_pick_seed` (3.7, IFP-DOM-10), and the engine keeps its own `SplitMix64` copy with shared test vectors (FF-8). No `tokio`, `rusqlite`, `tracing`, `rand` or clock crate may appear in this crate's dependency tree. A CI `cargo tree -e normal,build -p chess-domain` assertion checks it `[UNV: not written]`. The edge kinds matter: with `proptest` as a dev-dependency, plain `cargo tree` shows `rand` 0.10.3, while `-e normal,build` shows no `rand` `[RAN dependency-lookup-step1.md E11]` (architecture §11.4.10 item F6). `proptest` is a dev-dependency only (D-76).
 
 ### 3.5 Information viewpoint
 
@@ -280,7 +288,7 @@ The crate owns no table. It defines the in-memory and wire shapes below. Column 
 
 | Domain shape | Persisted as | Stable text / encoding defined here |
 |---|---|---|
-| `GameSetup` | `GAME` header columns (`matchup`, `mode`, `start_fen`, `clock_spec`; the store writes its internal integer row keys for the two Players) and the journal `Start` record, which carries `white_uuid` and `black_uuid`; `GameSetup` converts to it by field copy (TR-3) | `Matchup`: `hh`, `hc`, `cc`; `Mode`: `training`, `strict`; `clock_spec`: `base+inc` in seconds |
+| `GameSetup` | `GAME` header columns (`matchup`, `mode`, `custom_start`, `start_fen` (NULL exactly for `StartPosition::Standard`, D-64), `clock_spec`; the store writes its internal integer row keys for the two Players) and the journal `Start` record, which carries `white_uuid` and `black_uuid`; `GameSetup` converts to it by field copy (TR-3) | `Matchup`: `hh`, `hc`, `cc`; `Mode`: `training`, `strict`; `clock_spec`: `<base>+<inc>` in whole seconds, decimal, no sign, no spaces, no leading zeros (`0` alone is allowed), `null` when untimed (SF-11); `ClockSpec::to_spec_text` and `from_spec_text` are the only converters and reject other forms |
 | `GameId`, `PlayerId` | journal, protocol, export | UUID text; the store's integer row keys never cross its API (D-40) |
 | `GameStatus` | `GAME.status` | `in_progress`, `completed`, `aborted`, `voided`, `imported` (the last is store-only) |
 | `GameResult` | `GAME.result` | `1-0`, `0-1`, `1/2-1/2`; null for aborted and voided |
@@ -294,21 +302,23 @@ The crate owns no table. It defines the in-memory and wire shapes below. Column 
 
 `EndReason` strings (confirmed as SE interpretation Q-SE-5, CR-9.2; they travel in `games.json` and are part of format version 1, to be frozen before the first release; the upstream names only "voided by reset", "voided: unreadable", "resignation", "aborted" and "draw agreed" `[OBS architecture.md:1115, requirements.md:601,433]`):
 
-| `EndReason` | `GAME.termination` | PGN `Termination` (via `pgn_termination()`) |
-|---|---|---|
-| `Checkmate` | `checkmate` | `normal` |
-| `Stalemate` | `stalemate` | `normal` |
-| `InsufficientMaterial` | `insufficient material` | `normal` |
-| `ThreefoldRepetition` | `threefold repetition` | `normal` |
-| `FiftyMoveRule` | `fifty-move rule` | `normal` |
-| `TimeForfeit` (loss on the clock) | `time forfeit` | `time forfeit` |
-| `TimeoutOpponentCannotMate` (draw on the clock) | `time forfeit, opponent cannot mate` | `normal` |
-| `Resignation` | `resignation` | `normal` |
-| `DrawAgreed` | `draw agreed` | `normal` |
-| `Aborted` | `aborted` | `abandoned` |
-| `VoidedByReset` | `voided by reset` | `abandoned` |
-| `VoidedUnreadable` | `voided: unreadable` | `abandoned` |
-| (unfinished) | null | none |
+| `EndReason` | `GAME.termination` | PGN `Termination` (via `pgn_termination()`) | Journal `GameEnd.reason` code (SF-15) |
+|---|---|---|---|
+| `Checkmate` | `checkmate` | `normal` | `checkmate` |
+| `Stalemate` | `stalemate` | `normal` | `stalemate` |
+| `InsufficientMaterial` | `insufficient material` | `normal` | `insufficient_material` |
+| `ThreefoldRepetition` | `threefold repetition` | `normal` | `threefold_repetition` |
+| `FiftyMoveRule` | `fifty-move rule` | `normal` | `fifty_move_rule` |
+| `TimeForfeit` (loss on the clock) | `time forfeit` | `time forfeit` | `time_forfeit` |
+| `TimeoutOpponentCannotMate` (draw on the clock) | `time forfeit, opponent cannot mate` | `normal` | `timeout_opponent_cannot_mate` |
+| `Resignation` | `resignation` | `normal` | `resignation` |
+| `DrawAgreed` | `draw agreed` | `normal` | `draw_agreed` |
+| `Aborted` | `aborted` | `abandoned` | not a `GameEnd` reason: the `Abort` record carries none |
+| `VoidedByReset` | `voided by reset` | `abandoned` | not a `GameEnd` reason: `Voided.reason` = `reset` (SF-10) |
+| `VoidedUnreadable` | `voided: unreadable` | `abandoned` | not a `GameEnd` reason: `Voided.reason` = `unreadable` (SF-10) |
+| (unfinished) | null | none | none |
+
+**Journal codes (Amd 8, SF-15; decided by Brian at G-2, 2026-11-04).** The codes in the last column are the only spellings in the journal; `EndReason::journal_code()` and `from_journal_code()` map them 1:1 to the variants, an unknown code is an error, and the codec in `chess-app` converts between a code and the unchanged `GAME.termination` string above (Q-SE-5, OQ-18). A journal string is not changed when a display string is reworded. The `VoidReason` journal strings are `reset` and `unreadable` (SF-10); an unknown value is a decode error (`VoidReason::journal_code()`).
 
 ### 3.6 Patterns-use viewpoint
 
@@ -347,9 +357,9 @@ The crate owns no table. It defines the in-memory and wire shapes below. Column 
 | Operation | Parameters | Returns | Errors |
 |---|---|---|---|
 | `Game::new(GameSetup, Stamp)` | validated at the call | `Step` (state `AwaitingMove`, fact `Start`) | `SetupError` |
-| `Game::decide(GameCommand, Stamp)` | one of `Move{mv, expected_ply, actor}`, `Takeback`, `OfferDraw{by}`, `RespondDraw{accept}`, `DropDrawOffer`, `Resign{side}`, `Flag`, `Pause`, `PlayResume`, `Step`, `Suspend`, `SuspendResume`, `Abort`, `Void{reason}`, `EngineStarted`, `EngineFailed`, `EngineRetry`, `Checkpoint`, `MarkFinalized` | `Step { game: Game, facts: Vec<Fact>, ended: Option<Outcome> }` | `GameError` (section 5) |
+| `Game::decide(GameCommand, Stamp)` | one of `Move{mv, expected_ply, actor}`, `Takeback`, `OfferDraw{by}`, `RespondDraw{accept}`, `DropDrawOffer`, `Resign{side}`, `Flag`, `Pause`, `PlayResume`, `Step`, `Suspend{cause}` (`cause: SuspendCause` = `Detach`, `Shutdown` or `Recovered`; SF-21), `SuspendResume`, `Abort`, `Void{reason}`, `ResolveTerminal` (D-65: emits the `Ended` fact for a replayed position that is already terminal; rejected with `state_not_allowed` if the position is not terminal), `EngineStarted`, `EngineFailed`, `EngineRetry`, `Checkpoint`, `MarkFinalized` | `Step { game: Game, facts: Vec<Fact>, ended: Option<Outcome> }` | `GameError` (section 5) |
 | `Game::evolve(Fact)` | one fact | `Result<Game, ReplayError>` | `ReplayError` |
-| `Game::replay(impl IntoIterator<Item = Fact>)` | facts in journal order | `ReplayOutcome { game: Option<Game>, applied: usize, interrupted: bool, error: Option<ReplayError> }`; `interrupted` is true when the facts end in a non-terminal state that is not `Suspended` (a crash or kill, 3.9.2) | never panics |
+| `Game::replay(impl IntoIterator<Item = ReplayItem>)` | `ReplayItem { fact: Fact, check: Option<MoveCheck> }` in journal order; `MoveCheck { san, fen_after }` is the record's `san` and `fen_after`, supplied by the codec for a `Move` only (a design proposal: the `Fact::Move` does not change, and this is the only way the domain can compare the recorded SAN, D-72; finding XC-DOM-A8-2) | `ReplayOutcome { game: Option<Game>, applied: usize, interrupted: bool, terminal: Option<Outcome>, warnings: Vec<ReplayWarning>, error: Option<ReplayError> }`; `interrupted` is true when the facts end in a non-terminal state that is not `Suspended` (a crash or kill, 3.9.2) **and the replayed position is not terminal**; `terminal` is `Some(outcome)` when the last position is checkmate, stalemate, a dead position, threefold or the fifty-move draw but no `Ended` fact followed (D-65, 3.11.1); `warnings` holds `ReplayWarning::SanMismatch { ply, recorded, computed }` and `ReplayWarning::DrawDroppedBy { recorded, pending }` (D-72, SF-22) | never panics |
 | `Game::view(Stamp)` | | `GameView { state, ply, turn, plies, clocks: ClockSync, allowed_actions, outcome, eco }` | none |
 
 `GameCommand` is the renamed `Command` (TR-11, D-50): `protocol::Command` in `chess-app` is a different type. `Fact` and `Outcome` (domain), `Event` (protocol) and `JournalRecord` (store) are four distinct vocabularies.
@@ -493,13 +503,18 @@ sequenceDiagram
             G-->>SR: ReplayOutcome with applied count and error
         end
     end
-    G-->>SR: ReplayOutcome with game, applied equals total, interrupted flag
-    opt interrupted: no Suspend record (crash or kill)
-        SR->>G: decide(Suspend, stamp)
-        G-->>SR: Step with facts Suspend and Clock, DrawDropped first when an offer to a computer was pending
+    G-->>SR: ReplayOutcome with game, applied equals total, interrupted flag, terminal outcome
+    alt terminal position and no Ended fact (D-65)
+        SR->>G: decide(ResolveTerminal, stamp)
+        G-->>SR: Step with fact Ended, game is finalized, never resumed
+    else position not terminal
+        opt interrupted: no Suspend record (crash or kill)
+            SR->>G: decide(Suspend with cause recovered, stamp)
+            G-->>SR: Step with facts Suspend and Clock, DrawDropped first when an offer to a computer was pending
+        end
+        SR->>G: decide(SuspendResume, stamp)
+        G-->>SR: Step with fact SuspendResume, clocks restarted for the side to move
     end
-    SR->>G: decide(SuspendResume, stamp)
-    G-->>SR: Step with fact SuspendResume, clocks restarted for the side to move
     Note over SR,G: When error is present the registry compares applied moves with the store and raises JournalUnreadable with recovered_moves
 ```
 
@@ -581,11 +596,11 @@ Transition table (every row traces to §4.3 `[OBS architecture.md:481-557]`, §4
 | T11 | AwaitingMove or EngineThinking | `Pause` (`Pause`, `Clock`) | c–c only (`state_not_allowed`) | Paused | all stop; a search in progress is cancelled by the session |
 | T12 | Paused | `Step` | c–c | EngineThinking with `stepping = true` | runs for the one move (ASM-DOM-002) |
 | T13 | Paused | `PlayResume` (`PlayResume`) | | AwaitingMove | restart |
-| T14 | InProgress | `Suspend` (`DrawDropped` first when an offer to a computer is pending, then `Suspend`, `Clock`) | | Suspended | stop; resume target recorded when the fact is applied (3.11.4) |
+| T14 | InProgress | `Suspend{cause}` (`DrawDropped` first when an offer to a computer is pending, then `Suspend{cause}`, `Clock`; SF-21) | `cause` is `Detach` (D-14 detach), `Shutdown` (server stop) or `Recovered` (D-58 crash recovery) | Suspended | stop; resume target recorded when the fact is applied (3.11.4) |
 | T15 | Suspended | `SuspendResume` (`SuspendResume`) | state is `Suspended` (no implicit resume, 3.11.1) | the recorded sub-state | restart if it runs |
 | T16 | InProgress, Suspended | terminal move, `Flag`, `Resign` (`Ended`) | Resign: human side, not c–c | Completed | stop |
 | T17 | InProgress, Suspended | `Abort` (`Aborted`) | c–c only | Aborted | stop |
-| T18 | InProgress, Suspended | `Void` (`Voided`) | reason `Reset` needs h–h or h–c; `Unreadable` any | Voided | stop |
+| T18 | InProgress, Suspended, **and Completed (replay only)** | `Void` (`Voided`) | reason `Reset` needs h–h or h–c; `Unreadable` any. *Amd 8 (D-67 (v), D-69):* a journal can hold `Ended` followed by `Voided` (a `GameEnd` appended in the window before the session saw the committed reset, or a repair); `evolve(Voided)` is accepted from `Completed` when the state is not yet `Finalized`, and the void supersedes the `Ended`. `decide(Void)` is not offered from `Completed`; only replay reaches this row (finding XC-DOM-A8-3) | Voided | stop |
 | T19 | Completed | `MarkFinalized` | the store transaction committed | Finalized | none |
 
 `Finalized` is entered only after the store commit (§4.3: "one transaction: result + times + W/L/D, Elo ..."), so the pure crate offers the transition but does not perform the finalisation.
@@ -600,28 +615,33 @@ Transition table (every row traces to §4.3 `[OBS architecture.md:481-557]`, §4
 
 | `Fact` | Journal record | Fields in the domain (written to the record) | Added by the codec (not in the `Fact`) |
 |---|---|---|---|
-| `Start{setup, started_at}` | `Start` | `setup: GameSetup`, from which the record takes `game` (= `setup.game_id`), `white`, `black` (the two `Seat` players), `white_kind`, `black_kind` (`human` or `computer`), `matchup`, `mode`, `custom_start` (bool), `start_fen`, `clock_spec` (null when untimed); and `started_at: WallMs` | `rated`, `self_play` (the `Start` assembler) |
+| `Start{setup, started_at}` | `Start` | `setup: GameSetup`, from which the record takes `game` (= `setup.game_id`), `white`, `black` (the two `Seat` players), `white_kind`, `black_kind` (`human` or `computer`), `matchup`, `mode`, `custom_start` (bool; `setup.start.is_custom()`, D-64), `start_fen` (null exactly for `StartPosition::Standard`; SF-02, SF-13), `clock_spec` (null when untimed). The `Fact` also holds `started_at: WallMs`, but it is **not a payload field** (SF-16, decided by Brian at G-2, 2026-11-04): the codec takes it from, and replay gives it back as, the record's `wall_ms` | `rated`, `self_play` (the `Start` assembler; frozen history, authoritative for a restored `GAME` row, never recomputed; D-64) |
 | `Move{ply, mv, think_ms, clocks_after, played_at}` | `Move` | `ply`, `mv` (written as `uci`), `think_ms`, `clocks_after: Option<ClockValues>` (written as `white_ms`, `black_ms`, both null when untimed). `played_at` is the record's `wall_ms` | `san`, `fen_after` (from the `RecordCtx`; replay recomputes the SAN and compares it, so SAN is never trusted) |
 | `Takeback{to_ply}` | `Takeback` | `to_ply`. The protocol `Takeback{ply}` is only a stale-command guard (Q-SE-2); the core derives the target (3.11.4) | none |
 | `Clock{clocks, running}` | `Clock` | `clocks: Option<ClockValues>` (written as `white_ms`, `black_ms`), `running: Option<Side>` (written as `running_side`; null when stopped). Both are none for an untimed game | none |
 | `DrawOffer{by}`, `DrawDeclined{by}` | `DrawOffer`, `DrawDeclined` | `by: Side` | none |
 | `DrawDropped{by, cause}` | `DrawDropped` | `by: Side` (the side whose offer was dropped) and `cause: DropCause`, which is `EngineFailure` or `Suspend` (written as `engine_failure`, `suspend`) | none |
-| `Pause`, `PlayResume`, `Suspend`, `SuspendResume` | `Pause`, `Resume`, `Suspend`, `SuspendResume` | none: the payload is `{}`. The clocks at that instant are in the `Clock` fact that follows (T11, T14); the change time is the record's `wall_ms`. `PlayResume` keeps the store's name `Resume` | none |
-| `Ended{outcome}` | `GameEnd` | `outcome: Outcome{result, reason}`, written as the stable strings of 3.5. Resignation is not a separate field: the resigning side is the loser of `result` when `reason` is resignation | `ended_at`, `eco`, `opening_name`, `analysis_used`, `content_hash` (the `FinalizeInputs` from `assemble_game_end`; `content_hash` is `"sha256:"` + hex, computed by the app, D-42) |
+| `Suspend{cause}` | `Suspend` | `cause: SuspendCause` (`Detach`, `Shutdown`, `Recovered`), written as `detach`, `shutdown`, `recovered` (SF-21, decided by Brian at G-2, 2026-11-04; G2 for this crate and `chess-app`, approved). `decide(Suspend{cause})` carries it into the fact; replay does not use it to choose the resume target | none |
+| `Pause`, `PlayResume`, `SuspendResume` | `Pause`, `Resume`, `SuspendResume` | none: the payload is `{}`. The clocks at that instant are in the `Clock` fact that follows (T11, T14); the change time is the record's `wall_ms`. `PlayResume` keeps the store's name `Resume` | none |
+| `Ended{outcome}` | `GameEnd` | `outcome: Outcome{result, reason}`, written as `result` and the snake_case reason code of 3.5 (SF-15). Resignation is not a separate field: the resigning side is the loser of `result` when `reason` is resignation | `ended_at`, `eco`, `opening_name`, `analysis_used`, `content_hash` and, *Amd 8 (D-63, SF-01)*, `white_time_used_ms`, `black_time_used_ms`, `total_active_ms` (the `FinalizeInputs` from `assemble_game_end`; `content_hash` is `"sha256:v1:"` + hex, computed by the app, D-42, D-68; the three totals are measured by the session with the rule of 3.11.13, and the domain neither produces nor reads them in a `Fact`) |
 | `Aborted` | `Abort` | none | `ended_at`, `content_hash` |
-| `Voided{reason, reset_player}` | `Voided` | `reason: VoidReason`, `reset_player: Option<PlayerId>` (a UUID, or null) | `content_hash` |
+| `Voided{reason, reset_player}` | `Voided` | `reason: VoidReason` (written `reset` or `unreadable`, SF-10), `reset_player: Option<PlayerId>` (a UUID, or null) | `content_hash` (advisory, D-67) and, *Amd 8 (D-69, SF-05)*, `ended_at` |
 
-`DropCause` is a new domain enum (`EngineFailure`, `Suspend`); the cause is carried for the audit trail and the engine-unavailable message and has no replay consumer, so replay checks `by` against the pending offerer and does not trust it (architecture §7.6 flag 3). The `content_hash` of the three terminal records is computed by `chess-app` before the store transaction because neither the store nor this crate has the canonical form (D-42); this crate never sees it. A domain-side test asserts that the variant list equals this table and that each variant's field names equal column 3; the round-trip property `record_to_fact(fact_to_record(f)) == f` for every variant lives in `chess-app` (FF-3).
+`DropCause` is a new domain enum (`EngineFailure`, `Suspend`); the cause is carried for the audit trail and the engine-unavailable message and has no replay consumer, so replay checks `by` against the pending offerer and does not trust it (architecture §7.6 flag 3). The `content_hash` of the three terminal records is computed by `chess-app` before the store transaction because neither the store nor this crate has the canonical form (D-42); this crate never sees it. The same holds for the three time totals and for `Voided.ended_at`: assembler fields, outside the `Fact` (D-63, D-69). A domain-side test asserts that the variant list equals this table and that each variant's field names equal column 3; the round-trip property `record_to_fact(fact_to_record(f)) == f` for every variant lives in `chess-app` (FF-3).
 
 **Replay has one interpretation; there are no implicit rules (TR-4).** The v0.1 fallback "any non-terminal fact after `Suspend` resumes the game" is **removed**.
 - After `Suspend`, the only accepted facts are `SuspendResume`, `Clock` (a checkpoint, which never changes the state), and the terminal facts `Ended`, `Aborted`, `Voided` that T16 to T18 allow from `Suspended`. Any other fact is `ReplayError::NotResumed`.
 - A `Move` in `Paused` is a stepped move (c–c Step, T12 then T3). It is stated here once; there is no `Step` kind.
 - The drop of a draw offer to a computer is always an explicit `DrawDropped` fact. **`Game::decide` is the only emitter of `DrawDropped`** (D-58): it emits it for an engine failure (`cause = EngineFailure`) and before `Suspend` when `decide(Suspend)` finds an offer to a computer pending (`cause = Suspend`). Neither the app nor replay creates or infers one; the app only journals the facts that `decide` returns.
-- A journal that ends in a non-terminal state other than `Suspended` is an interrupted game (crash or kill). `replay` reports `interrupted = true` and does nothing else. **Crash recovery (D-58, OQ-DOM-007 CLOSED):** on resume the session issues `decide(Suspend)` and then `decide(SuspendResume)` and journals the facts each returns (3.9.2), so the journal records the interruption explicitly. The startup scan applies records and never appends (architecture §7.6); only a session that holds the lock appends. The app SDD follows this (FIND-JR-002).
+- **Terminal re-check (Amd 8, D-65 part 1; G2, approved).** A `Move` record and the `Ended` record of the same mating, stalemating or drawing move are two records, so a crash can leave the first without the second. After the last fact, `replay` evaluates the termination order of 3.11.2 on the replayed position with its repetition keys and halfmove clock (the pure function `Game::pending_termination() -> Option<Outcome>`). If the position is terminal and no `Ended` fact followed, `ReplayOutcome.terminal = Some(outcome)` and `interrupted = false`. The session then issues `decide(ResolveTerminal)`, which emits the missing `Ended` fact; the game is ended and finalized, **never resumed**: no `Suspend`, `SuspendResume` or clock restart. The check applies to every resume, whatever the cause of the missing `Ended`. A flag fall is not re-derived (it needs the clock); a game whose last clock record shows zero is not terminal here.
+- **SAN policy (Amd 8, D-72, BP-013; G2, approved).** When a `Move` item carries a `MoveCheck`, replay trusts the `uci` of the fact if it is legal in the replayed position, recomputes the SAN and the `fen_after`, and compares. A SAN that differs is a `ReplayWarning::SanMismatch` (the app logs it) and replay continues with the recomputed values. Replay stops with `ReplayError::Illegal` only if the `uci` is illegal, or with `ReplayError::FenMismatch { ply }` if the recorded `fen_after` differs from the recomputed one and the SAN comparison does not explain it (this is the architecture's wording; my reading is that a `fen_after` difference with an identical SAN is not explained by a SAN-rendering change; finding XC-DOM-A8-2). Without a `MoveCheck` nothing is compared.
+- **`DrawDropped.by` (Amd 8, SF-22).** Replay checks `by` against the pending offer. A mismatch is a `ReplayWarning::DrawDroppedBy { recorded, pending }`, replay continues with the pending offer's side, and it is never an error.
+- **`Voided` after `Ended` (D-67 (v), D-69).** `evolve(Voided)` is accepted in `Completed` (T18) and the game ends as `Voided`.
+- A journal that ends in a non-terminal state other than `Suspended` and in a non-terminal position is an interrupted game (crash or kill). `replay` reports `interrupted = true` and does nothing else. **Crash recovery (D-58, OQ-DOM-007 CLOSED):** on resume the session issues `decide(Suspend)` and then `decide(SuspendResume)` and journals the facts each returns (3.9.2), so the journal records the interruption explicitly. The `cause` of that `Suspend` is `Recovered` (SF-21). The startup scan applies records and never appends, because no `Game` exists there to call `decide`; only a `GameSession` or `SessionRegistry` that holds the journal's lock and a `Game` appends (architecture §7.6 as amended by D-72, BP-011). The app SDD follows this (FIND-JR-002).
 
 **Single reducer.** `decide(cmd, stamp)` does all checks (Policy, ply, legality, clocks) and returns `Vec<Fact>`. `evolve(fact)` is the only code that changes `Game`, and it never reads a clock: facts carry `think_ms`, `clocks_after` and wall times, so live play and replay run the same code. `decide` then applies its facts with `evolve` to build the returned `step.game`. Property: for any command script, `replay(facts_of(script))` equals the live `Game` field by field, and `replay` of the same facts twice equals itself (idempotent, R-15).
 
-**Replay errors.** `replay` stops at the first fact that does not fit (wrong state, wrong ply, illegal move, SAN mismatch, a second `Start`, a fact after `Suspend` that is not `SuspendResume`) and returns the game built so far, the number of facts applied and the error. The caller turns that into `JournalUnreadable{recovered_moves}` (§5.5). The clock after replay is restored from the last `Move.clocks_after` or `Clock` fact; the running side is `None` until `SuspendResume` (or `PlayResume`) restarts it.
+**Replay errors.** `replay` stops at the first fact that does not fit (wrong state, wrong ply, illegal move, SAN mismatch, a second `Start`, a fact after `Suspend` that is not `SuspendResume`) and returns the game built so far, the number of facts applied and the error (a SAN mismatch with a legal `uci` and a `DrawDropped.by` mismatch are warnings, not errors; see the rules above). The caller turns that into `JournalUnreadable{recovered_moves}` (§5.5). The clock after replay is restored from the last `Move.clocks_after` or `Clock` fact; the running side is `None` until `SuspendResume` (or `PlayResume`) restarts it.
 
 #### 3.11.2 Termination after a move (F-2.2.4, RULE-1, RULE-2)
 
@@ -642,7 +662,7 @@ flowchart TD
     j -- "no" --> l["Game continues"]
 ```
 
-The order is: checkmate, stalemate, dead position, threefold, fifty-move. Only the first (checkmate over the fifty-move count) is stated upstream (RULE-1 interpretation `[OBS requirements.md:413]`: the checkmate stands); the rest is a design choice for when several conditions hold on the same move (FIND-DOM-006). The fifty-move rule counts plies: 100 halfmoves. Threefold counts occurrences of one `PositionKey` including the start position. These are the automatic draws that deviate from FIDE Art. 9.2 and 9.3 on purpose (RULE-1 (b)).
+The same order is exposed as the pure function `Game::pending_termination()`, used after `replay` for the terminal re-check (D-65, 3.11.1); it takes no clock and no flag. The order is: checkmate, stalemate, dead position, threefold, fifty-move. Only the first (checkmate over the fifty-move count) is stated upstream (RULE-1 interpretation `[OBS requirements.md:413]`: the checkmate stands); the rest is a design choice for when several conditions hold on the same move (FIND-DOM-006). The fifty-move rule counts plies: 100 halfmoves. Threefold counts occurrences of one `PositionKey` including the start position. These are the automatic draws that deviate from FIDE Art. 9.2 and 9.3 on purpose (RULE-1 (b)).
 
 **Flag.** `Flag` is accepted only if `Clock::remaining(running_side, now) == 0`. The loser is the flagged side unless `!position.can_side_checkmate(opponent)`, then the game is drawn (`TimeoutOpponentCannotMate`, RULE-4). A `Move` command that arrives when the mover's remaining time is already zero does **not** apply the move: it produces the flag result instead. This makes the result independent of whether the flag timer or the move message reached the actor first (§4.2 says commands are handled one at a time, the timer is one more message).
 
@@ -706,6 +726,8 @@ Verdicts for the context fields `mode` (T = Training, S = Strict), `matchup`, `s
 
 `check_setup(setup)` fails with `SetupError{field, reason}` for: Training and not h–c (`mode`, `training_requires_human_vs_computer`); a clock with Training (`clock`, `training_untimed`); seat kinds that do not match the matchup (`players`, `players_wrong_kind`); an invalid custom clock (`clock`, `clock_invalid`); a start FEN that is already checkmate or stalemate (`start_fen`, `start_position_terminal`; rejected for a new game, accepted for opening an analysis, Q-SE-5 confirmed; FIND-DOM-009 RESOLVED). Self-play is derived, not chosen. Whether a chosen Player already holds a slot is **not** decided here (it needs the store); `slot_holders` only names the slots, and the app asks the store.
 
+**`StartPosition` (Amd 8, D-64, SF-02, SF-13; defined once).** `StartPosition = Standard | Custom(Fen)`. `StartPosition::from_fen(fen)` is the only constructor from a FEN and it **normalises**: it parses the FEN with `chess-rules`, and if all **six FEN fields** (piece placement, side to move, castling, en passant, halfmove clock, fullmove number) equal the standard start's (`rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1`) it returns `Standard`, otherwise `Custom(fen)`. A different move counter or clock is therefore a custom start (it changes move numbering and the fifty-move count; Brian's choice (A) at G-2, 2026-11-04; the alternative (B) that ignores the counters was not chosen). `Standard` has no FEN: `start_fen` is null, `custom_start` is false. `Custom` has `custom_start` true, `start_fen` the FEN, and `rated = 0` (RULE-8). `GameSetup.start` is a `StartPosition`; `GameSetup` has no separate `start_fen` or `custom` flag. `check_setup` rejects a start FEN that is already checkmate or stalemate as above. An imported game applies the same rule to its `FEN` tag (`custom_start` follows the same comparison). Whether the castling field and the en passant square are compared as parsed values (so `KQkq` order or an unreachable en passant square cannot make a standard start look custom) depends on the `chess-rules` FEN type and is `[UNV]` until that crate exists. `rating_track` and `StatsRow.custom_start` read this one definition.
+
 `ClockSpec`: presets `1+0`, `3+2`, `5+0`, `10+5`, `15+10`, `30+0` (minutes plus seconds, RULE-4) and a custom pair of whole seconds; the whole-second restriction keeps `TimeControl` representable in PGN `seconds+increment`. The custom limits are the engineering estimate TBD-34 (CR-9.2, Q-SE-4): base 1 s to 24 h, increment 0 to 1 h, whole seconds. Not measured; a limit-check test confirms the edges. Units: a preset or `--clock` value `m+s` is minutes plus seconds of increment (Q-SE-25); `ClockSpec::from_minutes_plus_seconds` does the conversion, and PGN `TimeControl` seconds map directly through `ClockSpec::from_seconds` (XC-23).
 
 #### 3.11.7 Elo (DD-DOM-011)
@@ -722,7 +744,7 @@ counter_after_A = counter_before_A + 1  (saturating)
 ```
 `[OBS requirements.md:664-668]`. Game 30 uses K = 40 (29 rated games before it) and game 31 uses K = 32. Each track has its own counter; the other track is never read or changed. There is no clamp. `|delta| <= K` because `S − E` lies in [−1, 1], so the narrowing cast to `i32` is range-checked first and carries a written suppression reason. Where both Ks are equal the two deltas are exactly opposite: a tie `K(S−E) = n + ½` would need `E` rational with a denominator dividing `2K`, which happens only at equal ratings with an even `K`, where `K(S−E)` is an integer `[INF]`; the property test checks it.
 
-`rating_track(facts)`: `Unrated` if self-play, custom start, status Imported, Aborted or Voided, or not Completed; otherwise `Rated(Track::from(mode))`. Takeback does not change it.
+`rating_track(facts)`: `Unrated` if self-play, custom start (`GameFacts.custom_start`, from `StartPosition::is_custom()` for a live game, from `GAME.custom_start` for a stored row; D-64), status Imported, Aborted or Voided, or not Completed; otherwise `Rated(Track::from(mode))`. Takeback does not change it.
 
 Bands (ELO-1) `[OBS requirements.md:677]`: below 600 Beginner; 600 to 1199 Novice; 1200 to 2199 Intermediate; 2200 to 2499 Master; 2500 and above Grand Master. A computer's label is `Category::from_rating(strict_elo)`; its Training rating never reaches this function (F-4.4, Q79).
 
@@ -742,7 +764,7 @@ Numerical risk: `f64::powf` may differ in the last bit between platforms; that m
 
 #### 3.11.9 ECO classification (DD-DOM-015)
 
-`observe(current, key, ply)`: if `rules::eco::lookup(key)` is `Some(entry)` return `Some(EcoMatch{ code, name, ply })` (deeper replaces shallower), else return `current`. So after the last move of a game the stored match is the **deepest named position reached**, and a transposition reaches the same position and therefore the same entry (DAT-3, CR-8) `[OBS requirements.md:608]`. `Game` applies it at ply 0 and after every move of every game, whatever the start: *CR-9.11 (user ruling 2026-10-31)* removes the earlier "standard start only" rule, and the user ruling of 2026-11-01 says the start position of a custom start is itself looked up, so a custom FEN that is a named position is classified with `EcoMatch.ply = 0`, and a FEN equal to the standard start position is a standard start for ECO (which the table does not name, so it gives no match at ply 0). A custom start that is not and never reaches a named position has no code and no name. After a takeback it recomputes over the remaining keys, ply 0 included; the app reads `view().eco` at finalize (XC-14). `normalize_eco_tag`, `classify_import` and `resolve` (IFP-DOM-6) give: agree, code and table name; tag only, normalised code and empty name (CR-9.8); table only (no tag or a malformed one), both from the table; mismatch, the player's choice (CR-9.12): keep the PGN's ECO (normalised code, empty name) or keep the position classification (table code and name). D-59 fixes the protocol in architecture §5.8; this crate holds no state and asks nothing.
+*Placement confirmed by D-75 (Amd 8, Addendum A, 2026-11-04; architecture §3.3, §5.7): the generated table and `eco::lookup` are in `chess-rules`; the "deepest named position" rule and everything about a game stay here, and this crate calls `rules::eco::lookup`.* `observe(current, key, ply)`: if `rules::eco::lookup(key)` is `Some(entry)` return `Some(EcoMatch{ code, name, ply })` (deeper replaces shallower), else return `current`. So after the last move of a game the stored match is the **deepest named position reached**, and a transposition reaches the same position and therefore the same entry (DAT-3, CR-8) `[OBS requirements.md:608]`. `Game` applies it at ply 0 and after every move of every game, whatever the start: *CR-9.11 (user ruling 2026-10-31)* removes the earlier "standard start only" rule, and the user ruling of 2026-11-01 says the start position of a custom start is itself looked up, so a custom FEN that is a named position is classified with `EcoMatch.ply = 0`, and a FEN equal to the standard start position is a standard start for ECO (which the table does not name, so it gives no match at ply 0). A custom start that is not and never reaches a named position has no code and no name. After a takeback it recomputes over the remaining keys, ply 0 included; the app reads `view().eco` at finalize (XC-14). `normalize_eco_tag`, `classify_import` and `resolve` (IFP-DOM-6) give: agree, code and table name; tag only, normalised code and empty name (CR-9.8); table only (no tag or a malformed one), both from the table; mismatch, the player's choice (CR-9.12): keep the PGN's ECO (normalised code, empty name) or keep the position classification (table code and name). D-59 fixes the protocol in architecture §5.8; this crate holds no state and asks nothing.
 
 #### 3.11.10 VariationTree (DD-DOM-016)
 
@@ -750,7 +772,7 @@ An arena of nodes; `NodeId(u32)` is an index and is never reused (a deleted node
 
 #### 3.11.11 Stats aggregation (DD-DOM-018, UI-2, UI-5)
 
-Input row (one per game, from the store's row query, filtered only by structural keys: the viewed Player, the side, the reset window `started_at >= reset_at` and a `LIMIT`): `StatsRow { status, self_play, custom_start, mode, color, result_for_viewed: Win|Loss|Draw, started_at, plies, active_ms, opponent: { player, kind, category_now } }`. **This crate owns the counting predicate** (TR-7, D-44): `counts_in_aggregates(&StatsRow)` is true when `status` is completed, the game is not self-play, not a custom start, and `started_at` is inside the reset window. `aggregate` applies it to every row, so the store applies no counting filter and the SQL views `player_stats` and `head_to_head` are dropped; `games_for_history` stays a row query. `StatsService` calls the store, then this crate, and maps to DTOs; it adds no filter and no arithmetic. The cost is more rows per query on a local single-user store; FF-5 measures `player_stats` on a 10 000-game fixture against the NFR budget (unmeasured `[UNV]`), and a SQL fast path may be added only behind a differential test against these functions. `aggregate(rows, window)`:
+Input row (one per game, from the store's row query, filtered only by structural keys: the viewed Player, the side, the reset window `started_at >= reset_at` and a `LIMIT`): `StatsRow { status, self_play, custom_start, mode, color, result_for_viewed: Win|Loss|Draw, started_at, plies, active_ms, opponent: { player, kind, category_now } }`. **This crate owns the counting predicate** (TR-7, D-44): `counts_in_aggregates(&StatsRow)` is true when `status` is completed, the game is not self-play, not a custom start (`custom_start`, the single definition of 3.11.6, D-64), and `started_at` is inside the reset window. A voided game is never counted (`status`), and its `content_hash` is advisory (D-67). `aggregate` applies it to every row, so the store applies no counting filter and the SQL views `player_stats` and `head_to_head` are dropped; `games_for_history` stays a row query. `StatsService` calls the store, then this crate, and maps to DTOs; it adds no filter and no arithmetic. The cost is more rows per query on a local single-user store; FF-5 measures `player_stats` on a 10 000-game fixture against the NFR budget (unmeasured `[UNV]`), and a SQL fast path may be added only behind a differential test against these functions. `aggregate(rows, window)`:
 
 - `window = Some(reset_at)` only for the Player's **own** view: drop rows with `started_at < reset_at` (D-26, Q76). An opponent's view passes `None`, so it keeps every game against the reset Player.
 - W/L/D totals; by colour; by mode (Training and Strict separately); by opponent; by opponent category (the computer's current label, FIND-DOM-006 on the filter boundary).
@@ -773,6 +795,19 @@ Input row (one per game, from the store's row query, filtered only by structural
 The style names are `Plain`, `Unicode`, `Ansi`, `NoColor`; the CLI's prose names ("plain ASCII, Unicode glyphs, ANSI colour") follow them (XC-12).
 
 Labels: files `A` to `H` upper case and ranks `1` to `8` on all four sides of the board panel (CLI-2 `[OBS requirements.md:906-909]`), flipped with the orientation. Each square is rendered 3 columns wide (padding on both sides) so a wide or narrow glyph does not move the next square (R-7). `Highlight` flags: `LastMoveFrom`, `LastMoveTo`, `Check` (the king of the side to move when in check), `Rewound`. `render_text` returns lines; it writes an ESC byte only for the `Ansi` style, so `NO_COLOR` (read by the CLI, not here) maps to `NoColor` and the UI-4 check "no colour escape sequences" holds by construction.
+
+#### 3.11.13 Time totals of a finished game (Amd 8, D-63, SF-01; DD-DOM-006)
+
+`GameEnd` carries `white_time_used_ms`, `black_time_used_ms` and `total_active_ms` (whole milliseconds, `>= 0`, always present). They are **not** `Fact` fields and cannot be rebuilt by `replay` (facts carry no monotonic time), so the session measures them while the game is live and the `GameEnd` assembler writes them; this crate states the accrual rule once, as a pure function the session calls (the architecture assigns the rule to the domain clock rule, T8 and T11):
+
+| `GameState` (3.10) | Charged to the side to move (`white_time_used_ms` or `black_time_used_ms`) | Added to `total_active_ms` |
+|---|---|---|
+| `AwaitingMove`, `EngineThinking`, `EngineError` (the clock keeps running, D-15), and `EngineThinking` with `stepping` | yes | yes |
+| `DrawOffered` (T8: all clocks stop) | no | **yes** (the session is active, both players are deciding) |
+| `Paused` (T11), `Suspended` (T14), a closed app or a crashed process | no | no |
+| `Completed`, `Aborted`, `Voided`, `Finalized` | no | no |
+
+Rules: time is charged when it is spent and **never refunded**: a Training takeback drops plies but not the time already spent; a resignation, flag or end after a long think counts the unfinished think up to the instant of the ending fact. Time with the app closed, suspended or paused is excluded (DAT-3). Because `DrawOffered` is added to `total_active_ms` and not to a side, `total_active_ms >= white_time_used_ms + black_time_used_ms`. The same states decide for an untimed game; whether an untimed game has measured totals at all is ASM-10 (still open in the architecture). The API is `time_accrual(state: &GameState, side_to_move: Side) -> Accrual { side: Option<Side>, total: bool }` and `TimeTotals { white_used_ms, black_used_ms, total_active_ms }` with a saturating `add(accrual, elapsed_ms)`; the session feeds it elapsed monotonic time between state changes (`Stamp`), so the crate reads no clock. **Open (finding XC-DOM-A8-1):** a game resumed after a restart has no durable source for the totals accumulated before the stop, other than `Move.think_ms` and the `Clock` records (lossy for taken-back plies and an unfinished think); the architecture does not say how the session seeds the accumulator. This design provides `TimeTotals::seed_from_facts(&[Fact])` summing `Move.think_ms` per mover as the best available seed, and marks the loss; the architect decides whether a journal field is needed (a G3 change, not made here).
 
 ### 3.12 Resource viewpoint
 
@@ -798,7 +833,7 @@ Labels: files `A` to `H` upper case and ranks `1` to `8` on all four sides of th
 - Purpose: `GameId(Uuid)`, `PlayerId(Uuid)`, `Mode`, `Matchup`, `PlayerKind`, `Seat`, `Category`, `Track`, `GameResult`, `Outcome`, `EndReason`, `VoidReason`, `GameStatus`, `MonoMs(u64)`, `WallMs(i64)`, `Stamp`, `ClockValues`. Stable text forms in 3.5.
 - Failure behaviour: `FromStr` for the stored forms returns a typed error; no panic.
 - Rationale: newtypes keep milliseconds, plies and ratings from being swapped. `GameId` and `PlayerId` are UUID newtypes (TR-3, D-40); the store keeps integer ids as internal row keys that never cross its API, the journal, the protocol or an export, because a restore can reuse integer ids. The crate already needs `uuid` for the roster identity, so the policy adds no dependency. `GameSetup`, `Mode`, `Matchup`, `ClockSpec`, `Category` and `Preferences` derive `ts_rs::TS` behind feature `ts` (D-50, OQ-DOM-004). Alternative rejected: keep `PlayerId(i64)` and map at the boundary (needs a mapping entity).
-- Verification: UT-DOM-001 | Code: (pending)
+- Verification: UT-DOM-001, UT-DOM-121 | Code: (pending)
 
 ### DD-DOM-002 Edge traits
 - Type: traits and `SplitMix64` | Traces to: architecture §5.7 row `TimeSource, Rng`, test-strategy "Determinism" | Function: supports F-2.4.1, F-1.6
@@ -822,19 +857,19 @@ Labels: files `A` to `H` upper case and ranks `1` to `8` on all four sides of th
 
 ### DD-DOM-005 Setup validation, slot holders, colours
 - Type: functions | Traces to: GAME-1, GAME-4, PLY-1, PLY-5, RULE-8, D-27 | Function: supports F-2.1.1, F-2.1.2
-- Purpose: 3.11.6.
+- Purpose: 3.11.6, including the single definition of `StartPosition` (D-64, SF-02).
 - Failure behaviour: `SetupError{field, reason}` which `chess-app` maps to `ValidationFailed` (section 5).
 - Rationale: computing slot holders here keeps D-27 in one place; `GameSetupService` and `StartGame`'s transaction both use it. Alternative rejected: slot rules inside the service (the architecture warns that a service-level check is racy across processes, the store enforces the key, but the *rule* of who holds a slot is still logic).
-- Verification: UT-DOM-025, 026 | Code: (pending)
+- Verification: UT-DOM-025, 026, UT-DOM-115 | Code: (pending)
 
 ### DD-DOM-006 Game aggregate
 - Type: struct | Traces to: GAME-1 to GAME-4, RULE-1 to RULE-5, NFR-2, NFR-3, D-13, D-33 | Function: F-2.2.4; supports F-2.2.3, F-2.5.x, F-2.6.x
-- Purpose: the value held by one `GameSession`: setup, state, current `Position`, `plies: Vec<PlyRecord>`, repetition keys, `Clock`, `pending_offer`, `offer_blocked_for`, `stepping`, resume target, `outcome`, ECO match.
+- Purpose: the value held by one `GameSession`: setup, state, current `Position`, `plies: Vec<PlyRecord>`, repetition keys, `Clock`, `pending_offer`, `offer_blocked_for`, `stepping`, resume target, `outcome`, ECO match. The time totals of 3.11.13 are measured by the session with `TimeTotals` and are not part of the `Game` value that `evolve` rebuilds.
 - Processing: `decide`/`evolve` (3.11.1); `view` builds the snapshot fields (`allowed_actions` from `Policy`).
 - Failure behaviour: every command returns `Result`; a rejected command returns the error and **no** state change (the actor still holds the old `Game`).
 - Concurrency: `Send`, not shared; the session actor owns it (D-13).
 - Rationale: event sourcing with one reducer is what makes "the journal wins" and idempotent replay checkable by a property test (R-15). Alternative rejected: in-place mutation with a separate "apply journal" function (two code paths drift).
-- Verification: UT-DOM-030 to 046 | Code: (pending)
+- Verification: UT-DOM-030 to 046, UT-DOM-116, UT-DOM-120, UT-DOM-122 | Code: (pending)
 
 ### DD-DOM-007 Game state machine
 - Type: enum `GameState` and the transition table of 3.10 | Traces to: architecture §4.3, GAME-2, GAME-4, D-14, D-15, D-30 | Function: supports F-2.5.x, F-2.6.1, F-2.6.4
@@ -846,7 +881,7 @@ Labels: files `A` to `H` upper case and ranks `1` to `8` on all four sides of th
 - Type: function inside `game` | Traces to: RULE-1, RULE-2, RULE-4 | Function: F-2.2.4
 - Purpose: 3.11.2.
 - Rationale: history-based detection needs the move history `Game` holds; the position questions come from `chess-rules` (FIND-RUL-001). Order in 3.11.2.
-- Verification: UT-DOM-031 to 035 | Code: (pending)
+- Verification: UT-DOM-031 to 035, UT-DOM-117 | Code: (pending)
 
 ### DD-DOM-009 In-play action rules
 - Type: functions inside `game` | Traces to: RULE-2, RULE-3, GAME-2, ENG-4, ENG-5, D-33, R-20 | Function: F-2.5.1 to F-2.5.5
@@ -857,8 +892,8 @@ Labels: files `A` to `H` upper case and ranks `1` to `8` on all four sides of th
 ### DD-DOM-010 Facts and replay
 - Type: enum `Fact`, `ReplayOutcome`, `ReplayError` | Traces to: RULE-5, NFR-2, D-23, R-15 | Function: F-2.6.2, supports F-6.3
 - Purpose: 3.11.1. The `Fact` vocabulary, 1:1 with the journal record kinds through `JournalCodec` (FIND-DOM-001 RESOLVED, D-41); replay without implicit rules.
-- Failure behaviour: `replay` never panics and reports `applied`.
-- Verification: UT-DOM-042 to 044, UT-DOM-105, UT-DOM-108, CT-DOM-001 | Code: (pending)
+- Failure behaviour: `replay` never panics and reports `applied`; a SAN mismatch with a legal `uci` and a `DrawDropped.by` mismatch are warnings (D-72, SF-22); the terminal re-check reports `terminal` (D-65).
+- Verification: UT-DOM-042 to 044, UT-DOM-105, UT-DOM-108, UT-DOM-118, UT-DOM-119, CT-DOM-001, FZ-DOM-001 | Code: (pending)
 
 ### DD-DOM-011 EloCalc and rating eligibility
 - Type: functions | Traces to: ELO-1, ELO-2, RULE-8 | Function: F-4.1, F-4.2
@@ -955,7 +990,7 @@ Failure modes owned by this crate, with the control and the test that injects th
 | FM-DOM-005 | Policy row missing for a new state/action pair | Control shown but rejected, or hidden but allowed | Full-product test, `allowed_actions`/`check` agreement | UT-DOM-020 to 024 |
 | FM-DOM-006 | Roster stream or its inputs change after release | Computer UUIDs and parameters change | Golden output test; version tag `v1` in the UUID name; the `UCI_Elo` range is a pinned plain value, never a run-time reading (D-46) | UT-DOM-060, UT-DOM-063 |
 | FM-DOM-007 | A takeback leaves stale keys or ECO state | False repetition draw, wrong opening | Truncate keys and recompute ECO; test | UT-DOM-038 |
-| FM-DOM-008 | Hostile or corrupt facts in a replay | Panic or illegal state (NFR-3) | Typed errors, no indexing without checks; fuzz | FZ-DOM-001 |
+| FM-DOM-008 | Hostile or corrupt facts in a replay | Panic or illegal state (NFR-3) | Typed errors, no indexing without checks; random-input property test (`proptest`, D-76) | FZ-DOM-001 |
 | FM-DOM-009 | Window boundary applied to the wrong Player's view | An opponent loses games against a reset Player (Q76) | `window` only for the own view; seeded test | UT-DOM-093 |
 | FM-DOM-010 | `Fact` variants and journal record kinds diverge, or replay depends on an implicit rule | A resumed game differs from the played one (RULE-5) | 1:1 table, no implicit rule, `NotResumed` error; round-trip property FF-3 in `chess-app` | UT-DOM-105, UT-DOM-108 |
 | FM-DOM-011 | The two `SplitMix64` copies diverge | Error picks differ between replays (TR-12) | Shared test-vector file, CI diff (FF-8) | UT-DOM-102 |
@@ -979,7 +1014,7 @@ All public types are `Send + Sync` except values holding `&mut dyn Rng` (call-sc
 
 ## 7 Verification mapping (test-strategy.md, architecture §9)
 
-Levels: Unit (`cargo test`), Property (`proptest`), Snapshot (`insta`), Mutation (`cargo-mutants`), Fuzz (`cargo-fuzz`), Contract (`tests/`, public API only). Targets: at least 90 % line coverage for Elo, clock, policy and parser modules; mutation testing on **Elo and mode policy** `[OBS test-strategy.md "Quality gates"]`. This SDD also recommends mutation runs on `clock` and the termination order, as a cheap strength check. All figures are **not available**: nothing has been run.
+Levels: Unit (`cargo test`), Property (`proptest`, random input on stable Rust; this includes the tests whose IDs keep the historical prefix `FZ-`, D-76), Snapshot (`insta`), Mutation (`cargo-mutants`), Contract (`tests/`, public API only); coverage measured with `cargo-llvm-cov` (D-76). There is no coverage-guided fuzzer and no nightly toolchain (D-76). Targets: at least 90 % line coverage for Elo, clock, policy and parser modules; mutation testing on **Elo and mode policy** `[OBS test-strategy.md "Quality gates"]`. This SDD also recommends mutation runs on `clock` and the termination order, as a cheap strength check. All figures are **not available**: nothing has been run.
 
 | ID | Level | What | Oracle | Requirement |
 |---|---|---|---|---|
@@ -1066,10 +1101,18 @@ Levels: Unit (`cargo test`), Property (`proptest`), Snapshot (`insta`), Mutation
 | UT-DOM-109 | Unit | `first_k_after(category, &stored)`: an empty slice gives 0; a slice with no index of the class gives 0; a slice mixing several classes gives one more than the largest *k* of the requested class only; an unsorted slice gives the same result; indices stay in the class | table | PLY-4, D-46 |
 | UT-DOM-110 | Unit | `Orientation` and `BoardStyle` names are exactly `White`/`Black` and `Plain`/`Unicode`/`Ansi`/`NoColor` | table | XC-12 |
 | UT-DOM-111 | Unit | `Personality`: `error_permille` above 1000 rejected; equality is integer equality; every value 0 to 1000 round-trips through the `f64` conversion that `chess-app` performs (the exactness test itself lives in `chess-app`) | table | ENG-2, D-43 |
-| FZ-DOM-001 | Fuzz | `Game::replay` on arbitrary fact sequences: no panic, `applied` ≤ length, any returned game passes its own invariants | `cargo-fuzz` | NFR-3, FM-DOM-008 |
+| UT-DOM-115 | Unit | `StartPosition::from_fen` (D-64, SF-02): the standard FEN gives `Standard`; the same placement with another halfmove or fullmove number gives `Custom`; another castling field or en passant square gives `Custom`; another placement gives `Custom`; `Custom` has `custom_start` true and `rated = 0`; `Standard` has a null `start_fen`; the four starts of BP-005 give the expected `custom_start`, `rated` and statistics predicate | table | RULE-8, D-64 |
+| UT-DOM-116 | Unit | `decide(Suspend{cause})` for `Detach`, `Shutdown`, `Recovered` emits `Suspend` with that cause (and `DrawDropped` first when an offer to a computer is pending); replay accepts every cause and the resume target does not depend on it; recovery of an interrupted game uses `Recovered` (SF-21) | script | D-14, D-58, SF-21 |
+| UT-DOM-117 | Unit | Terminal re-check (D-65): a replayed journal that ends with a `Move` into checkmate, stalemate, a dead position, a threefold repetition or the fifty-move draw and no `Ended` gives `terminal = Some(outcome)` and `interrupted = false`; `decide(ResolveTerminal)` emits the `Ended` fact with the same reason as live play (`Game::pending_termination` equals the order of 3.11.2); on a non-terminal position `ResolveTerminal` is `state_not_allowed`; no `Suspend` or `SuspendResume` is needed or emitted | scripted corrupt journals | RULE-1, RULE-5, D-65 |
+| UT-DOM-118 | Unit | SAN policy (D-72): a `MoveCheck` with a different SAN and a legal `uci` gives `ReplayWarning::SanMismatch` and the recomputed SAN and `fen_after`; an illegal `uci` is `ReplayError::Illegal`; a `fen_after` that differs with an identical SAN is `ReplayError::FenMismatch`; no `MoveCheck` means no comparison | table | D-72, DAT-7 |
+| UT-DOM-119 | Unit | `DrawDropped.by` that differs from the pending offerer gives `ReplayWarning::DrawDroppedBy` and replay continues with the pending side (SF-22); `Ended` followed by `Voided` replays to `Voided` (T18 from `Completed`, D-67 (v)); `Voided` after `MarkFinalized` is rejected | corrupt fact lists | SF-22, D-67, D-69 |
+| UT-DOM-120 | Unit | Transition table rows T14 (with `cause`) and T18 (including the replay-only row from `Completed`; `decide(Void)` from `Completed` is rejected) | table | D-14, D-30, D-69 |
+| UT-DOM-121 | Unit | `EndReason::journal_code` and `from_journal_code` round trip for the nine `GameEnd` reasons of 3.5 (SF-15), the spellings are exactly the architecture's list; an unknown code, and `aborted`, `voided by reset` or the `GAME.termination` spellings, are errors; `VoidReason` journal strings `reset` and `unreadable` round trip and others are errors (SF-10); `ClockSpec` text form `300+0` round trips and `05+0`, `5 + 0`, `+5` are rejected (SF-11) | table | SF-10, SF-11, SF-15 |
+| UT-DOM-122 | Unit | `time_accrual` table of 3.11.13 for every `GameState`; `TimeTotals::add` saturates; a takeback does not refund time; `DrawOffered` adds to `total_active_ms` only, so `total_active_ms >= white + black` over random state sequences (`proptest`); `seed_from_facts` sums `Move.think_ms` per mover | table, property | DAT-3, D-63, SF-01 |
+| FZ-DOM-001 | Property (`proptest`, random input; ID kept, the `FZ` prefix is historical) | `Game::replay` on arbitrary and random-legal fact sequences (including arbitrary `MoveCheck` values): no panic, `applied` ≤ length, any returned game passes its own invariants, `ReplayOutcome.terminal` and `error` are never both set. **Accepted loss (D-76):** random generation reaches narrow, deep sequences less often than a coverage-guided fuzzer, so the evidence for NFR-3 is these properties plus the soak and perft tables | `proptest` | NFR-3, FM-DOM-008 |
 | CT-DOM-001 | Contract | The `Fact` variants equal the 1:1 table of 3.11.1 (exhaustive match in a test); the JSON shape of the six `ts` types is stable (snapshot) and unknown fields are rejected on `GameSetup`; the store round trip (FF-3) is in `chess-app` | `insta` | RULE-5, D-50 |
 | CT-DOM-002 | Contract | Consumers build against the public API only: `chess-store` calls `settle`, `chess-app` calls `Game` and `Policy` | workspace build | §3.2 |
-| CT-DOM-003 | Contract | Dependency tree has no `tokio`, `rusqlite`, `rand` or time crate | `cargo tree` | principle 2 |
+| CT-DOM-003 | Contract | `cargo tree -e normal,build -p chess-domain` lists no `tokio`, `rusqlite`, `rand` or time crate (dev-dependencies excluded; with `proptest` as a dev-dependency plain `cargo tree` would show `rand`, `[RAN dependency-lookup-step1.md E11]`) | `cargo tree -e normal,build` | principle 2 |
 | CI-DOM-001 | CI | Lint with warnings as errors; `cargo-deny`; no `unsafe` | | SWE-001 §6 |
 
 Not run: every test above. No code exists. Test names will carry requirement IDs (test-strategy principle 4).
@@ -1089,8 +1132,8 @@ Not run: every test above. No code exists. Test names will carry requirement IDs
 | RULE-2 draw offer, resign | DD-DOM-009 | UT-DOM-023, 039, 041 |
 | RULE-3 takeback | DD-DOM-009 | UT-DOM-036 to 038 |
 | RULE-4 clocks; F-2.4.1, F-2.4.2 | DD-DOM-003, 008 | UT-DOM-010 to 014 |
-| RULE-5 resume (replay), NFR-2 | DD-DOM-006, 010 | UT-DOM-042 to 044, CT-DOM-001, FZ-DOM-001 |
-| RULE-8 custom start unrated | DD-DOM-011 | UT-DOM-055 |
+| RULE-5 resume (replay), NFR-2 (incl. D-65 terminal re-check, D-72 SAN policy, SF-22) | DD-DOM-006, 008, 010 | UT-DOM-042 to 044, UT-DOM-117 to 119, CT-DOM-001, FZ-DOM-001 |
+| RULE-8 custom start unrated; D-64 one definition of custom start | DD-DOM-005, 011 | UT-DOM-055, UT-DOM-115 |
 | ENG-4 / D-15 clock keeps running in EngineError | DD-DOM-007 | UT-DOM-045 |
 | ENG-5 CancelEngine policy | DD-DOM-004 | UT-DOM-024 |
 | ANA-1 no analysis in Strict play | DD-DOM-004 | UT-DOM-022 |
@@ -1108,7 +1151,7 @@ Not run: every test above. No code exists. Test names will carry requirement IDs
 | NFR-9 messages | DD-DOM-019 | UT-DOM-100 |
 | TR-3 identity, TR-6 `Personality`, TR-12 seed (D-40, D-43, D-46) | DD-DOM-001, 002, 020 | UT-DOM-101, 102, 111 |
 
-Reverse check (design without a driver): `MAX_PLIES`, `MAX_NODES` and the attempt cap are CERT-informed resource bounds; the `Fact` additions `DrawDropped` and `SuspendResume` are driven by RULE-2 (offer dropped) and D-14 (suspend/resume) and are decided by D-41 (FIND-DOM-001 RESOLVED); `Policy::check_player_action` is driven by the catalogue reasons `computer_player`, `active_player` and `archived_player` and by PLY-4 (FIND-DOM-008 RESOLVED); `first_k_after` is driven by D-46. No orphan entity.
+Reverse check (design without a driver): `MAX_PLIES`, `MAX_NODES` and the attempt cap are CERT-informed resource bounds; the `Fact` additions `DrawDropped` and `SuspendResume` are driven by RULE-2 (offer dropped) and D-14 (suspend/resume) and are decided by D-41 (FIND-DOM-001 RESOLVED); `StartPosition` is driven by D-64, `SuspendCause` by SF-21, `ResolveTerminal` and `pending_termination` by D-65, `MoveCheck` and `ReplayWarning` by D-72 and SF-22, `TimeTotals` by D-63 and SF-01; `Policy::check_player_action` is driven by the catalogue reasons `computer_player`, `active_player` and `archived_player` and by PLY-4 (FIND-DOM-008 RESOLVED); `first_k_after` is driven by D-46. No orphan entity.
 
 ---
 
@@ -1147,7 +1190,7 @@ Findings from v0.1, with the ruling that settled them. A RESOLVED finding is kep
 |---|---|---|---|
 | FIND-DOM-001 | Journal record kinds missing for the state machine (`DrawDropped`, `SuspendResume`, stepped move in `Paused`) | **RESOLVED** (TR-4, D-41, XC-1) | Both kinds added; `PlayResume` maps to the store's `Resume`; the implicit-resume fallback is removed; 1:1 table in 3.11.1 |
 | FIND-DOM-002 | Where statistics aggregation lives | **RESOLVED** (TR-7, D-44, XC-13) | The domain owns predicate and arithmetic; the store returns rows; SQL views dropped; `StatsService` is thin |
-| FIND-DOM-003 | New dependency `uuid` (v5) | **RESOLVED in principle** (D-47, review row D-5) | Admitted; version, features, licence and CVE lookup still pending `[UNV]` |
+| FIND-DOM-003 | New dependency `uuid` (v5) | **RESOLVED in principle** (D-47, review row D-5) | Admitted. *Amd 8 / P10 (rest):* looked up on 2026-11-04 for step 1: `uuid` 1.29.0, feature `v5` (`serde` per lookup F8), [dependency-lookup-step1.md](../engineering/dependency-lookup-step1.md) F8, P1; not re-run in this session `[UNV]` |
 | FIND-DOM-004 | Roster identity under-specified | **RESOLVED in principle** (TR-9, D-46, UR-12) | Interleaved index `5*k + class`; UUIDv5 over `chess-roster/v1/{seed}/{index}`; `StoreApi::roster_indexes()` in the store and `first_k_after` over the full list in this crate (addendum A, ruling 3). The `ROSTER_NAMESPACE` UUID, the default seed, pools and bounds are **not invented here**: they stay editable until the first release, then permanent (D-34) |
 | FIND-DOM-005 | `TimeSource` and `Rng` placement; the engine cannot name the trait | **RESOLVED** (TR-12, XC-15, UR-13) | Traits here, implementations in `chess-app`, `error_pick_seed` here, plain `u64` seed to the engine, shared vectors (FF-8) |
 | FIND-DOM-006 | Behaviour the requirements leave open, (a) to (i) | **RESOLVED** (a to g: Q-SE-4 confirmed, CR-9.2, TBD-34; h: decision 13, CR-9.4; i: TR-1) | (a) custom limits are TBD-34 (ESTIMATE); (b) White's clock runs from game start; (c) Fischer increment; (d) Step runs the clock for that one move; (e) end-reason order as in 3.11.2; (f) takeback in `EngineError` allowed; (g) reset boundary `started_at >=` the reset time, store creation time; (h) saving from the final position is refused; (i) the `cli -> domain` question is closed by the facade rule |
@@ -1177,6 +1220,18 @@ Closed in v0.3 (kept for traceability):
 
 ---
 
+### 10.1 Findings of version 0.4 (alignment with Amendment 8)
+
+Points where the architecture leaves a choice or the SDDs differ. They are findings for the architect or the systems engineer; this SDD records the choice it made.
+
+| ID | Sev | Finding | This SDD's choice | Owner |
+|---|---|---|---|---|
+| XC-DOM-A8-1 | Major | D-63 and SF-01 add the three totals to `GameEnd` but no record carries the time accumulated before a suspend, restart or crash, so a resumed game has no durable source for it except `Move.think_ms` and `Clock` records (lossy) | 3.11.13 provides `seed_from_facts` and states the loss | System architect (is a journal field needed? G3) |
+| XC-DOM-A8-2 | Major | D-72 (BP-013) puts the SAN comparison in the domain replay, but `Fact::Move` has no `san` or `fen_after` (§7.6: the `Fact` does not change) | `replay` takes `ReplayItem{fact, check: Option<MoveCheck>}`; the wording "a `fen_after` mismatch that SAN does not explain" is read as in 3.11.1 | System architect (confirm the interface; the app codec supplies the check) |
+| XC-DOM-A8-3 | Minor | D-67 (v) and D-69 let a journal hold `Ended` then `Voided`; §4.3 has no `Completed -> Voided` transition | T18 gains a replay-only row from `Completed` | System architect (state machine §4.3) |
+| XC-DOM-A8-4 | Minor | SF-01 leaves "the exact treatment of a pending draw offer" to the domain clock rule | 3.11.13: counted in `total_active_ms` only (ASM-DOM-008) | Systems engineer (DAT-3) |
+| XC-DOM-A8-5 | Minor | SF-02 requires the six-field comparison to normalise castling and en passant, which depends on the `chess-rules` FEN type | Stated as `[UNV]` in 3.11.6; UT-DOM-115 covers it | Software engineer at step 1 |
+
 ## 11 Risks, assumptions, questions, not analyzed
 
 ### 11.1 Assumptions
@@ -1189,6 +1244,7 @@ Closed in v0.3 (kept for traceability):
 | ASM-DOM-004 | `i32` is enough for ratings | Ratings are small; overflow returns an error | None |
 | ASM-DOM-005 | The upstream `Position` type is cheap to clone | Measure in step 1 | Use `Arc` for history |
 | ASM-DOM-006 | An opponent's category label for stats is the label **now**, not at game time | SE | Row shape |
+| ASM-DOM-008 | **Amd 8 (D-63, SF-01), design choice of this SDD:** `DrawOffered` time counts in `total_active_ms` and in neither side's used time; untimed games use the same rule (architecture ASM-10 is open) | SE to confirm against DAT-3 ("time spent by each Player; excludes time the app was closed/paused"); the rule is one table in 3.11.13 | One table row and UT-DOM-122 |
 | ASM-DOM-007 | An interrupted game (journal ends without `Suspend`) is resumed by `decide(Suspend)` then `decide(SuspendResume)`, written to the journal | **Settled by D-58** (architecture addendum A, ruling 6, G1; OQ-DOM-007 closed). Retained as a traceability row | A different explicit recovery command is needed |
 
 ### 11.2 Open questions
@@ -1212,7 +1268,7 @@ Closed in v0.3 (kept for traceability):
 ### 11.4 Not analyzed or not run
 
 - Nothing was built, run or measured. No test, coverage, mutation or benchmark figure exists.
-- The `uuid`, `serde` and `thiserror` crates were not looked up (no network use); their behaviour is `[UNV]`.
+- *Amd 8 / P10 (rest):* `uuid`, `serde` and `thiserror` were looked up on 2026-11-04 for step 1 ([dependency-lookup-step1.md](../engineering/dependency-lookup-step1.md) F8, P1, P2; `uuid` 1.29.0 with feature `v5`, `serde` with `derive`); this session did not re-run that lookup, and their runtime behaviour in this crate is still `[UNV]` until built.
 - The FIDE Laws were not re-read (RULE-1/RULE-4 cite their own source checks); Art. 6.4 on increments is `[UNV]`.
 - Sibling SDDs were not re-read for v0.2 (revised in parallel). Consumer expectations come from the amended architecture §5.7, §4.1, §7.6 and §10.1 and from the triage rulings. The `Fact` table (3.11.1), `Settlement` (IFP-DOM-4) and the `BoardGrid` curated list must still be checked against the app and store SDDs at their v0.2.
 - The use-case files were not read in full; the architecture, requirements and functional decomposition were used as the authoritative sources for behaviour.
@@ -1228,4 +1284,5 @@ Closed in v0.3 (kept for traceability):
 | System-architect desk review (G1 for in-crate implementation) | **PENDING.** Not requested yet |
 | Approval of FIND-DOM-001, 003, 004, 005 (G2, G3 for the journal kinds) | **APPROVED by Brian Prascher, 2026-10-31** (triage decisions 3, 4, 7, 8; requirements CR-9.1; architecture D-40, D-41, D-46, D-50) |
 | Systems engineer review of FIND-DOM-006, 007, 009 | Interpretations confirmed by Brian Prascher (CR-9.2); formal SE review of the SDD **PENDING** |
-| Mermaid validation | See the delivery message: the validator was re-run on this file for v0.2. A parse pass proves syntax, not readability |
+| Mermaid validation | See the delivery message: the validator was re-run on this file for v0.2. A parse pass proves syntax, not readability. v0.4 `[RAN 2026-11-04 node validate-mermaid.mjs docs/design/SDD-chess-domain.md -> 8/8 mermaid blocks parsed OK]` after the class diagram (`StartPosition`) and the resume sequence (terminal re-check, `Suspend` cause) were edited |
+| Amendment 8 (version 0.4) | Carried as text. Approved decisions: Brian Prascher, G-2, 2026-11-04. This text: **no desk review**; OQ-16 stays open until the system-architect and the systems engineer have reviewed the batch in the SDDs (separate invocations from the author) |

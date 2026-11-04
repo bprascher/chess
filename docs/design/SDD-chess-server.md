@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | docs/design/SDD-chess-server.md |
-| Version | **0.3.1 DRAFT** (0.2 DRAFT and 0.1 DRAFT were 2026-10-31 and 2026-10-30) |
-| Date | 2026-10-31 |
+| Version | **0.3.2 DRAFT** (0.3.1 DRAFT was 2026-11-01; 0.2 DRAFT and 0.1 DRAFT were 2026-10-31 and 2026-10-30) |
+| Date | 2026-11-04 |
 | Status | **DRAFT** (v0.3.1, 2026-11-01). Not reviewed. Not approved. No code exists yet. v0.2 applied the architect's triage rulings that Brian Prascher approved on 2026-10-31; v0.3 aligns to architecture Addendum A (D-51 to D-58) and D-59; v0.3.1 aligns to addendum B and C (D-60 to D-62, agreed 2026-11-01) (see section 12c) |
 | Owner | Software engineer role (Claude), for Brian Prascher |
 | Approver | **Pending.** Gate G0 for this document (documents only, no approver, SWE-001 §3). The design it describes, once implemented, is G1 (System-architect agent, desk review) while it stays inside this crate with the §3.2 edges and §5.7 contracts unchanged. Any new item that touches a second crate, an interface, an edge or the protocol would be G2 and need Brian Prascher. The G2 and G3 rulings this version implements were approved by him on 2026-10-31 (triage section 5, requirements CR-9.1); that approval does not approve this document |
@@ -408,7 +408,7 @@ This is the confirmed reading of NFR-7 (Q-SE-13): `Host` must match on every req
 - The envelope and its kinds are defined by `chess-app` (IFP-APP-03; `hello`, `command`, `query`, `subscribe`, `unsubscribe`, `subscribe_global` in; `result`, `error` and `event` out). Frame shape is `{id?, kind, body}`. `id` is a client-chosen request id: it is present on `command`, `query`, `subscribe`, `unsubscribe` and `subscribe_global` frames and is echoed on the `result` or `error` that answers them. `hello` and `event` frames carry **no `id`**. An `error` for a frame that could not be decoded has no `id` unless one could be read from it (architecture 5.6, D-53). This crate keeps **no frame types of its own** (it replaces the earlier `Frame`, `FrameKind` and `wire.rs` types). It calls `chess_app::protocol::envelope` to decode a text message into a request and to encode replies and events, and `check_version` for `hello`.
 - Decode failure (bad JSON, unknown kind, unknown field, binary frame, frame before `hello`): send the `error` frame `MalformedFrame{reason}` with `reason` in {`bad_json`, `unknown_kind`, `unknown_field`, `before_hello`} (architecture 5.5, D-54; UF-SRV-3), then close 4001. The close code is the server's choice (D-54, ASM-SRV-1). An unknown variant is what version skew looks like.
 - Size: the transport limit (DD-SRV-5) is the first line; there is no per-field limit here.
-- Verification: UT-SRV-02 (close-code mapping, `MalformedFrame` reasons), CT-SRV-15 to 17, fuzz target FZ-SRV-1 (architecture 9 "protocol fuzzing at the WebSocket" [OBS]). Decoding itself is tested in `chess-app`.
+- Verification: UT-SRV-02 (close-code mapping, `MalformedFrame` reasons), CT-SRV-15 to 17, random-input property test FZ-SRV-1 (`proptest`; architecture 9 "protocol fuzzing at the WebSocket" [OBS] is read as random and malformed frames into the decoder, D-76). Decoding itself is tested in `chess-app`.
 
 ### DD-SRV-8 `FrameRouter`
 - Type: module | Traces: F-7.4.3, PLAT-5
@@ -552,7 +552,7 @@ Test levels follow test-strategy.md and architecture §9 [OBS]. All IDs below ar
 | ID | Level (§9 row) | Case | Requirement |
 |---|---|---|---|
 | UT-SRV-01..04 | Unit | Host/Origin decision table (A1): every row of the allowed and rejected sets, incl. missing Host, two Host headers, uppercase `LOCALHOST`, `localhost.`, `[::1]`, `null`, `http://127.0.0.1:otherport`; frame decode through the `chess-app` helper (`deny_unknown_fields`, `MalformedFrame` reasons); close-code mapping; path-safety predicate | NFR-7 |
-| FZ-SRV-1 | Fuzz (`cargo-fuzz`) | arbitrary bytes into the frame decoder and the path predicate must never panic | NFR-3 spirit, §9 |
+| FZ-SRV-1 | Property (`proptest`, random input; ID kept, the `FZ` prefix is historical) | arbitrary and malformed bytes, frames and paths into the frame decoder and the path predicate must never panic, and every `Ok` result is well-formed. **Accepted loss (D-76):** no coverage-guided fuzzing, no nightly toolchain | NFR-3 spirit, §9 |
 | CT-SRV-01 | Component | `serve` on port 0 binds only `127.0.0.1` (assert `local_addr().ip()`) | NFR-4, PLAT-4 |
 | CT-SRV-02 | Component | second `serve` on the same port returns `PortInUse{port}` | PLAT-4 |
 | CT-SRV-03 | Component | nothing is listening on a non-loopback address of the host | NFR-4 |
@@ -690,6 +690,7 @@ Status key. **RESOLVED** means a ruling that Brian Prascher approved on 2026-10-
 | Version | Date | Change |
 |---|---|---|
 | 0.1 DRAFT | 2026-10-30 | First draft, reconciliation 12a against SDD-chess-app v0.1, banner E-12 |
+| 0.3.2 DRAFT | 2026-11-04 | G0 (text). **L5 / D-76:** `FZ-SRV-1` keeps its ID; level and tool change from `cargo-fuzz` to a `proptest` random-input property test; the accepted loss is stated. No Amendment 8 item touches this crate. Not approved, not desk-reviewed |
 | 0.3.1 DRAFT | 2026-11-01 | Archive imports are stateless (no `import_id`, no `CancelImport`; FIND-JR3-004); OQ-SRV-007 closed and status line fixed (FIND-JR3-012); test-ID forms: `CT-SRV-30` in 1.4 is read as `CT-SRV-030` (FIND-JR3-013, CR-9.9 allows both forms for one item). Closed later the same day by D-60, D-61 and D-62 (architecture addendum B and C): D-62 confirms `ResolveImport{import_id, eco}` is forwarded unchanged; Status row and version label updated (FIND-JR4-004, -005) |
 | 0.3 DRAFT | 2026-11-01 | Aligned to architecture Addendum A and D-59 (accepted): event envelope and `id` rule (D-53; UF-SRV-014 closed), `MalformedFrame` reasons and close behaviour (D-54; UF-SRV-3), `ExportedFile` reply as `Bytes` for a `Remote` session (D-55), `ParsedMove{uci, san}` and `ParseError{kind: move}` pass-through (D-51, D-52), reconnect order forced by D-56, `FakeEngine` factory behind `test-support` (UF-SRV-013 closed), D-59 commands (`ImportPgn eco`, `ResolveImport`, `CancelImport`) forwarded with no server state; tests CT-SRV-033 to 036; new open items OQ-SRV-006, 007. No code exists; nothing verified by running |
 | 0.2 DRAFT | 2026-10-31 | Applied the approved triage rulings (TR-1, TR-2, decisions 9 and 10, UR-29 to UR-31, UR-35, UR-44), desk answers Q-SE-13 and Q-SE-14, XC-19, XC-29, XC-30. Aligned the frame shapes and the decode-error code with SDD-chess-app v0.2 (IFP-APP-03, `MalformedFrame{reason}`). Rewrote the protocol bodies (3.3, 3.6, DD-SRV-5 to 9, 5.1 to 5.3); removed banner E-12; all findings UF-SRV-1 to 12 given a status; added 12b. No code exists; nothing verified by running |
