@@ -14,22 +14,26 @@ Read in this order when you need to resolve a question; earlier documents win ov
 2. [docs/architecture.md](docs/architecture.md) — crate graph (§3.2), shared core `chess-app` (§4), protocol (§5), persistence/journal (§7), decisions `D-n` (§11), open items (§14). Planned repo layout is §3.1; implementation order is §13.
 3. [docs/functional_decomp.md](docs/functional_decomp.md) and [docs/use_cases/](docs/use_cases/README.md) (UC-1…UC-29) — functions `F-x.y.z` allocated to architecture blocks.
 4. [docs/test-strategy.md](docs/test-strategy.md) — test levels and quality gates (the definition of done).
-5. [docs/design/](docs/design/) — one IEEE 1016 SDD per crate/block (rules, domain, engine, store, app, server, cli, ui, desktop-tauri), plus [SDD-consistency-review.md](docs/design/SDD-consistency-review.md) (cross-SDD mismatches `XC-n`) and [SDD-architect-triage.md](docs/design/SDD-architect-triage.md) (rulings, still pending user approval). SDDs are **0.1 DRAFT**; their "Code:" paths are planned, not real.
+5. [docs/design/](docs/design/) — one IEEE 1016 SDD per crate/block (rules, domain, engine, store, app, server, cli, ui, desktop-tauri), plus [SDD-consistency-review.md](docs/design/SDD-consistency-review.md) (cross-SDD mismatches `XC-n`) and [SDD-architect-triage.md](docs/design/SDD-architect-triage.md) (rulings, approved 2026-10-31). SDDs are **0.3.1 DRAFT** and none is approved; their "Code:" paths are planned, not real.
 
 ## Architecture in brief
 
 - Seven Rust crates under `crates/` with a strict dependency graph (architecture §3.2): `chess-rules` and `chess-domain` are pure (no I/O); `chess-engine`, `chess-store`, `chess-app` (the shared core: services, game-session actors, protocol types) sit above; `chess-server` and `chess-cli` are entry points; `desktop/src-tauri` is the Tauri shell. All front-ends embed the core and coordinate only through the shared data directory — there is no daemon.
 - One serializable protocol, three transports: in-process (CLI), Tauri IPC, localhost WebSocket. TypeScript types in `ui/src/protocol/` are **generated** by `ts-rs` — never hand-edit.
 - Persistence: SQLite (WAL) plus a per-game move journal flushed before each move is acknowledged; no completed move may be lost.
-- Resolved (D-38, approved 2026-10-31): `chess-app -> chess-rules` is an edge in §3.2, and front-ends depend only on `chess-app`. Amendment 7 (CR-9) records decisions 1–13 of [docs/design/SDD-architect-triage.md](docs/design/SDD-architect-triage.md); the SDDs are at 0.2 DRAFT. A Review Board pass on D-41…D-43 is required before any `chess-store` code (OQ-16).
+- Resolved (D-38, approved 2026-10-31): `chess-app -> chess-rules` is an edge in §3.2, and front-ends depend only on `chess-app`. Amendment 7 (CR-9) records decisions 1–13 of [docs/design/SDD-architect-triage.md](docs/design/SDD-architect-triage.md); the SDDs are at 0.3.1 DRAFT. The Review Board pass on D-41…D-43 was held on 2026-11-04 ([docs/design/Board-pass-store-journal.md](docs/design/Board-pass-store-journal.md), verdict PROCEED WITH CHANGES); its findings are awaiting disposition at gate G-1, and OQ-16 stays open until they are applied. No `chess-store` code before OQ-16 closes.
 
 ## Process rules (docs/engineering/SWE-001-engagement-profile.md)
 
 - **Design gates:** G0 (docs/tests/formatting) needs no approver; G1 (inside one crate, edges and §5.7 contracts unchanged) needs a system-architect desk review; G2 (touches two crates, an interface, dependency edge, data ownership, protocol or ADR) and G3 (stored formats, public commands/exit codes) need **Brian Prascher**. Never self-approve.
-- **Coding standard (when code starts):** Rust 1.99.1 / edition 2024, TypeScript 7.0.2 on Node 26.13.0 LTS; compiler warnings, `clippy`, `rustfmt --check`, strict `tsc`, ESLint treated as errors; suppressions need a written reason; `cargo-deny`/`npm audit` CVEs block release. SEI CERT is applied by *intent* only — make no conformance claim. The local toolchain (cargo 1.89, node 26.12.1) is older than the baseline and must be updated before step 1.
+- **Coding standard (when code starts):** Rust 1.99.1 / edition 2024, TypeScript 7.0.2 on Node 26.13.0 LTS; compiler warnings, `clippy`, `rustfmt --check`, strict `tsc`, ESLint treated as errors; suppressions need a written reason; `cargo-deny`/`npm audit` CVEs block release. SEI CERT is applied by *intent* only — make no conformance claim. The local toolchain is at the baseline (rustc/cargo 1.99.1, node 26.13.0, verified 2026-11-04).
 - **Evidence tags** in engineering docs: `[OBS]` observed, `[RAN]` executed, `[INF]` inferred, `[UNV]` unverified. Do not state unverified compiler/crate behaviour as fact.
 - IDs follow `PREFIX-n` (e.g. `D-`, `FR-`, `UF-APP-nn`, `GATE-101+`); don't reuse or renumber existing IDs — amendments add, they don't renumber. Changes to baselined documents are recorded as amendments with a Decision Log entry and a RELEASE_NOTES entry.
 - Intel Macs can't be tested; platform verification without hardware is "not run", best effort.
+
+## Plan and tracking
+
+The approved delivery plan (v1, baseline B1, 2026-11-04) is the beads program epic `chess-a0r`; the snapshot is `.pm/baseline-b1.jsonl`. Phases: design closure, foundation, core services, GUI/desktop/packaging, verification and release. Human gates G-1…G-6 belong to Brian Prascher. Engineering work is dispatched through the program-manager agent; check `bd show chess-a0r` and `bd ready` rather than assuming status.
 
 ## Diagrams
 
