@@ -2,7 +2,7 @@
 
 An offline, single-machine chess application for macOS with three front-ends (terminal UI, local web UI, desktop app) on top of one shared Rust core, using Stockfish as the engine.
 
-> **Status: requirements and architecture baselined as v1.0 (2026-10-26), amended on 2026-10-27 (reset with unfinished games, Stockfish 19) and on 2026-10-28 (Amendments 2 and 3: use-case gaps closed, install and recovery rules; Amendment 4: criticality, coding standard and design approvers recorded).** No code is implemented yet. This repository holds the requirements, the test strategy, the architecture, the use cases and functional decomposition (baselined v1.0, 2026-10-28), plus the trade studies behind the GUI board choice. Every requirement and every architecture decision is agreed, except the GUI Elo chart library, which is deferred to implementation. What remains open needs measurement or a check during implementation, not a user decision (see the TBD register in [docs/requirements.md](docs/requirements.md) and §14 of [docs/architecture.md](docs/architecture.md)). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced so far.
+> **Status: requirements and architecture baselined as v1.0 (2026-10-26), amended on 2026-10-27 (reset with unfinished games, Stockfish 19) and on 2026-10-28 (Amendments 2 and 3: use-case gaps closed, install and recovery rules; Amendment 4: criticality, coding standard and design approvers recorded).** No code is implemented yet. This repository holds the requirements, the test strategy, the architecture, the use cases and functional decomposition (baselined v1.0, 2026-10-28), plus the trade studies behind the GUI board choice. Every requirement and every architecture decision is agreed, except the GUI Elo chart library, which is deferred to implementation. What remains open needs measurement or a check during implementation, not a user decision (see the TBD register in [docs/requirements.md](docs/requirements.md) and §14 of [docs/architecture.md](docs/architecture.md)). The delivery plan (design closure through release) was approved on 2026-11-04 and is tracked in beads; see [Project management](#project-management). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced so far.
 
 ## Planned features
 
@@ -62,6 +62,10 @@ An offline, single-machine chess application for macOS with three front-ends (te
 
 Online or network play (a possible future enhancement), matchmaking, accounts with passwords, chess variants (e.g. 960), opening-book trainers, native mobile apps, Windows/Linux packaging, sound effects, FEN export, and languages other than English.
 
+## Project management
+
+Work is tracked with [beads](https://github.com/gastownhall/beads) (`bd`). The approved delivery plan is the program epic `chess-a0r` with five phases: design closure, foundation, core services, GUI/desktop/packaging, and verification and release. Run `bd show chess-a0r` for the plan and `bd ready` for available work (nothing is ready until the plan is baselined). Six human gates (G-1 to G-6) are approved by Brian Prascher. `.beads/issues.jsonl` is a passive export of the tracker.
+
 ## Next steps
 
-See section 13 of [docs/architecture.md](docs/architecture.md).
+Hold the independent Review Board pass on the stored-format decisions (OQ-16), then start step 1 (workspace, `chess-rules`, `chess-domain`) once the toolchain is at the baseline versions. See section 13 of [docs/architecture.md](docs/architecture.md).

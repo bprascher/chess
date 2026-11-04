@@ -1,6 +1,21 @@
 # Release Notes
 
 
+## Project management moves to beads; delivery plan approved: 2026-11-04
+
+Process-only release. No requirement, architecture, SDD or code text changed. No code exists yet.
+
+### Added: project management in beads
+- **Delivery plan v1 approved by Brian Prascher on 2026-11-04.** It takes the project from the SDDs at 0.3.1 DRAFT to a verified v1 release and is tracked in beads under program epic `chess-a0r`: five phase epics (P1 design closure, P2 foundation, P3 core services, P4 GUI, desktop and packaging, P5 verification and release), 69 tasks, spikes and decisions, and 10 risk issues. There are 103 dependency edges and no cycles. The plan is a draft of 87 deferred issues in beads until the program manager baselines it; that step is recorded separately.
+- **Human gates G-1 to G-6** are all Brian Prascher's: G-1 Review Board findings, G-2 Amendment 8 and OQ-16, G-3 to G-5 exit of architecture steps 1 to 3, G-6 verification, residual risks and release.
+- **Decisions recorded with the approval:** Review Board composition as recommended by the program manager (a software engineer in Reviewer stance, in a fresh invocation, separate from the SDD authors); the SDDs are to be baselined; autonomy levels as proposed (P1 and P2 supervised, P3 and P4 review-each, P5 run-to-gate); the later decisions (TBD-36 CLI exit statuses, the D-4 chessground spike outcome, TBD-18 wording, a clean macOS 26 install walkthrough) stay deferred to their tasks.
+- **Estimates are not measured.** About 274 hours of effort plus a 20% contingency, with a longest chain of about 137 hours. There is no velocity data behind them.
+- `.beads/issues.jsonl` (the passive export of the tracker) is now tracked. `AGENTS.md` and the beads block in `CLAUDE.md` were refreshed by the beads tooling.
+
+### Open at this release
+- No SDD is approved. The independent Review Board pass on D-41 to D-43 and Addendum A (OQ-16) has not been held and still blocks all `chess-store` code.
+- The development Mac's Rust toolchain (1.89.0) is older than the baseline (1.99.1) and must be updated before architecture step 1. Node is at the baseline 26.13.0. The open items listed in the previous release are unchanged.
+
 ## Amendment 7, addendum C: PGN import stays two steps: 2026-11-01
 
 Documentation-only. Brian Prascher ruled on OQ-23 and on the findings of `docs/design/SDD-v0.4-consistency-pass.md`.
