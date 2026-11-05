@@ -1,10 +1,35 @@
 # Release Notes
 
+## Brian's rulings of 2026-11-04 and architecture Addendum E recorded: 2026-11-04
+
+Documentation-only. No code exists. Requirements Decision Log entry: CR-11. Nothing here is reviewed beyond its author, and OQ-16 stays open.
+
+### Recorded: Brian Prascher's rulings of 2026-11-04 (beads chess-a0r.1.30)
+- **D-79 and D-80 are ratified** by Brian. **D-78 is not ratified.** It awaits his choice between A (accept the loss of the unfinished turn at each stop, amend DAT-3, add a verification case), B (totals in `Suspend`) and C (totals in every `Clock` record). The architect's proposal is docs/design/PROPOSED-D-78-DAT-3-for-Brian.md (recommendation A, confidence Medium). Nothing was applied: DAT-3, its verification and every time-accounting wording are unchanged. Open as OQ-28.
+- **A data directory that cannot do full sync is refused** (`DurabilityUnsupported`, D-71), and the command-line program exits with class 3 (store error). Brian accepted this as a G3 decision. No new exit code number.
+- Open for Brian, not applied: OQ-26 (how the game row gets the one start time, G2) and OQ-27 (the canonical form of an imported game with a standard `FEN` tag, G3).
+
+### Added or decided: architecture Addendum E (architect, text only)
+- Two OQ-16 desk reviews were held on 2026-11-04 (system-architect part and systems-engineer part); both returned PASS WITH CONDITIONS and their conditions are not met. The architect answered the architect-owned findings as D-82 to D-88: what the journal writer does after a failed append, how a damaged journal is rebased, one start time for the game row and the journal (the field is OQ-26), the end time of a game ended by the recovery re-check, how a held session behaves, a `GameEnd` followed by `Voided`, and a start that was never acknowledged. The wording of two journal fitness functions (FF-3, FF-4) is corrected, and ASM-10 is closed on design evidence (the runtime fact is not yet run).
+- The store, app and domain SDDs are at 0.4.2 DRAFT. The front-end SDDs are aligned separately (chess-a0r.1.32).
+
+### Changed: requirements (CR-11), test strategy, functional decomposition
+- `docs/requirements.md`: Decision Log entry CR-11 and a change-history row; two verification additions (a RULE-8 four-start line; a pass criterion in the NFR-3 verification). **No requirement statement, number or TBD/TBR/TBC status changed.** The entry logs four readings: NFR-2's precedence sentence against D-66 (consistent), the stale D-20 pointer in DAT-3 (a) (accepted by note), the RULE-8 six-field reading, and the accepted loss of coverage-guided fuzzing under D-76.
+- `docs/test-strategy.md`: header and Amendment 8 revision line, and the crash-recovery and stored-format tests named in the Integration row.
+- `docs/functional_decomp.md`: F-3.9 says "run on a schedule" (D-76); an Amendment 8 note is added to the change log.
+- The heading of the Amendment 8 section below no longer reads every later addendum as Brian's approval.
+
+### Open at this release
+- **OQ-16 stays open.** The conditions of both desk reviews are not met and the independent re-review has not been held. No `chess-store` code starts before OQ-16 closes (D-77). No gate is recorded as passed by this entry.
+- **D-78 and DAT-3 (OQ-28)** wait for Brian. Until then the reading of DAT-3 in CR-10 is the systems engineer's interpretation, neither ratified nor reversed. A DAT-3 verification line for the time clause and the treatment of a pending draw offer in the time totals (XC-DOM-A8-4) wait with it.
+- Whether the full-sync refusal is a verification case of NFR-2 or a constraint on `--data-dir` is open (CR-11 item 9); no calendar date is set.
+- Nothing is implemented.
+
 ## Architecture Amendment 8 and addenda A to D recorded; verification wording follows D-76: 2026-11-04
 
 Documentation-only. No code exists. Requirements Decision Log entry: CR-10. Brian Prascher approved architecture Amendment 8 at gate G-2 on 2026-11-04 and applied his G-1 dispositions of the independent Board pass on the store and journal (docs/design/Board-pass-store-journal.md). Addenda A to D were added the same day.
 
-### Added or decided: architecture (Amendment 8, approved by Brian at G-2)
+### Added or decided: architecture (Amendment 8 approved by Brian; later addenda as stated per bullet)
 - The finalize time totals are carried in the `GameEnd` journal record; `custom_start` is defined once (all six FEN fields compared) and stored; a terminal position is ended, not resumed, after a crash; a failed multi-record step adopts the durable prefix; a database ahead of a damaged journal tail keeps its moves.
 - OQ-20 is decided as option A (the hash of a voided game is advisory). The hash scope, the `Date` rule (UTC date of `started_at`) and a version marker in `content_hash` (`sha256:v1:<hex>`) are fixed. `Voided` gains `ended_at`; `Suspend` carries a `cause`; journal reason codes are snake_case; the `Start` record has no `started_at`. One stored-format batch of 22 items (SF-01 to SF-22) with rollback notes. A data directory without `F_FULLFSYNC` is refused.
 - New decisions D-63 to D-73, GATE-008, OQ-24, OQ-25, ASM-9 to ASM-11 and Q-A20 (answered).
