@@ -1,5 +1,26 @@
 # Release Notes
 
+## Gate G-2 passed and OQ-16 closed: 2026-11-04
+
+Documentation-only. No code exists. Nothing here changes a requirement statement, a decision text or a number. The entries below this one that say OQ-16 is open are dated history; this entry supersedes them.
+
+### Recorded: Brian Prascher's decisions of 2026-11-04 (beads chess-a0r.1.47)
+- **D-83 added cases confirmed (G2):** synthesize `Start` from the stored row when the intact journal run lacks it; do not rebase a final or voided game; use no-replace renames; sync both directories.
+- **Gate G-2 (`chess-cdb`) passed and OQ-16 closed.** Basis: the stored-format batch is applied (Amendment 8 and addenda B to F); the architect and systems-engineer desk reviews and the limited re-review were each PASS WITH CONDITIONS; the conditions were addressed in text; the closing pass was checked mechanically (ID scan, Mermaid validation, version headers); Brian's word. No reviewer has seen the closing-pass text, and the Board was a single same-family reviewer that ran no ATAM, security or performance lens (see GATE-008).
+- **Not decided:** the SDD baseline v1.0 (`chess-a0r.1.11`, G2). The SDDs stay DRAFT (store 0.4.3, app 0.4.4, domain 0.4.3, rules 0.3.3, engine 0.3.3, cli, ui, desktop-tauri and server 0.4.1). The draw-offer time before a stop (`chess-a0r.1.45`, G3) stays as designed, with no stamp on draw facts.
+
+### Changed
+- `docs/architecture.md`: status-only edits (G0). The OQ-16 row reads "Closed ... by Brian Prascher, 2026-11-04", with the old text kept as history, and status notes on GATE-006, GATE-007, GATE-008 and D-77 part 2. No decision text or numbering changed.
+- Beads: the decision record `chess-a0r.1.47`; `chess-a0r.1.46`, gate `chess-cdb` and CR-1 (`chess-a0r.16`) closed. The plan baseline is B3.
+
+### Open at this release
+- **No `chess-store` code starts until its own prerequisites close:** the `flock`/`F_FULLFSYNC` spike (`chess-a0r.3.1`, OQ-14), the part 2 crate lookups (`chess-a0r.3.2`, OQ-17) and `chess-domain` part B (`chess-a0r.2.7`). OQ-16 no longer blocks it.
+- **TBR-4** (NFR-2 full-sync refusal case) stays open until the store SDD is baselined.
+- **The Decision Log entry** for this closure in `docs/requirements.md` is not yet written.
+- **Stale wording:** several documents still say OQ-16 is open as dated history (architecture history rows, earlier release-note entries, `SDD-chess-domain.md`, and the store and app SDD headers).
+- **Post-G-2 minors** (`chess-a0r.1.38`, `chess-a0r.1.44`) and the SDD baseline decision (`chess-a0r.1.11`).
+- Nothing is built. All test, crash and timing claims are design text, not run.
+
 ## CR-3 closing pass: Brian's decisions of 2026-11-04 recorded (CR-12, architecture Addendum F): 2026-11-04
 
 Documentation-only. No code exists. Requirements Decision Log entry: CR-12. Nothing here is reviewed beyond its author, and OQ-16 stays open. No requirement statement, number or TBD status changed.
