@@ -1,5 +1,92 @@
 # Release Notes
 
+## Gate G-2 passed and OQ-16 closed: 2026-11-04
+
+Documentation-only. No code exists. Nothing here changes a requirement statement, a decision text or a number. The entries below this one that say OQ-16 is open are dated history; this entry supersedes them.
+
+### Recorded: Brian Prascher's decisions of 2026-11-04 (beads chess-a0r.1.47)
+- **D-83 added cases confirmed (G2):** synthesize `Start` from the stored row when the intact journal run lacks it; do not rebase a final or voided game; use no-replace renames; sync both directories.
+- **Gate G-2 (`chess-cdb`) passed and OQ-16 closed.** Basis: the stored-format batch is applied (Amendment 8 and addenda B to F); the architect and systems-engineer desk reviews and the limited re-review were each PASS WITH CONDITIONS; the conditions were addressed in text; the closing pass was checked mechanically (ID scan, Mermaid validation, version headers); Brian's word. No reviewer has seen the closing-pass text, and the Board was a single same-family reviewer that ran no ATAM, security or performance lens (see GATE-008).
+- **Not decided:** the SDD baseline v1.0 (`chess-a0r.1.11`, G2). The SDDs stay DRAFT (store 0.4.3, app 0.4.4, domain 0.4.3, rules 0.3.3, engine 0.3.3, cli, ui, desktop-tauri and server 0.4.1). The draw-offer time before a stop (`chess-a0r.1.45`, G3) stays as designed, with no stamp on draw facts.
+
+### Changed
+- `docs/architecture.md`: status-only edits (G0). The OQ-16 row reads "Closed ... by Brian Prascher, 2026-11-04", with the old text kept as history, and status notes on GATE-006, GATE-007, GATE-008 and D-77 part 2. No decision text or numbering changed.
+- Beads: the decision record `chess-a0r.1.47`; `chess-a0r.1.46`, gate `chess-cdb` and CR-1 (`chess-a0r.16`) closed. The plan baseline is B3.
+
+### Open at this release
+- **No `chess-store` code starts until its own prerequisites close:** the `flock`/`F_FULLFSYNC` spike (`chess-a0r.3.1`, OQ-14), the part 2 crate lookups (`chess-a0r.3.2`, OQ-17) and `chess-domain` part B (`chess-a0r.2.7`). OQ-16 no longer blocks it.
+- **TBR-4** (NFR-2 full-sync refusal case) stays open until the store SDD is baselined.
+- **The Decision Log entry** for this closure in `docs/requirements.md` is not yet written.
+- **Stale wording:** several documents still say OQ-16 is open as dated history (architecture history rows, earlier release-note entries, `SDD-chess-domain.md`, and the store and app SDD headers).
+- **Post-G-2 minors** (`chess-a0r.1.38`, `chess-a0r.1.44`) and the SDD baseline decision (`chess-a0r.1.11`).
+- Nothing is built. All test, crash and timing claims are design text, not run.
+
+## CR-3 closing pass: Brian's decisions of 2026-11-04 recorded (CR-12, architecture Addendum F): 2026-11-04
+
+Documentation-only. No code exists. Requirements Decision Log entry: CR-12. Nothing here is reviewed beyond its author, and OQ-16 stays open. No requirement statement, number or TBD status changed.
+
+### Recorded: Brian Prascher's decisions of 2026-11-04
+- **D-78 is ratified, option A (OQ-28, G2).** A game that is stopped and resumed may lose up to one turn of time at each stop; it is not required to. The DAT-3 statement is not changed. **D-79 and D-80** were ratified earlier the same day (CR-11).
+- **OQ-26, option A (G2):** `NewGame` gains `started_at`, supplied by the app. **OQ-27, option A (G3):** `canonical_form` omits `SetUp` and `FEN` when the `FEN` equals the standard start. **D-83** is rated G2 and approved; D-82 stays G1. The D-71 refusal of a directory that cannot do full sync is an NFR-2 verification case, tracked as TBR-4.
+
+### Changed
+- `docs/architecture.md`: Addendum F (D-78 ratified, `NewGame.started_at`, the `canonical_form` omission, re-review findings RR-A-1 to RR-A-5 fixed as text, section 11.4.14 on the draw-offer time).
+- `docs/requirements.md` (Amendment 8, extension 2): Decision Log entry CR-12; a DAT-3 time-clause verification case worded as bounds (L <= T <= U) that accepts a shortfall and requires none, including draw-offer time before the last stop, which the design's seed does not count (a design that counts it needs a stamp on draw facts, a Brian decision if wanted); an NFR-2 full-sync refusal case with TBR-4 (mapped to CT-ST-085, CT-ST-001, CT-APP-33); the RULE-8 row 4 now names UT-RUL-031, UT-DOM-115 and UT-APP-29 (also CT-RUL-004, UT-APP-39); an appended correction to CR-11 listing the final SDD versions.
+- `docs/design/PROPOSED-D-78-DAT-3-for-Brian.md` 0.2 (decided, option A).
+- SDDs, final versions: store 0.4.3, app 0.4.4, domain 0.4.3, rules 0.3.3, engine 0.3.3, cli 0.4.1, ui 0.4.1, desktop-tauri 0.4.1, server 0.4.1 (all DRAFT, G1 text, not reviewed).
+- The older Amendment 8 section below now points to the ratification of D-78 to D-80 (RR-S-9).
+
+### Open at this release
+- **OQ-16 stays open.** No `chess-store` code starts before it closes (D-77).
+- TBR-4 (NFR-2 full-sync refusal case) stays open until the store SDD baseline.
+
+## Brian's rulings of 2026-11-04 and architecture Addendum E recorded: 2026-11-04
+
+Documentation-only. No code exists. Requirements Decision Log entry: CR-11. Nothing here is reviewed beyond its author, and OQ-16 stays open.
+
+### Recorded: Brian Prascher's rulings of 2026-11-04 (beads chess-a0r.1.30)
+- **D-79 and D-80 are ratified** by Brian. **D-78 is not ratified.** It awaits his choice between A (accept the loss of the unfinished turn at each stop, amend DAT-3, add a verification case), B (totals in `Suspend`) and C (totals in every `Clock` record). The architect's proposal is docs/design/PROPOSED-D-78-DAT-3-for-Brian.md (recommendation A, confidence Medium). Nothing was applied: DAT-3, its verification and every time-accounting wording are unchanged. Open as OQ-28.
+- **A data directory that cannot do full sync is refused** (`DurabilityUnsupported`, D-71), and the command-line program exits with class 3 (store error). Brian accepted this as a G3 decision. No new exit code number.
+- Open for Brian, not applied: OQ-26 (how the game row gets the one start time, G2) and OQ-27 (the canonical form of an imported game with a standard `FEN` tag, G3).
+
+### Added or decided: architecture Addendum E (architect, text only)
+- Two OQ-16 desk reviews were held on 2026-11-04 (system-architect part and systems-engineer part); both returned PASS WITH CONDITIONS and their conditions are not met. The architect answered the architect-owned findings as D-82 to D-88: what the journal writer does after a failed append, how a damaged journal is rebased, one start time for the game row and the journal (the field is OQ-26), the end time of a game ended by the recovery re-check, how a held session behaves, a `GameEnd` followed by `Voided`, and a start that was never acknowledged. The wording of two journal fitness functions (FF-3, FF-4) is corrected, and ASM-10 is closed on design evidence (the runtime fact is not yet run).
+- The store, app and domain SDDs are at 0.4.2 DRAFT. The front-end SDDs are aligned separately (chess-a0r.1.32).
+
+### Changed: requirements (CR-11), test strategy, functional decomposition
+- `docs/requirements.md`: Decision Log entry CR-11 and a change-history row; two verification additions (a RULE-8 four-start line; a pass criterion in the NFR-3 verification). **No requirement statement, number or TBD/TBR/TBC status changed.** The entry logs four readings: NFR-2's precedence sentence against D-66 (consistent), the stale D-20 pointer in DAT-3 (a) (accepted by note), the RULE-8 six-field reading, and the accepted loss of coverage-guided fuzzing under D-76.
+- `docs/test-strategy.md`: header and Amendment 8 revision line, and the crash-recovery and stored-format tests named in the Integration row.
+- `docs/functional_decomp.md`: F-3.9 says "run on a schedule" (D-76); an Amendment 8 note is added to the change log.
+- The heading of the Amendment 8 section below no longer reads every later addendum as Brian's approval.
+
+### Open at this release
+- **OQ-16 stays open.** The conditions of both desk reviews are not met and the independent re-review has not been held. No `chess-store` code starts before OQ-16 closes (D-77). No gate is recorded as passed by this entry.
+- **D-78 and DAT-3 (OQ-28)** wait for Brian. Until then the reading of DAT-3 in CR-10 is the systems engineer's interpretation, neither ratified nor reversed. A DAT-3 verification line for the time clause and the treatment of a pending draw offer in the time totals (XC-DOM-A8-4) wait with it.
+- Whether the full-sync refusal is a verification case of NFR-2 or a constraint on `--data-dir` is open (CR-11 item 9); no calendar date is set.
+- Nothing is implemented.
+
+## Architecture Amendment 8 and addenda A to D recorded; verification wording follows D-76: 2026-11-04
+
+Documentation-only. No code exists. Requirements Decision Log entry: CR-10. Brian Prascher approved architecture Amendment 8 at gate G-2 on 2026-11-04 and applied his G-1 dispositions of the independent Board pass on the store and journal (docs/design/Board-pass-store-journal.md). Addenda A to D were added the same day.
+
+### Added or decided: architecture (Amendment 8 approved by Brian; later addenda as stated per bullet)
+- The finalize time totals are carried in the `GameEnd` journal record; `custom_start` is defined once (all six FEN fields compared) and stored; a terminal position is ended, not resumed, after a crash; a failed multi-record step adopts the durable prefix; a database ahead of a damaged journal tail keeps its moves.
+- OQ-20 is decided as option A (the hash of a voided game is advisory). The hash scope, the `Date` rule (UTC date of `started_at`) and a version marker in `content_hash` (`sha256:v1:<hex>`) are fixed. `Voided` gains `ended_at`; `Suspend` carries a `cause`; journal reason codes are snake_case; the `Start` record has no `started_at`. One stored-format batch of 22 items (SF-01 to SF-22) with rollback notes. A data directory without `F_FULLFSYNC` is refused.
+- New decisions D-63 to D-73, GATE-008, OQ-24, OQ-25, ASM-9 to ASM-11 and Q-A20 (answered).
+- Addendum A: the ECO table and `eco::lookup` stay in `chess-rules` and the "deepest named position" rule stays in `chess-domain` (D-75, readiness C-1, decided by the architect under Brian's delegation). The gateway game-state source is D-74 (`GameContextProvider`), proposed by the architect and confirmed by Brian as a G2 decision.
+- Addendum B (D-76, approved by Brian): no nightly Rust toolchain is ever used; `cargo-llvm-cov` 0.9.1 is the coverage tool; `cargo-fuzz`, `libfuzzer-sys` and `arbitrary` are not used; illegal-state verification (NFR-3) uses stable-only property tests.
+- Addendum C (D-77, ruled by Brian): no `calibration` Cargo feature in v1 (OQ-24 closed); no `chess-store` code of any kind before OQ-16 closes (OQ-25 closed).
+- Addendum D (ruled by the architect under Brian's delegation; Brian may reverse D-78 to D-80): the time totals of a game that is suspended and resumed are seeded from the journal's existing `Move.think_ms` values, with no new journal field and with the unfinished turn at each stop not counted (D-78); `Game::replay` takes a record's `san` and `fen_after` beside each `Move` so the SAN check stays in the domain and the `Fact` does not change (D-79); a session whose journal append failed part-way accepts only queries, detach and shutdown, which write nothing, and the player resigns or aborts after resuming (D-80). D-81: `cargo-nextest` is not adopted for now; tests run with plain `cargo test`. **Superseded 2026-11-04:** D-79 and D-80 were ratified by Brian on 2026-11-04 and D-78 by option A (see CR-11 and CR-12 in requirements.md and the closing-pass section above).
+
+### Changed: requirements (Amendment 8, CR-10) and test strategy
+- **Verification wording only, per D-76 and D-81:** NFR-3, the CLI-3 verification line and the ENG verification line "E (slow, nightly)" in `docs/requirements.md`; the rows "Property" and "Calibration / strength", the quality gates and the NFR-3 check in `docs/test-strategy.md`. Stable-only random-input property tests replace "fuzz"; "nightly" now says it is a run schedule, never the nightly Rust toolchain; the 90 % line-coverage gate names `cargo-llvm-cov` 0.9.1.
+- No requirement statement, number, or TBD/TBR/TBC status changed. DAT-3 is unchanged; CR-10 records the systems engineer's reading that DAT-3 gives no accuracy bound and does not forbid the loss stated in D-78 (an interpretation, which Brian may reverse).
+
+### Open at this release
+- **OQ-16 stays open.** It closes only after the stored-format batch is carried into the SDDs (chess-a0r.1.8) and a desk review by the system-architect and the systems engineer, in separate invocations from the author, has passed. No `chess-store` code starts before then (D-77).
+- **No review of Amendment 8 has been held.** Brian's approval is the text of the amendment, not a review. Nothing is implemented.
+- NFR-2 / TBD-23: whether the refusal of a data directory that cannot do a full sync is a verification case of NFR-2 or a new constraint on `--data-dir` is not decided.
+
 
 ## Project management moves to beads; delivery plan approved: 2026-11-04
 

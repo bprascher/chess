@@ -3,12 +3,12 @@
 | Field | Value |
 |---|---|
 | Document | docs/design/SDD-chess-rules.md |
-| Version | **0.3.1 DRAFT** |
-| Date | 2026-10-31 (v0.1: 2026-10-30) |
+| Version | **0.3.3 DRAFT** |
+| Date | 2026-11-04 (v0.3.1: 2026-11-01; v0.1: 2026-10-30) |
 | Style | IEEE 1016-style (viewpoints and design entities). No conformance to a numbered edition is claimed |
 | Owner | Software engineer role (Claude), for Brian Prascher |
-| Approver | **Pending.** Design-only work (documents, no code) is gate **G0** (SWE-001 §3), so no approval is needed to hold this draft. The rulings applied in v0.2 were approved by Brian Prascher on 2026-10-31 (SDD-architect-triage section 5, decisions 1 to 13; requirements Amendment 7, CR-9.1); this revision applies them as text and adds no new decision. Implementation inside the crate, with the §3.2 edges and §5.7 contracts unchanged, is G1 (system-architect agent, desk review). Items in section 10 that remain open and touch an edge, a dependency or a protocol are G2 (Brian Prascher). No approval of this SDD itself is claimed |
-| Status | DRAFT v0.3. Nothing is implemented, built or run. Every Rust signature below is a design-level sketch, not compiled code `[UNV]` |
+| Approver | **Pending.** Design-only work (documents, no code) is gate **G0** (SWE-001 §3), so no approval is needed to hold this draft. The rulings applied in v0.2 were approved by Brian Prascher on 2026-10-31 (SDD-architect-triage section 5, decisions 1 to 13; requirements Amendment 7, CR-9.1); this revision applies them as text and adds no new decision of its own. **Version 0.3.3 applies one decision made after that approval: Brian Prascher decided on 2026-11-04 (OQ-27, option A, G3; architecture Addendum F, requirements CR-12) that `canonical_form` omits `SetUp` and `FEN` when the `FEN` equals the standard start.** Implementation inside the crate, with the §3.2 edges and §5.7 contracts unchanged, is G1 (system-architect agent, desk review). Items in section 10 that remain open and touch an edge, a dependency or a protocol are G2 (Brian Prascher). No approval of this SDD itself is claimed |
+| Status | DRAFT v0.3.3. Nothing is implemented, built or run. Every Rust signature below is a design-level sketch, not compiled code `[UNV]` |
 | Block (architecture §2.2 name) | `chess-app core :: chess-rules` (crate `chess-rules`, pure) |
 | Upstream baselines read | architecture.md v1.0 amendment 7 (D-38 to D-50, §3.2, §5.7, §7.6, FF-1 to FF-8); functional_decomp.md v1.0; requirements.md v1.0 Amendment 7 (CR-9); test-strategy.md 1.0 Amendment 6; SWE-001 v1.1; [SDD-architect-triage](SDD-architect-triage.md) (approved 2026-10-31); [SDD-SE-desk-answers](SDD-SE-desk-answers.md) (resolved 2026-10-31) |
 | Sibling SDDs | [SDD-chess-domain](SDD-chess-domain.md), [SDD-chess-store](SDD-chess-store.md), [SDD-chess-engine](SDD-chess-engine.md), [SDD-chess-app](SDD-chess-app.md), [SDD-chess-server](SDD-chess-server.md), [SDD-chess-cli](SDD-chess-cli.md), [SDD-ui](SDD-ui.md), [SDD-desktop-tauri](SDD-desktop-tauri.md) |
@@ -24,6 +24,8 @@ Evidence tags follow `swe-governance` §6. `[OBS architecture.md:354]` means "re
 | 0.3 DRAFT | 2026-10-31 | G0 text edits applying the joint-review rulings (SDD-v0.2-joint-review section 7; requirements CR-9.8 to CR-9.13; architecture amendment 7 addendum A, D-51, D-52, D-59). No new decision. **FIND-JR-007 (rules part), D-51, D-52:** the rules result type is renamed `MatchedMove{mv, uci, san}`; the wire type `ParsedMove{uci, san}` is the app's; the error mapping of section 5 follows D-51 (`ParseError{kind: move}` with `empty`, `too_long`, `syntax`, `lowercase_piece{suggestion}`, `promotion_required{choices}`, `ambiguous{candidates}`; `NoMatch` is `IllegalMove{reason}`); OQ-RUL-003 and ASM-RUL-006 closed. **CR-9.8, CR-9.11, CR-9.12, CR-9.13, D-59 (ACCEPTED):** the "custom starts are not classified" restriction (FIND-RUL-007, `eco_for_import`) is removed; this crate exposes the raw `ECO` tag (`PgnTags::eco_tag`) and `eco::lookup` stays position-based for every start; the outcome type lives in `chess-domain`; OQ-RUL-004 closed; new tests UT-RUL-029, UT-RUL-030. **CR-9.9:** IDs unchanged from v0.2 (the zero-padding was the accepted one-time exception; `FIND-DOM-9` citation corrected to `FIND-DOM-009`). |
 | 0.3 DRAFT (addendum) | 2026-11-01 | G0. User rulings of 2026-11-01 and [SDD-v0.3-joint-review](SDD-v0.3-joint-review.md). `PgnTags::eco_tag` stays raw; normalisation (trim, upper-case, A00 to E99, malformed counts as no tag) is the domain's `normalize_eco_tag`. Ply-0 lookup of a custom start needs no rules change (`eco::lookup` is position-only); UT-RUL-030 now says so. **FIND-JR3-005 (rules part):** no `Opening` accessor is added: the domain needs no tag name, and the app, if the architecture keeps `tag_name?`, reads the free-form extras through the existing tags map (`[INF]`; the app owner and the SA decide the field). |
 | 0.3.1 DRAFT | 2026-11-01 | G0. Applies architecture addendum B and C: no rules change. `PgnTags::eco_tag` stays raw; normalisation is the domain's (D-60). Version label unified. Cites D-60 (ECO import refinements), D-61 (`EngineFactory` owned by `chess-app`) and D-62 (PGN duplicates and the ECO question stay two steps; OQ-23 closed). Nothing is approved; no code exists |
+| 0.3.2 DRAFT | 2026-11-04 | G0 (text). **D-75 / L2 / L3:** `shakmaty` is also a `[build-dependencies]` entry of `chess-rules` (same crate and version, no workspace edge); the ECO generator does **not** replay each line with `parse_move` (a build script cannot call the crate it builds) but with `shakmaty` directly; the key derivation (the EPD of a position) is written once in a module that both `build.rs` and `PositionKey::to_epd` include; `eco::lookup`, `PositionKey` and `EcoEntry` are the provided interface (IFP-RUL-6) and `build.rs` is listed under required interfaces (IFR-RUL-4); UT-RUL-023, UT-RUL-030 and CT-RUL-003 test through the public lookup. **F6:** the dependency-tree check is `cargo tree -e normal,build` (3.4). **L5 / D-76:** `FZ-RUL-001` to `FZ-RUL-003` keep their IDs; the level is now "Property (`proptest`, random input, stable)" and the tool is `proptest`; `cargo-fuzz` removed; the accepted loss is stated; the `FZ` prefix is historical. No Amendment 8 stored-format change touches this crate. No ID renumbered. Not approved, not desk-reviewed |
+| 0.3.3 DRAFT | 2026-11-04 | G1 (text; the decision is Brian's, G3). **OQ-27, option A (Brian Prascher, 2026-11-04; architecture Addendum F, chess-a0r.1.41; requirements CR-12 item 3):** 3.11.10 step 2 (DD-RUL-016): `SetUp` and `FEN` are left out of `canonical_form` when the `FEN` equals the standard start in all six fields (private comparison, no new public item); `v1` of `content_hash` is defined with this rule; new **UT-RUL-031** (the test the requirements RULE-8 line left unnamed); UT-RUL-026 and CT-RUL-004 extended; the traceability row names RULE-8. Not done here: JR5-005 (the `canonical_form` version rule and the `Date` rule are the software engineer's, deferred). No ID renumbered. Not approved, not desk-reviewed. No Mermaid block edited |
 
 ---
 
@@ -54,8 +56,8 @@ Out of scope (owned elsewhere): history-based termination (threefold, fifty-move
 | Functions supported (allocated to another block, realised partly here) | F-2.2.4 Detect game termination (allocated to `Game domain`: this crate supplies the position predicates, see FIND-RUL-001); F-6.10 Export game as PGN, F-6.11 Import PGN games, F-6.12 Export all data (`games.pgn`) (allocated to `ImportExportService`: this crate is the reader and writer); F-5.2/F-5.3 What-if branch and saved variation (line text); F-4.6 Classify opening (table data) | Supporting |
 | Requirements, primary | RULE-1 (legal moves, castling, en passant, promotion, check, mate, stalemate); IF-1 (export format), IF-2 (import format), IF-3 (FEN), co-primary with `ImportExportService` in architecture 10.1 | `[OBS architecture.md:1533,1538-1540,1559,1599]` |
 | Requirements, supporting | RULE-6 (PGN export, the writer), RULE-7 (PGN import, the reader), RULE-8 (FEN start), CLI-3 (typed notation: this crate holds the only parser, D-45; `chess-cli::InputParser` and the protocol query are primary) (XC-29), NFR-3 (no illegal state: the legality oracle), RULE-2 and RULE-4 (position predicates used by `Game`), GUI-2 (c) (same bishop rule for typed input in the GUI), ANA-2 (variations round-trip as PGN), DAT-3 and NFR-6 (ECO table and its licence record), PLAT-1 (deterministic bytes), D-11 (`LegalMoves{fen}`) | |
-| Decisions | D-3 (wrap `shakmaty` + `pgn-reader`), D-11, D-20 (ECO source and build step), D-29/D-34 (archive and duplicate rules, as they constrain the writer), D-38 (edge rule), D-42 (`content_hash`), D-45 (`Query::ParseMove`, sole parser), D-47 (dependency admission) | |
-| Risks | R-15 (replay equality depends on the SAN and move identity defined here); NFR-3 fuzz | |
+| Decisions | D-3 (wrap `shakmaty` + `pgn-reader`), D-11, D-20 (ECO source and build step; table and `eco::lookup` placed here by D-75), D-29/D-34 (archive and duplicate rules, as they constrain the writer), D-38 (edge rule), D-42 (`content_hash`), D-45 (`Query::ParseMove`, sole parser), D-47 (dependency admission) | |
+| Risks | R-15 (replay equality depends on the SAN and move identity defined here); NFR-3 random-input property tests (D-76) | |
 
 ### 1.4 Definitions
 
@@ -108,7 +110,7 @@ Out of scope (owned elsewhere): history-based termination (threefold, fifty-move
 | UTF-8 export, Latin-1 import fallback | IF-1, IF-2 | DD-RUL-010, DD-RUL-011 |
 | Deterministic bytes from every front-end | PLAT-1, IF-1 | The writer is one function, no locale, no hash-order iteration |
 | One typed-move parser, one canonical form | D-45, D-42 | `parse_move` and `canonical_form` have no second implementation in any crate or in `ui/` |
-| Coverage at least 90 % line for rules and parser modules; fuzzing; perft | test-strategy "Quality gates", §9 `[OBS test-strategy.md]` | Section 7 |
+| Coverage at least 90 % line for rules and parser modules (`cargo-llvm-cov`, D-76); random-input property tests (`proptest`, stable, no fuzzer, D-76); perft | test-strategy "Quality gates", §9 `[OBS test-strategy.md]` | Section 7 |
 
 ---
 
@@ -257,12 +259,13 @@ The architecture lists the key types `Position`, `Move`, `San`, `Fen`, `PgnGame`
 | out | `shakmaty` 0.30.2 | third party, runtime | yes `[OBS architecture.md:337]` | Pre-1.0: pin the minor version `[OBS architecture.md:376]` |
 | out | `pgn-reader` 0.29.1 | third party, runtime | yes (D-3; the §3.2 box says "shakmaty + pgn-reader") | API shape not verified, OQ-RUL-001 |
 | out | `thiserror` 2.0.21 | third party | yes, architecture §8 (error handling) and §3.4 | |
+| out (build) | `shakmaty` 0.30.2 in `[build-dependencies]` | third party, build time | yes: the same crate and version as the runtime dependency (D-3, D-75); no workspace crate and no edge in §3.2 | A build script cannot call the crate it builds, so the ECO generator uses `shakmaty` directly (3.11.9). It is the only build dependency `[OBS dependency-lookup-step1.md F7]` |
 | out (build) | `third_party/eco/*.tsv` | data file | yes, D-20 | CI verifies the recorded SHA-256, not `build.rs` (avoids a hash dependency) |
 | in | `chess-domain`, `chess-engine` | workspace | yes `[OBS architecture.md:314,316]` | |
 | in | `chess-app` | workspace | yes: edge added by AMD-1 (D-38) | FIND-RUL-002 RESOLVED (TR-1) |
 | in (none) | `chess-cli`, `chess-server`, `src-tauri` | workspace | no edge, by rule (TR-1.1) | They reach this crate only through `chess-app` |
 
-Rules that keep the crate pure: no dependency on any other workspace crate; no `tokio`, `serde`, `rusqlite`, `tracing`; no use of `std::time`, `std::fs`, `std::env` or `rand` at run time. A CI check (a `cargo tree` assertion in `ci/`) can enforce the first rule `[UNV: not written]`.
+Rules that keep the crate pure: no dependency on any other workspace crate; no `tokio`, `serde`, `rusqlite`, `tracing`; no use of `std::time`, `std::fs`, `std::env` or `rand` at run time. A CI check (a `cargo tree -e normal,build -p chess-rules` assertion in `ci/`) can enforce the first rule `[UNV: not written]`; the edge kinds are named because dev-dependencies (`proptest` brings `rand`) would otherwise show up in plain `cargo tree` `[RAN dependency-lookup-step1.md E11]`, and `-e normal,build` also covers the `shakmaty` build-dependency.
 
 ### 3.5 Information viewpoint
 
@@ -353,7 +356,9 @@ Contract: `play` never changes `self`; `legal_moves` and `play` agree (`play(m).
 
 `canonical_form` is the input `chess-app` hashes for `content_hash` as `"sha256:" + hex(SHA-256(canonical_form))` (TR-5, D-42, FIND-RUL-004 RESOLVED). The `TagFilter` parameter of v0.1 is gone: the tag set is a decision (SE Q-SE-1, confirmed), not a caller choice.
 
-#### IFP-RUL-6 ECO lookup (D-20)
+#### IFP-RUL-6 ECO lookup (D-20, D-75)
+
+*Placement confirmed by D-75 (Amd 8, Addendum A, 2026-11-04; architecture §3.3, §5.7): the generated table and `eco::lookup` are a provided interface of `chess-rules`, used by `chess-domain` across the existing `chess-domain -> chess-rules` edge. The "deepest named position" rule and everything about a game stay in `chess-domain`.* The key types of the interface are `PositionKey` (DD-RUL-003) and `EcoEntry { code, name }`.
 
 | Operation | Parameters | Returns | Errors |
 |---|---|---|---|
@@ -367,6 +372,7 @@ Contract: `play` never changes `self`; `legal_moves` and `play` agree (`play(m).
 | IFR-RUL-1 | `shakmaty` 0.30.2 | move generation, FEN, SAN, material test | Calls return `Result` or are total. A `PositionError` becomes a `FenError`. API drift is absorbed here (D-3) |
 | IFR-RUL-2 | `pgn-reader` 0.29.1 | PGN tokenising (or a wrapped in-crate tokenizer, OQ-RUL-001) | Per-game error recovery as in 3.9.2 |
 | IFR-RUL-3 | `third_party/eco/{a..e}.tsv` (build time) | ECO generation | A row that does not replay fails the build with file and line |
+| IFR-RUL-4 | `build.rs` with `shakmaty` 0.30.2 as a `[build-dependencies]` entry (D-75) | The ECO generator replays each TSV line with `shakmaty` and the shared key-derivation module (3.11.9) and emits `eco_generated.rs` | A row that does not replay fails the build with file and line; a mismatch between the build-time key and `PositionKey::to_epd` fails UT-RUL-023 or UT-RUL-030 |
 
 The names `shakmaty::Chess`, `Position` trait, `San`, `Uci`, `Fen`, `CastlingMode`, `EnPassantMode` and the `pgn_reader` visitor trait are recalled from earlier releases and **were not checked against 0.30.2/0.29.1 `[UNV]`**. This SDD therefore specifies behaviour, not upstream calls (OQ-RUL-001).
 
@@ -580,10 +586,10 @@ Error kinds: `IllegalSan`, `AmbiguousSan`, `BadSyntax`, `UnterminatedComment`, `
 
 ```mermaid
 flowchart TD
-    a["Read third_party/eco/a.tsv to e.tsv<br/>columns eco, name, pgn"] --> b["For each row: replay pgn with parse_move in Pgn mode"]
+    a["Read third_party/eco/a.tsv to e.tsv<br/>columns eco, name, pgn"] --> b["For each row: replay pgn with shakmaty in build.rs"]
     b --> c{"row replays?"}
     c -- "no" --> fail["Fail the build: file, line, SAN token"]
-    c -- "yes" --> d["key = PositionKey epd of the final position"]
+    c -- "yes" --> d["key = epd of the final position from the shared key module"]
     d --> e{"key already present?"}
     e -- "no" --> f["insert eco, name, ply count"]
     e -- "yes" --> g["keep the longer line, tie: smaller eco then smaller name"]
@@ -591,14 +597,14 @@ flowchart TD
     g --> h
 ```
 
-Lookup is a binary search over the sorted `&'static [(&'static str, EcoEntry)]`. The tie rule for duplicate positions (keep the longer line, tie by smaller code then smaller name) is confirmed by the architect's triage (UR-27; FIND-RUL-006 RESOLVED): D-20 says "keys the table by position" but not what a duplicate position does. CI verifies the recorded SHA-256 of each TSV; `build.rs` does not. The build prints the row count and the number of duplicate positions so a reviewer sees them. The build reads only checked-in files (`cargo:rerun-if-changed=../../third_party/eco`) and opens no network connection (PLAT-3, D-20).
+**Generator (D-75, L2).** `build.rs` cannot call the crate it builds, so it does not use `parse_move` or `Position`. It replays each line's SAN tokens with `shakmaty` (a `[build-dependencies]` entry, the same crate and version as the runtime dependency) and derives the key with the **shared key-derivation module**: one source file (design name `src/key_derive.rs`) that holds the EPD derivation of a position and is included by both `build.rs` (by `include!` or a `#[path]` module) and the library (`PositionKey::to_epd`). The derivation is therefore written once. The generator still has its own use of the upstream parser, next to `parse_move`, so the two could disagree on a line's SAN meaning; UT-RUL-023 and UT-RUL-030 test through the public lookup (a known opening reached by two move orders gives the same entry), which would fail on a disagreement `[INF]`. The Pgn-mode behaviours of `parse_move` (3.11.1) are not relied on by the generator. Whether the shared module can be `include!`d in both contexts without a second copy of the `shakmaty` types is `[UNV]` until built. Lookup is a binary search over the sorted `&'static [(&'static str, EcoEntry)]`. The tie rule for duplicate positions (keep the longer line, tie by smaller code then smaller name) is confirmed by the architect's triage (UR-27; FIND-RUL-006 RESOLVED): D-20 says "keys the table by position" but not what a duplicate position does. CI verifies the recorded SHA-256 of each TSV; `build.rs` does not. The build prints the row count and the number of duplicate positions so a reviewer sees them. The build reads only checked-in files (`cargo:rerun-if-changed=../../third_party/eco`) and opens no network connection (PLAT-3, D-20).
 
 #### 3.11.10 Canonical form for `content_hash` (DD-RUL-016)
 
 `canonical_form(&PgnGame) -> Vec<u8>` is a pure function. The tag set is the SE interpretation Q-SE-1, confirmed (CR-9.2) and recorded in D-42: the **Seven Tag Roster values plus `SetUp`, `FEN` and `TimeControl` where present, plus the SAN movetext with the result**. Steps:
 
 1. Emit `Event`, `Site`, `Date`, `Round`, `White`, `Black`, `Result` in that order. Missing values use the writer's defaults (`?`, `Round` `-`, `Date` `????.??.??`), so a hand-made file and a re-import of our own export agree.
-2. Emit, when present, `FEN`, `SetUp`, `TimeControl` in ASCII order of the tag name. `TimeControl` uses the writer's `seconds` or `seconds+increment` form.
+2. Emit, when present, `FEN`, `SetUp`, `TimeControl` in ASCII order of the tag name, **except that `SetUp` and `FEN` are both left out when the `FEN` tag parses and equals the standard start in all six fields (OQ-27, option A, decided by Brian on 2026-11-04, G3; consistent with CR-9.11 (2))**: piece placement, side to move, castling, en passant square, halfmove clock and fullmove number are compared as parsed values (the same comparison as `StartPosition::from_fen` in `chess-domain`, SF-02), so the standard placement with another move counter keeps both tags. The comparison is private to this function (a constant for the standard start); it adds nothing to the public interface. A `FEN` that does not parse is not compared and stays. `v1` of `content_hash` (SF-03) is defined with this rule, so the hash of a game imported with the standard `FEN` tag equals the hash of the PGN that our writer exports for it, which has no `SetUp` or `FEN` for a standard start (FF-4, CT-RUL-004). `TimeControl` uses the writer's `seconds` or `seconds+increment` form.
 3. Ignore every other tag: `GameUUID`, `WhiteUUID`, `BlackUUID`, `Mode`, `Rated`, `WhiteClass`, `BlackClass`, `EndStatus`, `Termination`, `ECO`, `Opening` and any unknown tag. A PGN from another tool has none of the custom tags, and a duplicate must be found across origins.
 4. Each emitted tag is `[Name "value"]` with the writer's escaping, followed by `\n`. A blank line follows the tags.
 5. Movetext: the mainline only, canonical SAN with the writer's move numbers, tokens joined by one space, **no line wrapping**, no comments, NAGs or variations. The last token is the result string, taken from the same field as the `Result` tag. The text ends with a single `\n`. Bytes are UTF-8.
@@ -665,7 +671,7 @@ Each record: type, purpose, trace, function, dependencies, interface, data, reso
 ### DD-RUL-006 Move-text parser
 - Type: function with `ParseMode::{Typed, Pgn}` | Traces to: CLI-3, GUI-2 (c), RULE-7, F-2.2.2 | Function: F-2.2.2
 - Purpose: 3.11.1. The **only** typed-move parser (D-45); returns `MatchedMove`.
-- Failure behaviour: every input, including arbitrary bytes, returns `Ok` or a `MoveParseError`; no panic (fuzz target).
+- Failure behaviour: every input, including arbitrary bytes, returns `Ok` or a `MoveParseError`; no panic (random-input property test FZ-RUL-001, D-76).
 - Rationale: one matcher with a mode flag instead of two parsers; the lenient bishop fallback is the only behaviour that differs, and it is confined to `Typed`. Alternative rejected: delegate to the upstream SAN parser (it cannot give the lenient forms, the helpful messages, or the Q44 rule).
 - Verification: UT-RUL-010 to UT-RUL-014, FZ-RUL-001 | Code: (pending)
 
@@ -712,8 +718,8 @@ Each record: type, purpose, trace, function, dependencies, interface, data, reso
 - Type: `build.rs` plus generated module | Traces to: DAT-3, D-20, NFR-6, PLAT-3 | Function: supports F-4.6
 - Purpose: 3.11.9 and IFP-RUL-6.
 - Failure behaviour: a malformed row fails the build (fail fast). Lookup is total.
-- Rationale: D-20 puts the replay in a `chess-rules` build step `[OBS architecture.md:1729]`; the lookup sits here and the "deepest named position" rule sits in `chess-domain::EcoTable` ([SDD-chess-domain](SDD-chess-domain.md)), because that rule is about a game, not a position. Alternative rejected: parse TSV at start-up (run-time I/O and cost, against NFR-1).
-- Verification: UT-RUL-023 (known openings by position, a transposition gives the same entry, an unnamed position gives none), CT-RUL-003 (build fails on a corrupted TSV copy), CI licence record (NFR-6) | Code: (pending)
+- Rationale: D-20 puts the replay in a `chess-rules` build step `[OBS architecture.md:1729]`, and D-75 settles that the table and the lookup are here, with `shakmaty` as a build-dependency and a shared key-derivation module (3.11.9); the lookup sits here and the "deepest named position" rule sits in `chess-domain::EcoTable` ([SDD-chess-domain](SDD-chess-domain.md)), because that rule is about a game, not a position. Alternative rejected: parse TSV at start-up (run-time I/O and cost, against NFR-1).
+- Verification: UT-RUL-023 (known openings by position through the public `eco::lookup`, a transposition gives the same entry, an unnamed position gives none), CT-RUL-003 (build fails on a corrupted TSV copy), CI licence record (NFR-6) | Code: (pending)
 
 ### DD-RUL-014 Error types
 - Type: `thiserror` enums: `IllegalMove`, `IllegalReason`, `MoveParseError`, `FenError`, `IllegalPosition`, `PgnParseError`, `PgnWriteError` | Traces to: NFR-9, architecture §8 | Function: all
@@ -732,7 +738,7 @@ Each record: type, purpose, trace, function, dependencies, interface, data, reso
 - Dependencies: DD-RUL-005, DD-RUL-009, DD-RUL-010 (it reuses the writer's tag escaping and defaults).
 - Failure behaviour: total; the `PgnGame` it takes is already validated.
 - Rationale: one function with no filter parameter, so a duplicate is detected the same way at finalize and at import (FF-4). Alternative rejected: let `chess-app` build the string (the rule would sit away from the SAN writer it depends on); hash inside this crate (adds a crate to a pure crate, D-42).
-- Verification: UT-RUL-026, CT-RUL-004 | Code: (pending)
+- Verification: UT-RUL-026, UT-RUL-031, CT-RUL-004 | Code: (pending)
 
 ---
 
@@ -757,7 +763,7 @@ Failure modes owned by this crate (`FM-RUL-n`) and the tests that inject them:
 | FM-RUL-001 | Adapter converts a castling, en-passant or promotion move wrongly | Illegal move accepted, or legal move rejected (NFR-3) | Perft through our API; property test play/legal agreement | UT-RUL-003, UT-RUL-005 |
 | FM-RUL-002 | Hash collision in repetition | False draw | Exact key | UT-RUL-006 |
 | FM-RUL-003 | Lenient parser accepts an illegal SAN during import | Corrupt imported game | `Pgn` mode has no fallbacks; round-trip test | UT-RUL-011, UT-RUL-009 |
-| FM-RUL-004 | Malformed or hostile PGN (deep nesting, huge comment, binary data) | Stack exhaustion, panic | Iterative reader, depth cap, fuzz | FZ-RUL-003 |
+| FM-RUL-004 | Malformed or hostile PGN (deep nesting, huge comment, binary data) | Stack exhaustion, panic | Iterative reader, depth cap, random-input property test (`proptest`, D-76) | FZ-RUL-003 |
 | FM-RUL-005 | Upstream API drift on a minor bump | Build break or silent behaviour change | Pinned minor version; perft and fixtures on every bump | CI |
 | FM-RUL-006 | ECO source row does not replay | Wrong or missing opening | Build fails | CT-RUL-003 |
 | FM-RUL-007 | Writer output differs between runs (nondeterminism) | PLAT-1 failure | Sorted maps, no locale | UT-RUL-017 |
@@ -784,7 +790,7 @@ No lock-ordering rules apply. Determinism: no use of `rand`, time or environment
 
 ## 7 Verification mapping (test-strategy.md, architecture §9)
 
-Levels used: Unit (`cargo test`), Property (`proptest`), Snapshot/golden (`insta` or byte-compare files), Fuzz (`cargo-fuzz`), Component/contract (`tests/` directory, public API only). Coverage target: at least 90 % line coverage for the rules and parser modules `[OBS test-strategy.md "Quality gates"]`; mutation testing is required for Elo and Policy only, but `cargo-mutants` on the parser and the material test is recommended as a cheap check of fixture strength. Coverage and mutation numbers are **not available**; nothing has been run.
+Levels used: Unit (`cargo test`), Property (`proptest`), Snapshot/golden (`insta` or byte-compare files), Random-input property tests (`proptest`, stable toolchain; the tests whose IDs keep the historical prefix `FZ-` are of this level, D-76; no coverage-guided fuzzer and no nightly toolchain), Component/contract (`tests/` directory, public API only). Coverage target: at least 90 % line coverage for the rules and parser modules, measured with `cargo-llvm-cov` 0.9.1 (D-76) `[OBS test-strategy.md "Quality gates"]`; mutation testing is required for Elo and Policy only, but `cargo-mutants` on the parser and the material test is recommended as a cheap check of fixture strength. Coverage and mutation numbers are **not available**; nothing has been run.
 
 | ID | Level | What | Fixture / oracle | Requirement |
 |---|---|---|---|---|
@@ -810,21 +816,22 @@ Levels used: Unit (`cargo test`), Property (`proptest`), Snapshot/golden (`insta
 | UT-RUL-020 | Unit | Reader fixtures: multi-game, variations, comments (brace and semicolon), NAGs, `0-0`, Latin-1 and UTF-8 files, BOM, CRLF, malformed at a known line and column, `SetUp`/`FEN` start, missing tags, missing terminator | fixture files `[OBS requirements.md:1060]` | IF-2, RULE-7 |
 | UT-RUL-021 | Unit | Recovery: a bad game in the middle leaves the games before and after importable; errors carry 1-based game index, line, column | fixture | IF-2 |
 | UT-RUL-022 | Unit | `format_line`/`parse_line` and a saved variation round trip inside a full game | table | ANA-2 |
-| UT-RUL-023 | Unit | ECO: fixed openings give the expected code and name; a transposition gives the same entry as the direct order; an unnamed position gives `None` | fixture list | DAT-3 `[OBS requirements.md:608]` |
+| UT-RUL-023 | Unit | ECO, **through the public `eco::lookup` only** (D-75): fixed openings give the expected code and name; a transposition gives the same entry as the direct order; an unnamed position gives `None`; the key of a position reached by `Position::play` equals the key the generator stored (this is what catches a disagreement between the build-time `shakmaty` replay and `parse_move`) | fixture list | DAT-3 `[OBS requirements.md:608]`, D-75 |
 | UT-RUL-024 | Unit | Every error variant renders a non-empty message with no path or internal text | enumerate variants | NFR-9 |
 | UT-RUL-025 | Unit | `Send + Sync` assertions for all public types | compile-time | architecture §4.8 |
-| UT-RUL-026 | Unit | `canonical_form`: the Seven Tag Roster plus `SetUp`, `FEN`, `TimeControl` are included; `GameUUID`, `Mode`, `Rated`, `WhiteClass`, `BlackClass`, `EndStatus`, `Termination`, `ECO` and an unknown tag change nothing; comments, NAGs and variations change nothing; missing roster tags equal `?`; the same game from our writer and from a foreign-tool PGN gives equal bytes | table | IF-2, D-42 |
+| UT-RUL-026 | Unit | `canonical_form`: the Seven Tag Roster plus `SetUp`, `FEN`, `TimeControl` are included (`SetUp` and `FEN` are left out for the standard start, UT-RUL-031); `GameUUID`, `Mode`, `Rated`, `WhiteClass`, `BlackClass`, `EndStatus`, `Termination`, `ECO` and an unknown tag change nothing; comments, NAGs and variations change nothing; missing roster tags equal `?`; the same game from our writer and from a foreign-tool PGN gives equal bytes | table | IF-2, D-42 |
 | UT-RUL-027 | Unit | `Fen::as_str` and `Display` equal the parsed six fields; `parse(as_str(f)) == f`; an input FEN with either en-passant convention is accepted | table | IF-3, XC-26 |
 | UT-RUL-028 | Unit | `parse_move` returns a `MatchedMove` whose `uci` equals `mv.to_uci()` and whose `san` equals `Position::san(mv)`; `Move::from_uci` of an engine move string gives the `Move` the matcher would give | table | D-45, XC-26 |
 | UT-RUL-029 | Unit | `PgnTags::eco_tag`: returns the raw text of an `ECO` tag unchanged (lower case, padded, malformed values included); `None` when absent; a game with a `SetUp`/`FEN` start and an `ECO` tag returns it; `canonical_form` is identical with and without the tag | fixtures | DAT-3, CR-9.12, D-42 |
-| UT-RUL-030 | Unit | `eco::lookup` depends only on the `PositionKey`, so it answers for the start position of a custom start (ply 0) exactly as for any position reached by moves (user ruling 2026-11-01): the key of a position reached from a custom start equals the key of the same position reached from the standard start, and gives the same entry (CR-9.11); a FEN equal to the standard start gives the same keys as the standard start | table | DAT-3, CR-9.11 |
-| FZ-RUL-001 | Fuzz | `parse_move` on arbitrary bytes and positions: never panics, any `Ok` is a legal move | `cargo-fuzz` | CLI-3 ("never crashes on arbitrary input"), NFR-3 |
-| FZ-RUL-002 | Fuzz | `Fen::parse` on arbitrary bytes: no panic; any `Ok` round-trips | `cargo-fuzz` | IF-3 |
-| FZ-RUL-003 | Fuzz | `PgnReader` on arbitrary bytes: no panic, bounded memory, always terminates | `cargo-fuzz` | IF-2, FM-RUL-004 |
+| UT-RUL-030 | Unit | `eco::lookup` depends only on the `PositionKey`, so it answers for the start position of a custom start (ply 0) exactly as for any position reached by moves (user ruling 2026-11-01): (tested through the public lookup, D-75) the key of a position reached from a custom start equals the key of the same position reached from the standard start, and gives the same entry (CR-9.11); a FEN equal to the standard start gives the same keys as the standard start | table | DAT-3, CR-9.11 |
+| UT-RUL-031 | Unit (table) | `canonical_form` omits `SetUp` and `FEN` for the standard start (OQ-27 option A, decided by Brian on 2026-11-04; the test that requirements RULE-8 row 4 and CR-12 left unnamed). One four-start table, shared with UT-DOM-115 and UT-APP-29: (1) `[SetUp "1"] [FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"]` gives bytes with neither tag, equal to the bytes of the same game with no `SetUp` and no `FEN`; (2) the standard placement with another halfmove or fullmove number keeps both tags; (3) a different placement keeps both tags; (4) a `FEN` tag alone (no `SetUp`) equal to the standard start is also omitted; a `FEN` that does not parse stays. `canonical_form(parse(write(g))) == canonical_form(g)` for the game of row (1) (the writer emits neither tag for a standard start) | table | RULE-8, IF-2, DAT-3, D-42, D-68 |
+| FZ-RUL-001 | Property (`proptest`, random input; ID kept, the `FZ` prefix is historical) | `parse_move` on arbitrary bytes and positions: never panics, any `Ok` is a legal move, memory bounded by `MAX_MOVE_TEXT`. **Accepted loss (D-76):** no coverage-guided fuzzing | `proptest` | CLI-3 ("never crashes on arbitrary input"), NFR-3 |
+| FZ-RUL-002 | Property (`proptest`, random input; ID kept) | `Fen::parse` on arbitrary bytes and on mutated valid FENs: no panic; any `Ok` round-trips | `proptest` | IF-3 |
+| FZ-RUL-003 | Property (`proptest`, random input; ID kept) | `PgnReader` on arbitrary bytes and on mutated valid PGN (deep nesting, huge comments, binary data): no panic, bounded memory, always terminates. A parser fault that only a corpus-guided fuzzer would find can ship (D-76); the mitigations are the typed errors and bounded readers of DD-RUL-005 to 011 and FM-RUL-004 | `proptest` | IF-2, FM-RUL-004 |
 | CT-RUL-001 | Contract | Public API surface contains no `shakmaty` or `pgn_reader` type (a doc-test or `cargo public-api` style check `[UNV: tool not chosen]`) | | D-3 |
 | CT-RUL-002 | Contract | The consumer view: `chess-domain` and `chess-engine` build against the public API only | workspace build | §3.2 |
-| CT-RUL-003 | Contract | `build.rs` fails, with file and line, on a TSV copy containing an illegal SAN | temp copy | D-20 |
-| CT-RUL-004 | Contract | `canonical_form(parse(write(g))) == canonical_form(g)` for fixture games with and without custom tags; the input to FF-4 | fixtures | D-42 |
+| CT-RUL-003 | Contract | `build.rs` (replaying with `shakmaty`, D-75) fails, with file and line, on a TSV copy containing an illegal SAN | temp copy | D-20, D-75 |
+| CT-RUL-004 | Contract | `canonical_form(parse(write(g))) == canonical_form(g)` for fixture games with and without custom tags, **including a game imported with the standard `FEN` tag (OQ-27)**; the input to FF-4 | fixtures | D-42 |
 | CI-RUL-001 | CI | `cargo-deny` advisories and licences (`shakmaty` and `pgn-reader` are GPL-3.0, project is GPL-3.0-or-later), the recorded SHA-256 of each ECO TSV, `third_party/eco/` licence file present | | NFR-6, SWE-001 §5 |
 
 Not run: every test above. No code exists. Test names will carry the requirement ID for the traceability matrix (test-strategy principle 4).
@@ -847,7 +854,7 @@ Not run: every test above. No code exists. Test names will carry the requirement
 | ANA-2 saved branch exports as PGN variation; F-5.3 | DD-RUL-009, 010, 012 | UT-RUL-022 |
 | DAT-3 ECO code and name; NFR-6 table licence; PLAT-3 no network; D-20 | DD-RUL-003, 013 | UT-RUL-023, CT-RUL-003, CI-RUL-001 |
 | PLAT-1 same bytes in all front-ends | DD-RUL-010 | UT-RUL-017 |
-| IF-2 duplicate detection, DAT-2 (canonical form for `content_hash`); D-42 | DD-RUL-016 | UT-RUL-026, CT-RUL-004 |
+| IF-2 duplicate detection, DAT-2 (canonical form for `content_hash`); D-42; RULE-8 (standard `FEN` tag, OQ-27) | DD-RUL-016 | UT-RUL-026, UT-RUL-031, CT-RUL-004 |
 | D-11 `LegalMoves{fen}` | DD-RUL-002, 008 | UT-RUL-004 |
 | D-3 wrap upstream | DD-RUL-001, 002, 014; section 3.6 | CT-RUL-001 |
 | NFR-9 messages state what failed | DD-RUL-007, 014 | UT-RUL-015, 024 |
@@ -948,4 +955,4 @@ Open items for other owners (none blocks drafting):
 | System-architect desk review (G1 for in-crate implementation) | **PENDING.** Not requested yet |
 | Approval of FIND-RUL-002 and FIND-RUL-003 (G2) | **APPROVED by Brian Prascher, 2026-10-31** (triage decisions 1 and 5; requirements CR-9.1; architecture D-38 and D-45) |
 | Systems engineer review of RULE-1 reading (dead position by material, checkmate precedence) | **PENDING** |
-| Mermaid validation | See the delivery message: the validator was re-run on this file for v0.2. A parse pass proves syntax, not readability |
+| Mermaid validation | See the delivery message: the validator was re-run on this file for v0.2. A parse pass proves syntax, not readability. v0.3.2: the ECO generation flowchart (3.11.9) was edited; `[RAN 2026-11-04 node validate-mermaid.mjs docs/design/SDD-chess-rules.md -> 7/7 mermaid blocks parsed OK]` |

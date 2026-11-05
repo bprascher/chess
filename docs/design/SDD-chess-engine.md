@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | docs/design/SDD-chess-engine.md |
-| Version / status | **0.3.1 DRAFT** |
-| Date | 2026-10-31 (v0.1: 2026-10-30) |
+| Version / status | **0.3.3 DRAFT** |
+| Date | 2026-11-04 (v0.3.1: 2026-11-01; v0.1: 2026-10-30) |
 | Standard basis | IEEE 1016-style (no conformance claim; `implementation-design-1016` skill) |
 | Owner | Software engineer role (Claude), for Brian Prascher |
 | Approver | PENDING for this SDD. The rulings applied in v0.2 were approved by Brian Prascher on 2026-10-31 (SDD-architect-triage section 5, decisions 1 to 13; requirements Amendment 7, CR-9.1); this revision applies them as text and adds no new decision. Nothing else in this document is approved. |
@@ -12,7 +12,7 @@
 | Engineering profile | [SWE-001](../engineering/SWE-001-engagement-profile.md): Rust 1.99.1 / edition 2024, CERT-informed practice with no conformance claim, warnings are errors |
 | Crate / allocation name | `crates/chess-engine`; architecture §2.2 block `chess-app core :: chess-engine`. It drives the supporting block `stockfish` (`third_party/stockfish/` build output, F-3.2) |
 | Sibling SDDs | [chess-rules](SDD-chess-rules.md), [chess-domain](SDD-chess-domain.md), [chess-store](SDD-chess-store.md), [chess-app](SDD-chess-app.md), [chess-server](SDD-chess-server.md), [chess-cli](SDD-chess-cli.md), [ui](SDD-ui.md), [desktop-tauri](SDD-desktop-tauri.md) |
-| Upstream baselines read | architecture.md v1.0 amendment 7 (D-38 to D-50, §3.2, §4.6, §4.7, §5.7, FF-1 to FF-8); requirements.md v1.0 Amendment 7 (CR-9); [SDD-architect-triage](SDD-architect-triage.md) (approved 2026-10-31); [SDD-SE-desk-answers](SDD-SE-desk-answers.md) (resolved 2026-10-31) |
+| Upstream baselines read | architecture.md v1.0 amendment 8 with addenda A to E (read for this crate: D-38 to D-50, §3.2, §4.6, §4.7, §5.7, FF-1 to FF-8, D-76; none of D-63 to D-73, D-78 to D-88 touches this crate); requirements.md v1.0 Amendment 7 (CR-9); [SDD-architect-triage](SDD-architect-triage.md) (approved 2026-10-31); [SDD-SE-desk-answers](SDD-SE-desk-answers.md) (resolved 2026-10-31) |
 | Evidence tags | `[OBS file §]` read in this session; `[RAN]` executed; `[INF]` inferred; `[ASM-EN-n]` assumed; `[UNV]` unverified |
 
 ### Change log
@@ -24,6 +24,8 @@
 | 0.3 DRAFT | 2026-10-31 | G0 text edits applying the joint-review rulings (SDD-v0.2-joint-review section 7; architecture amendment 7 addendum A, D-46, D-57; requirements CR-9.9, CR-9.10). No new decision. **CR-9.9 (FIND-JR-011):** the zero-padding of v0.2 (`R-EN-n` to `DR-EN-nnn`, `EI-EN-02` to `EI-EN-002`) is an accepted one-time exception; the engine keeps the `FIND-EN-` prefix. **OQ-EN-003 closed:** architecture §4.6 and FF-7 now cite `EI-EN-002`, so the test ID matches in both documents. **FIND-JR-009 (engine part):** the conversion of `EloRange` to the domain `UciEloRange` is done once in `chess-app` (this crate has no edge to the domain); the "every stored `uci_elo` inside the range" test is a `chess-app` test (3.10.12). **FIND-JR-006 (engine part):** the `test-support` feature is the one that `chess-app`'s own `test-support` enables, so a front-end builds a `Core` over `FakeEngine` with no edge to this crate (3.10.11; architecture §5.7). **D-57:** `chess-app` owns the calibration run; this crate supplies the primitives only (`EnginePurpose::Calibration` requests). **OQ-EN-002** narrowed against architecture §4.6 (still open, no value or crate version written). |
 | 0.3 DRAFT (addendum) | 2026-11-01 | G0. [SDD-v0.3-joint-review](SDD-v0.3-joint-review.md). **FIND-JR3-003:** no engine change. `EngineFactory` is a `chess-app` trait (`seams.rs`); the app writes the production factory and the fake factory over this crate's concrete public API (the `UciEngine` spawn path with `EngineConfig`, and the `FakeEngine` constructor behind `test-support`). This SDD never implied that `chess-engine` supplies a factory; the app SDD's phrase "production implementations come from `chess-engine`" is read as "are built from this crate's constructors" and is the app owner's to reword. This crate has no edge to `chess-app`. **FIND-JR3-013:** `CT-EN-001..021` is a range whose members 007 to 009, 018 and 019 are not defined; the DD-EN-004 trace row cites only defined IDs where the table is next re-read `[INF]`. |
 | 0.3.1 DRAFT | 2026-11-01 | G0. Applies architecture addendum B and C: D-61 confirmed (this crate supplies constructors, `chess-app` owns `EngineFactory`); no engine change. Version label unified. Cites D-60 (ECO import refinements), D-61 (`EngineFactory` owned by `chess-app`) and D-62 (PGN duplicates and the ECO question stay two steps; OQ-23 closed). Nothing is approved; no code exists |
+| 0.3.2 DRAFT | 2026-11-04 | G0 (text). **L5 / D-76:** `cargo-fuzz` 0.13.2 removed from the test-only crate row (not admitted, it needs a nightly compiler; no nightly toolchain, ever); `FZ-EN-001` keeps its ID and becomes a `proptest` random-input property test; the accepted loss is stated; the "fuzz" wording of 3.4, 6 and 8 follows. No Amendment 8 stored-format item touches this crate. Not approved, not desk-reviewed |
+| 0.3.3 DRAFT | 2026-11-04 | G0 (text); work order chess-a0r.1.42 (CR-3 task T-D3). Upstream-baseline line updated from amendment 7 to amendment 8 with addenda A to E, because it lagged architecture.md. Checked against Brian's rulings of 2026-11-04 (OQ-26 `NewGame.started_at`, OQ-27 canonical form, exit class 3, D-78) and the RR-S and RR-A findings: none reaches this crate (no stamp, resume, journal, exit code or PGN text here); no design change. RR-S-3 (an NFR-3 case count for `FZ-EN-001`) is **not** set here: see the report to the coordinator. Not reviewed, not approved; nothing was run `[UNV]`. No Mermaid change. |
 
 ## 1 Introduction
 
@@ -227,7 +229,7 @@ Crate edges, exactly as architecture §3.2: `chess-app → chess-engine`, `chess
 | `chess-rules` | `Fen` (validated position text) as the position type; `Fen::as_str` and `Display` are provided by the rules SDD (XC-26, IFP-RUL-4) `[ASM-EN-001: confirmed in the design, not yet in code]` | workspace |
 | `tokio` (features `process`, `io-util`, `sync`, `time`, `rt`, `macros`) | child process, async pipes, timers, channels; feature sets per crate are admitted in §3.4 (D-8, D-47) | 1.54.1 `[OBS architecture.md §3.4]` |
 | `thiserror`, `tracing` | errors, log events | 2.0.21, 0.1.44 `[OBS §3.4]` |
-| Test only: `proptest`, `cargo-fuzz`, `insta` | parser properties, fuzzing, snapshots | 1.12.0, 0.13.2, 1.49.0 `[OBS §3.4]` |
+| Test only: `proptest`, `insta` | parser properties and random-input tests (stable toolchain), snapshots | 1.12.0, 1.49.0 `[OBS §3.4]`. `cargo-fuzz` 0.13.2 is **not admitted** (it needs a nightly compiler; no nightly toolchain, ever; D-76, architecture §11.4.9) |
 
 No other crate is needed: the seeded generator is a ten-line SplitMix64 in the crate (no `rand`; the same published constants and a shared test-vector file as `chess-domain`, FF-8), and line splitting is a small bounded reader (no `tokio-util`). `tokio` appears under `chess-app` only in §3.2 (FIND-EN-010, RESOLVED by D-47: feature sets are listed per crate). `#![forbid(unsafe_code)]` applies to the whole crate; process groups use the safe `std::os::unix::process::CommandExt::process_group` `[UNV: exists in the pinned toolchain; stable since Rust 1.64 from recall]`.
 
@@ -242,7 +244,7 @@ No other crate is needed: the seeded generator is a ten-line SplitMix64 in the c
 | Drop-as-cancel with drain | DD-EN-004 | A dropped `search` future stops the search and leaves the process reusable (cancel safety) | A search that leaves the next `go` racing a stale `bestmove` |
 | Port and adapter (`Spawner`) | DD-EN-005 | The real driver is tested against a scripted process, with paused time | Tests of the driver that need a real binary for timeout logic |
 | Priority arbiter | DD-EN-010 | One instance serves two kinds of work | Background work never yields |
-| Pure functions at the edges (`parse_line`, `OptionPlan`, `select`) | DD-EN-003, 008, 009 | Most logic is testable and fuzzable without a process | A parser that holds a handle to the child |
+| Pure functions at the edges (`parse_line`, `OptionPlan`, `select`) | DD-EN-003, 008, 009 | Most logic is testable by random-input property tests without a process | A parser that holds a handle to the child |
 | Null object (`FakeEngine`) | DD-EN-011 | Deterministic flows for UI and core tests | The fake knows about the test that uses it |
 
 ### 3.6 Interface viewpoint
@@ -581,7 +583,7 @@ All entities: Rust 1.99.1 edition 2024, `#![forbid(unsafe_code)]`, no `unwrap`/`
 |---|---|---|---|---|---|---|
 | DD-EN-001 `Engine` | 3.6.1 | `Result<_, EngineError>`; `stop` and `health` cannot fail | `&self` methods; safe to call `stop` while `search` pends | none | CT-EN-001..006 | `src/engine.rs` (not yet written) |
 | DD-EN-002 types | 3.3 | constructors validate (`UciMove::parse`, `multipv` range, `movetime > 0`) | plain data | none | UT-EN-001..006 | `src/types.rs` |
-| DD-EN-003 `uci` | 3.10.1 | total functions, no panics | pure | none | UT-EN-010..019, fuzz | `src/uci/*.rs` |
+| DD-EN-003 `uci` | 3.10.1 | total functions, no panics | pure | none | UT-EN-010..019, FZ-EN-001 (`proptest`) | `src/uci/*.rs` |
 | DD-EN-004 `UciEngine` | 3.8, 3.9, 3.10.2..4 | every error in 3.6.3; process always reaped | one task; command channel; `oneshot` replies | one child, one task | CT-EN-001..021 | `src/driver.rs` |
 | DD-EN-005 `Spawner` | `spawn(path) -> Process{stdin, stdout, kill, wait}` | `SpawnFailed` | n/a | process group, null stderr | CT-EN-010, 020 | `src/spawn.rs` |
 | DD-EN-006 `BinaryLocator` | 3.10.6 | typed errors, no path in `Display` | pure + `metadata` | none | UT-EN-040..046 | `src/locate.rs` |
@@ -606,7 +608,7 @@ All entities: Rust 1.99.1 edition 2024, `#![forbid(unsafe_code)]`, no `unwrap`/`
 | ENG-5 (supporting; primary `GameSession`) | DD-EN-001, 004 | CT-EN-003, EI-EN-005 | ≤ 200 ms `ESTIMATE` (TBD-12) |
 | IF-4 | DD-EN-006 | UT-EN-044, CT-EN-017, EI-EN-001 | pinned `id name`; `lipo` check belongs to packaging |
 | NFR-1 | DD-EN-007 | CT-EN-030 | no spawn at construction; `warm()` |
-| NFR-3 | DD-EN-002, 003 | UT-EN-010..019, fuzz FZ-EN-001 | malformed output is a failure |
+| NFR-3 | DD-EN-002, 003 | UT-EN-010..019, random-input property test FZ-EN-001 (D-76) | malformed output is a failure |
 | NFR-8 | DD-EN-004 | CT-EN-004 | stop while searching; no blocking |
 | PLAT-3 / NFR-4 | DD-EN-005 | CT-EN-020; offline engine test in packaging | empty environment, no sockets |
 | PLY-4 | DD-EN-002 | UT-EN-035 | personality is never mutated |
@@ -615,13 +617,13 @@ All entities: Rust 1.99.1 edition 2024, `#![forbid(unsafe_code)]`, no `unwrap`/`
 
 ## 6 Verification mapping
 
-No test has been written or run `[UNV]`. Levels per test-strategy and architecture §9: unit and property/fuzz, scripted-process integration with paused time, engine integration with the real binary (`--features stockfish-tests`), and platform runs (Intel best effort, CR-7.6).
+No test has been written or run `[UNV]`. Levels per test-strategy and architecture §9: unit and property (random-input `proptest` tests on stable Rust; there is no coverage-guided fuzzer and no nightly toolchain, D-76), scripted-process integration with paused time, engine integration with the real binary (`--features stockfish-tests`), and platform runs (Intel best effort, CR-7.6).
 
 | ID | Level | Purpose |
 |---|---|---|
 | UT-EN-001..006 | unit | `UciMove` syntax, `SearchLimits` constructors, request validation |
 | UT-EN-010..019 | unit / property | parse tables for `id`, `option` (spin, check, combo, button, string), `info` with bounds and `string`, `bestmove` variants; `parse(format(x))` round trips; arbitrary bytes never panic |
-| FZ-EN-001 | fuzz | `cargo-fuzz` on `parse_line` and the bounded reader |
+| FZ-EN-001 | property (`proptest`, random input; ID kept, the `FZ` prefix is historical) | `proptest` on `parse_line` and the bounded reader: arbitrary bytes and arbitrary lines never panic, `Ok` results are well-formed, memory is bounded, the reader terminates. **Accepted loss (D-76):** no coverage-guided fuzzing |
 | UT-EN-020..027 | unit | option plan: `UCI_Elo` inside the range, outside the range (clamped for the search, stored value untouched, `PlanReport` set), absent option, `Skill Level` bounds, difference-only sending |
 | UT-EN-030..039 | unit | minimum of three limits; clock budget vectors (including the cap applied last with under 100 ms remaining); SplitMix64 vectors from the shared file (FF-8); same seed same pick; error pick never chooses line 0; one-line result falls back to best |
 | UT-EN-040..046 | unit | locator: override absolute only, relative rejected, `PATH` never read (a fake `PATH` containing a decoy), mode checks, symlinked executable resolved |

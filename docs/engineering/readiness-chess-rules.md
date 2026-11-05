@@ -159,3 +159,14 @@ No finding is marked resolved. I did not edit the owners' artifacts.
 - The use cases were only grepped for rules-related content, not read end to end. The sibling SDDs, the joint reviews and the consistency passes were read in the regions that touch `chess-rules` only; the v0.4 pass itself says it did not read the SDDs end to end.
 - Line numbers cited from `architecture.md` and `requirements.md` were read this session from the current files; the SDD's own line citations were not re-checked.
 - Mermaid: this file has no diagram; no validator was needed.
+
+## 10 Closure note for FIND-001 and ASM-RR-1 (append-only, 2026-11-04)
+
+Added by the software engineer for task chess-a0r.1.8 (item L4 of architecture §11.4.10). The text above is unchanged; the readiness verdict and the findings were written by the readiness assessor, and this note only records an answer that arrived afterwards. It is not a re-assessment, and it does not mark any other finding resolved.
+
+- **FIND-001 and condition C-1 (where the ECO table and `eco::lookup` live): answered by the System Architect's decision D-75** (architecture §11, §11.4.8 Addendum A; decided under Brian Prascher's delegation on 2026-11-04, tier G2, approved by that delegation; Brian may overrule). The generated table and `eco::lookup` stay in `chess-rules`; the "deepest named position" rule and everything about a game stay in `chess-domain`; D-20, §3.1, §3.3, §5.7 and §8.1 of the architecture were corrected to match. **Status of FIND-001: answered by D-75, owner's text updated by the architect.** The G2 row in section 5 "If the SA rules ... outside `chess-rules`" is therefore not triggered.
+- **ASM-RR-1 ("The ECO table and `eco::lookup` live in `chess-rules`, as both SDDs say") is confirmed by D-75.** Its "impact if wrong" row does not apply.
+- **A defect found while answering** (dependency lookup F7, `[OBS dependency-lookup-step1.md]`): a `build.rs` cannot call the crate it builds, so the generator needs `shakmaty` as a build-dependency of `chess-rules`. SDD-chess-rules 0.3.2 records this (3.4, IFR-RUL-4, 3.11.9). It adds no crate to the workspace and no edge to §3.2.
+- **Not changed by this note:** the verdict and conditions other than C-1; FIND-002, FIND-009 and the other findings; the readiness of `chess-domain`.
+- Evidence: `[OBS]` architecture.md D-75 and §11.4.8 read on 2026-11-04. No command was run for this note.
+
