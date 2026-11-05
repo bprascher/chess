@@ -1,5 +1,27 @@
 # Release Notes
 
+## Architecture Amendment 8 and addenda A to D recorded; verification wording follows D-76: 2026-11-04
+
+Documentation-only. No code exists. Requirements Decision Log entry: CR-10. Brian Prascher approved architecture Amendment 8 at gate G-2 on 2026-11-04 and applied his G-1 dispositions of the independent Board pass on the store and journal (docs/design/Board-pass-store-journal.md). Addenda A to D were added the same day.
+
+### Added or decided: architecture (Amendment 8, approved by Brian at G-2)
+- The finalize time totals are carried in the `GameEnd` journal record; `custom_start` is defined once (all six FEN fields compared) and stored; a terminal position is ended, not resumed, after a crash; a failed multi-record step adopts the durable prefix; a database ahead of a damaged journal tail keeps its moves.
+- OQ-20 is decided as option A (the hash of a voided game is advisory). The hash scope, the `Date` rule (UTC date of `started_at`) and a version marker in `content_hash` (`sha256:v1:<hex>`) are fixed. `Voided` gains `ended_at`; `Suspend` carries a `cause`; journal reason codes are snake_case; the `Start` record has no `started_at`. One stored-format batch of 22 items (SF-01 to SF-22) with rollback notes. A data directory without `F_FULLFSYNC` is refused.
+- New decisions D-63 to D-73, GATE-008, OQ-24, OQ-25, ASM-9 to ASM-11 and Q-A20 (answered).
+- Addendum A: the ECO table and `eco::lookup` stay in `chess-rules` and the "deepest named position" rule stays in `chess-domain` (D-75, readiness C-1, decided by the architect under Brian's delegation). The gateway game-state source is D-74 (`GameContextProvider`), proposed by the architect and confirmed by Brian as a G2 decision.
+- Addendum B (D-76, approved by Brian): no nightly Rust toolchain is ever used; `cargo-llvm-cov` 0.9.1 is the coverage tool; `cargo-fuzz`, `libfuzzer-sys` and `arbitrary` are not used; illegal-state verification (NFR-3) uses stable-only property tests.
+- Addendum C (D-77, ruled by Brian): no `calibration` Cargo feature in v1 (OQ-24 closed); no `chess-store` code of any kind before OQ-16 closes (OQ-25 closed).
+- Addendum D (ruled by the architect under Brian's delegation; Brian may reverse D-78 to D-80): the time totals of a game that is suspended and resumed are seeded from the journal's existing `Move.think_ms` values, with no new journal field and with the unfinished turn at each stop not counted (D-78); `Game::replay` takes a record's `san` and `fen_after` beside each `Move` so the SAN check stays in the domain and the `Fact` does not change (D-79); a session whose journal append failed part-way accepts only queries, detach and shutdown, which write nothing, and the player resigns or aborts after resuming (D-80). D-81: `cargo-nextest` is not adopted for now; tests run with plain `cargo test`.
+
+### Changed: requirements (Amendment 8, CR-10) and test strategy
+- **Verification wording only, per D-76 and D-81:** NFR-3, the CLI-3 verification line and the ENG verification line "E (slow, nightly)" in `docs/requirements.md`; the rows "Property" and "Calibration / strength", the quality gates and the NFR-3 check in `docs/test-strategy.md`. Stable-only random-input property tests replace "fuzz"; "nightly" now says it is a run schedule, never the nightly Rust toolchain; the 90 % line-coverage gate names `cargo-llvm-cov` 0.9.1.
+- No requirement statement, number, or TBD/TBR/TBC status changed. DAT-3 is unchanged; CR-10 records the systems engineer's reading that DAT-3 gives no accuracy bound and does not forbid the loss stated in D-78 (an interpretation, which Brian may reverse).
+
+### Open at this release
+- **OQ-16 stays open.** It closes only after the stored-format batch is carried into the SDDs (chess-a0r.1.8) and a desk review by the system-architect and the systems engineer, in separate invocations from the author, has passed. No `chess-store` code starts before then (D-77).
+- **No review of Amendment 8 has been held.** Brian's approval is the text of the amendment, not a review. Nothing is implemented.
+- NFR-2 / TBD-23: whether the refusal of a data directory that cannot do a full sync is a verification case of NFR-2 or a new constraint on `--data-dir` is not decided.
+
 
 ## Project management moves to beads; delivery plan approved: 2026-11-04
 
