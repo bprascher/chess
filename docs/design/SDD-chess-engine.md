@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | docs/design/SDD-chess-engine.md |
-| Version / status | **0.3.2 DRAFT** |
+| Version / status | **0.3.3 DRAFT** |
 | Date | 2026-11-04 (v0.3.1: 2026-11-01; v0.1: 2026-10-30) |
 | Standard basis | IEEE 1016-style (no conformance claim; `implementation-design-1016` skill) |
 | Owner | Software engineer role (Claude), for Brian Prascher |
@@ -12,7 +12,7 @@
 | Engineering profile | [SWE-001](../engineering/SWE-001-engagement-profile.md): Rust 1.99.1 / edition 2024, CERT-informed practice with no conformance claim, warnings are errors |
 | Crate / allocation name | `crates/chess-engine`; architecture §2.2 block `chess-app core :: chess-engine`. It drives the supporting block `stockfish` (`third_party/stockfish/` build output, F-3.2) |
 | Sibling SDDs | [chess-rules](SDD-chess-rules.md), [chess-domain](SDD-chess-domain.md), [chess-store](SDD-chess-store.md), [chess-app](SDD-chess-app.md), [chess-server](SDD-chess-server.md), [chess-cli](SDD-chess-cli.md), [ui](SDD-ui.md), [desktop-tauri](SDD-desktop-tauri.md) |
-| Upstream baselines read | architecture.md v1.0 amendment 7 (D-38 to D-50, §3.2, §4.6, §4.7, §5.7, FF-1 to FF-8); requirements.md v1.0 Amendment 7 (CR-9); [SDD-architect-triage](SDD-architect-triage.md) (approved 2026-10-31); [SDD-SE-desk-answers](SDD-SE-desk-answers.md) (resolved 2026-10-31) |
+| Upstream baselines read | architecture.md v1.0 amendment 8 with addenda A to E (read for this crate: D-38 to D-50, §3.2, §4.6, §4.7, §5.7, FF-1 to FF-8, D-76; none of D-63 to D-73, D-78 to D-88 touches this crate); requirements.md v1.0 Amendment 7 (CR-9); [SDD-architect-triage](SDD-architect-triage.md) (approved 2026-10-31); [SDD-SE-desk-answers](SDD-SE-desk-answers.md) (resolved 2026-10-31) |
 | Evidence tags | `[OBS file §]` read in this session; `[RAN]` executed; `[INF]` inferred; `[ASM-EN-n]` assumed; `[UNV]` unverified |
 
 ### Change log
@@ -25,6 +25,7 @@
 | 0.3 DRAFT (addendum) | 2026-11-01 | G0. [SDD-v0.3-joint-review](SDD-v0.3-joint-review.md). **FIND-JR3-003:** no engine change. `EngineFactory` is a `chess-app` trait (`seams.rs`); the app writes the production factory and the fake factory over this crate's concrete public API (the `UciEngine` spawn path with `EngineConfig`, and the `FakeEngine` constructor behind `test-support`). This SDD never implied that `chess-engine` supplies a factory; the app SDD's phrase "production implementations come from `chess-engine`" is read as "are built from this crate's constructors" and is the app owner's to reword. This crate has no edge to `chess-app`. **FIND-JR3-013:** `CT-EN-001..021` is a range whose members 007 to 009, 018 and 019 are not defined; the DD-EN-004 trace row cites only defined IDs where the table is next re-read `[INF]`. |
 | 0.3.1 DRAFT | 2026-11-01 | G0. Applies architecture addendum B and C: D-61 confirmed (this crate supplies constructors, `chess-app` owns `EngineFactory`); no engine change. Version label unified. Cites D-60 (ECO import refinements), D-61 (`EngineFactory` owned by `chess-app`) and D-62 (PGN duplicates and the ECO question stay two steps; OQ-23 closed). Nothing is approved; no code exists |
 | 0.3.2 DRAFT | 2026-11-04 | G0 (text). **L5 / D-76:** `cargo-fuzz` 0.13.2 removed from the test-only crate row (not admitted, it needs a nightly compiler; no nightly toolchain, ever); `FZ-EN-001` keeps its ID and becomes a `proptest` random-input property test; the accepted loss is stated; the "fuzz" wording of 3.4, 6 and 8 follows. No Amendment 8 stored-format item touches this crate. Not approved, not desk-reviewed |
+| 0.3.3 DRAFT | 2026-11-04 | G0 (text); work order chess-a0r.1.42 (CR-3 task T-D3). Upstream-baseline line updated from amendment 7 to amendment 8 with addenda A to E, because it lagged architecture.md. Checked against Brian's rulings of 2026-11-04 (OQ-26 `NewGame.started_at`, OQ-27 canonical form, exit class 3, D-78) and the RR-S and RR-A findings: none reaches this crate (no stamp, resume, journal, exit code or PGN text here); no design change. RR-S-3 (an NFR-3 case count for `FZ-EN-001`) is **not** set here: see the report to the coordinator. Not reviewed, not approved; nothing was run `[UNV]`. No Mermaid change. |
 
 ## 1 Introduction
 

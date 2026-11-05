@@ -1,11 +1,13 @@
-# PROPOSED, FOR BRIAN: D-78 / DAT-3, the time of an unfinished turn (not applied)
+# D-78 / DAT-3, the time of an unfinished turn (was PROPOSED FOR BRIAN; DECIDED, option A)
+
+> **Decided by Brian Prascher on 2026-11-04: option A (G2).** OQ-28 is closed and D-78 is ratified (architecture Addendum F; requirements CR-12 item 1; beads chess-a0r.1.41). The unfinished turn at each stop **may** be lost and this is accepted; the wording fixed by Brian is "may lose up to one turn of time; is not required to", so a recovery at a clean stop (for example from `wall_ms`) stays open. The DAT-3 **statement text is not changed**: the amendment wording of section 5 below is **not applied**; the DAT-3 verification case of CR-12 carries the acceptance. The rest of this document is the proposal as it was written, with evidence tags corrected (RR-S-8). Nothing below is a new decision.
 
 | Field | Value |
 |---|---|
 | Document | `docs/design/PROPOSED-D-78-DAT-3-for-Brian.md` |
-| Version | 0.1 PROPOSED, 2026-11-04 |
+| Version | 0.2, 2026-11-04: **DECIDED (option A) by Brian Prascher**; evidence tags corrected (0.1 PROPOSED, 2026-11-04, superseded) |
 | Task | chess-a0r.1.31 (findings chess-a0r.1.24, chess-a0r.1.25; M-1, M-2, F-06 of the OQ-16 desk reviews; Brian's ruling 1 of 2026-11-04, chess-a0r.1.30) |
-| Stance | Architect (author). This is a proposal. **Nothing in it is applied.** No D-78 text, DAT-3 text, journal field, verification case or `SF-` item was changed because of it |
+| Stance | Architect (author). This is a proposal. *(Version 0.1 said: nothing in it is applied.)* **As decided (option A):** D-78 is ratified and its text carries the "may, not required" wording; DAT-3 statement text, journal fields and `SF-` items are not changed; the verification case is CR-12's |
 | Decides | **Brian Prascher.** G3 if option B or C (a journal field), G2 if option A (a reading of DAT-3 written into the requirement) |
 | Evidence tags | `[OBS file §]` read; `[RAN]` executed; `[INF]` inferred; `[UNV]` not verified. Nothing is built, so every runtime claim is `[INF]` or `[UNV]` |
 
@@ -26,7 +28,7 @@ So the premise of Brian's ruling 1 ("if untimed games record no `think_ms`, the 
 
 ## 3. Test: do differences in `wall_ms` between journal records already carry the time of the unfinished turn?
 
-**Method.** No code exists, so the test is a model of the design's own record stream, not a test of the product. `[RAN]` a Python model (`scratchpad/wall_model.py`, not committed, 70 lines) generated 2000 random untimed games per case, with the records that architecture 7.6, ALG-APP-01/02, D-58 and D-80 say are journaled (`Move`, `Pause`, `Resume`, `DrawOffer`, `DrawDeclined`, `Suspend`, `SuspendResume`, no `Clock` ticks because an untimed game arms no timer), each with a `wall_ms`. Ground truth is the monotonic think time of the unfinished turn. The derivation is: sum the `wall_ms` gaps between records in which the game is awaiting a move, since the last `Move`, excluding `Pause`, `DrawOffer` and `Suspend` intervals.
+**Method.** No code exists, so the test is a model of the design's own record stream, not a test of the product. **The result is a simulation of assumed records** `[RAN model; INF for the product]`, and the crash row is true by construction (the recovery record is stamped at recovery time, so the derived value includes the downtime). `[RAN model]` a Python model (`scratchpad/wall_model.py`, not committed, 82 lines as the systems-engineer re-review counted them; version 0.1 said 70) generated 2000 random untimed games per case, with the records that architecture 7.6, ALG-APP-01/02, D-58 and D-80 say are journaled (`Move`, `Pause`, `Resume`, `DrawOffer`, `DrawDeclined`, `Suspend`, `SuspendResume`, no `Clock` ticks because an untimed game arms no timer), each with a `wall_ms`. Ground truth is the monotonic think time of the unfinished turn. The derivation is: sum the `wall_ms` gaps between records in which the game is awaiting a move, since the last `Move`, excluding `Pause`, `DrawOffer` and `Suspend` intervals.
 
 | Case (2000 games each) | Games where the turn was running at the stop | Derived equals truth (within 1 ms) |
 |---|---|---|
@@ -62,13 +64,13 @@ Costs are `[INF]` from the design text; nothing is built.
 **Why A.**
 
 - The loss is a **statistic** (per-Player time, `total_active_ms`, and so UI-2 and UI-5 "average game length in time"). It is not a move, a clock value or a result, so NFR-2 is untouched `[OBS DAT-3, NFR-2]`.
-- The loss is the **unfinished turn of the side to move at each stop**. It is **not bounded in time**: in an untimed game that turn can be hours. This must be said to Brian plainly (M-1). But a long unfinished turn at a stop is often time the player was away with the tab open, and a live game counts the same away time before a move, so the two behaviours differ only in whether the game was stopped during the turn.
+- The loss is the **unfinished turn of the side to move at each stop**. It is **not bounded in time**: in an untimed game that turn can be hours. This must be said to Brian plainly (M-1). But a long unfinished turn at a stop is often time the player was away with the tab open `[INF: no observation of players backs this]`, and a live game counts the same away time before a move, so the two behaviours differ only in whether the game was stopped during the turn.
 - B repairs only the clean stop, and the model shows the clean stop is also the case that a later change to `seed_from_facts` could narrow without a format change (section 3, result 1), at the price of the sleep inaccuracy. C buys nothing for untimed games, which are the only games without a clock to read.
 - A is the only option that keeps the journal format unchanged. ASM-6 ("nothing is released, so format changes are cheap now") makes B and C possible, but each is G3 and permanent at release.
 
 **If Brian chooses B instead:** edit architecture 7.6 table (`Suspend` payload), SF-21, store 3.11.1, domain `Suspend` assembler, app DD-APP-18, FF-3, add tests; D-78 is rewritten to "seed from the last `Suspend` totals plus later `think_ms`". Brian's G3 approval is needed. **If C:** the same for `Clock`; not recommended.
 
-## 5. If Brian chooses A: text proposed for the Decision Log and DAT-3 (PROPOSED, not applied)
+## 5. If Brian chooses A: text proposed for the Decision Log and DAT-3 (Brian chose A; the DAT-3 amendment wording below is **not applied** and its "equal to ... not counted" verification wording is replaced by CR-12's bounds)
 
 PROPOSED requirements Decision Log entry (for the systems engineer to enter only after Brian's choice): "2026-11-04. Brian Prascher decided that a game that is stopped (detach, shutdown or crash) and resumed stores per-Player time and total active time that omit the unfinished turn of the side to move at each stop and any draw-offer interval open at the stop (D-78, option A). The loss is not bounded in time. The elapsed start and end times are not affected. The three totals of a game that is never stopped are exact. The omission is written into DAT-3 as an amendment and a DAT-3 verification case is added."
 

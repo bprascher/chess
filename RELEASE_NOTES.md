@@ -1,5 +1,24 @@
 # Release Notes
 
+## CR-3 closing pass: Brian's decisions of 2026-11-04 recorded (CR-12, architecture Addendum F): 2026-11-04
+
+Documentation-only. No code exists. Requirements Decision Log entry: CR-12. Nothing here is reviewed beyond its author, and OQ-16 stays open. No requirement statement, number or TBD status changed.
+
+### Recorded: Brian Prascher's decisions of 2026-11-04
+- **D-78 is ratified, option A (OQ-28, G2).** A game that is stopped and resumed may lose up to one turn of time at each stop; it is not required to. The DAT-3 statement is not changed. **D-79 and D-80** were ratified earlier the same day (CR-11).
+- **OQ-26, option A (G2):** `NewGame` gains `started_at`, supplied by the app. **OQ-27, option A (G3):** `canonical_form` omits `SetUp` and `FEN` when the `FEN` equals the standard start. **D-83** is rated G2 and approved; D-82 stays G1. The D-71 refusal of a directory that cannot do full sync is an NFR-2 verification case, tracked as TBR-4.
+
+### Changed
+- `docs/architecture.md`: Addendum F (D-78 ratified, `NewGame.started_at`, the `canonical_form` omission, re-review findings RR-A-1 to RR-A-5 fixed as text, section 11.4.14 on the draw-offer time).
+- `docs/requirements.md` (Amendment 8, extension 2): Decision Log entry CR-12; a DAT-3 time-clause verification case worded as bounds (L <= T <= U) that accepts a shortfall and requires none, including draw-offer time before the last stop, which the design's seed does not count (a design that counts it needs a stamp on draw facts, a Brian decision if wanted); an NFR-2 full-sync refusal case with TBR-4 (mapped to CT-ST-085, CT-ST-001, CT-APP-33); the RULE-8 row 4 now names UT-RUL-031, UT-DOM-115 and UT-APP-29 (also CT-RUL-004, UT-APP-39); an appended correction to CR-11 listing the final SDD versions.
+- `docs/design/PROPOSED-D-78-DAT-3-for-Brian.md` 0.2 (decided, option A).
+- SDDs, final versions: store 0.4.3, app 0.4.4, domain 0.4.3, rules 0.3.3, engine 0.3.3, cli 0.4.1, ui 0.4.1, desktop-tauri 0.4.1, server 0.4.1 (all DRAFT, G1 text, not reviewed).
+- The older Amendment 8 section below now points to the ratification of D-78 to D-80 (RR-S-9).
+
+### Open at this release
+- **OQ-16 stays open.** No `chess-store` code starts before it closes (D-77).
+- TBR-4 (NFR-2 full-sync refusal case) stays open until the store SDD baseline.
+
 ## Brian's rulings of 2026-11-04 and architecture Addendum E recorded: 2026-11-04
 
 Documentation-only. No code exists. Requirements Decision Log entry: CR-11. Nothing here is reviewed beyond its author, and OQ-16 stays open.
@@ -36,7 +55,7 @@ Documentation-only. No code exists. Requirements Decision Log entry: CR-10. Bria
 - Addendum A: the ECO table and `eco::lookup` stay in `chess-rules` and the "deepest named position" rule stays in `chess-domain` (D-75, readiness C-1, decided by the architect under Brian's delegation). The gateway game-state source is D-74 (`GameContextProvider`), proposed by the architect and confirmed by Brian as a G2 decision.
 - Addendum B (D-76, approved by Brian): no nightly Rust toolchain is ever used; `cargo-llvm-cov` 0.9.1 is the coverage tool; `cargo-fuzz`, `libfuzzer-sys` and `arbitrary` are not used; illegal-state verification (NFR-3) uses stable-only property tests.
 - Addendum C (D-77, ruled by Brian): no `calibration` Cargo feature in v1 (OQ-24 closed); no `chess-store` code of any kind before OQ-16 closes (OQ-25 closed).
-- Addendum D (ruled by the architect under Brian's delegation; Brian may reverse D-78 to D-80): the time totals of a game that is suspended and resumed are seeded from the journal's existing `Move.think_ms` values, with no new journal field and with the unfinished turn at each stop not counted (D-78); `Game::replay` takes a record's `san` and `fen_after` beside each `Move` so the SAN check stays in the domain and the `Fact` does not change (D-79); a session whose journal append failed part-way accepts only queries, detach and shutdown, which write nothing, and the player resigns or aborts after resuming (D-80). D-81: `cargo-nextest` is not adopted for now; tests run with plain `cargo test`.
+- Addendum D (ruled by the architect under Brian's delegation; Brian may reverse D-78 to D-80): the time totals of a game that is suspended and resumed are seeded from the journal's existing `Move.think_ms` values, with no new journal field and with the unfinished turn at each stop not counted (D-78); `Game::replay` takes a record's `san` and `fen_after` beside each `Move` so the SAN check stays in the domain and the `Fact` does not change (D-79); a session whose journal append failed part-way accepts only queries, detach and shutdown, which write nothing, and the player resigns or aborts after resuming (D-80). D-81: `cargo-nextest` is not adopted for now; tests run with plain `cargo test`. **Superseded 2026-11-04:** D-79 and D-80 were ratified by Brian on 2026-11-04 and D-78 by option A (see CR-11 and CR-12 in requirements.md and the closing-pass section above).
 
 ### Changed: requirements (Amendment 8, CR-10) and test strategy
 - **Verification wording only, per D-76 and D-81:** NFR-3, the CLI-3 verification line and the ENG verification line "E (slow, nightly)" in `docs/requirements.md`; the rows "Property" and "Calibration / strength", the quality gates and the NFR-3 check in `docs/test-strategy.md`. Stable-only random-input property tests replace "fuzz"; "nightly" now says it is a run schedule, never the nightly Rust toolchain; the 90 % line-coverage gate names `cargo-llvm-cov` 0.9.1.
