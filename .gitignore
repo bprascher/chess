@@ -12,3 +12,4 @@ build/
 .beads-credential-key
 .beads/proxieddb/
 *.gate.lock*
+/target/

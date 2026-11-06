@@ -1,0 +1,53 @@
+# cargo-deny 0.20.2 configuration (chess-a0r.2.2).
+# Licences: allow list from docs/engineering/dependency-lookup-step1.md section 4 (accepted v0.2).
+# Bans: ONLY the allowed workspace crate edges (architecture 3.2, D-38), via `wrappers`.
+# No third-party crate is banned by name here.
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+# No ignore entries. An ignore needs a written reason and a Decision Log entry (SWE-001 section 5).
+ignore = []
+
+[licenses]
+version = 2
+confidence-threshold = 0.9
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "Unicode-3.0",
+    "Unlicense",
+    "GPL-3.0-or-later",
+]
+
+[licenses.private]
+# Workspace crates are publish = false and carry license = "GPL-3.0-or-later" anyway.
+ignore = false
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+# `wrappers` lists the only crates allowed to depend directly on the banned crate.
+# An empty list means no crate may depend on it. Together these are the edges of section 3.2.
+deny = [
+    { crate = "chess-rules", wrappers = ["chess-domain", "chess-engine", "chess-app"], reason = "3.2: rules <- domain, engine, app" },
+    { crate = "chess-domain", wrappers = ["chess-store", "chess-app"], reason = "3.2: domain <- store, app" },
+    { crate = "chess-engine", wrappers = ["chess-app"], reason = "3.2: engine <- app only" },
+    { crate = "chess-store", wrappers = ["chess-app"], reason = "3.2: store <- app only" },
+    { crate = "chess-app", wrappers = ["chess-server", "chess-cli", "chess-desktop"], reason = "3.2, D-38: app is the only facade" },
+    { crate = "chess-server", wrappers = ["chess-cli"], reason = "3.2: server <- cli (serve)" },
+    # chess-cli and chess-desktop are leaves: nothing may depend on them. cargo-deny cannot
+    # express that (an empty `wrappers` bans the crate outright), so
+    # ci/check-crate-edges.mjs enforces it.
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
