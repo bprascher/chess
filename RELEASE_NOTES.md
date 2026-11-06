@@ -1,5 +1,33 @@
 # Release Notes
 
+## TBR-4 closed, OQ-17 part 1 accepted, rules SDD intent: 2026-11-06
+
+Documentation-only (G0 record keeping). No code exists. Brian Prascher (G2 approver) ruled on 2026-11-06 (his words: "Close TBR-4 as is and I accept your recommendations for the other two decisions above"); logged as **CR-15**. **No requirement statement, pass criterion, verification-case content, decision text or ID changed. Nothing was renumbered.**
+
+### Decisions recorded (CR-15)
+- **TBR-4 closed (tracker chess-e64).** The NFR-2 full-sync refusal verification case is accepted as written (mapping to CT-ST-085, CT-ST-001, CT-APP-33). His 2026-11-05 ruling (TBR-4 kept open as a condition of the SDD baseline v1.0) supersedes CR-12 item 5 and FIND-R23-005, which said "accepted before the store SDD is baselined". CR-12 is not amended.
+- **OQ-17 part 1 accepted (G2; tracker chess-out).** `docs/engineering/dependency-lookup-step1.md` v0.2 is accepted; no content change, version stays 0.2. The first Cargo.toml entry may now be made, still only via plan task chess-a0r.2.2, which is not started and is not authorised by this entry. Part 2 (steps 2 and 3 crates, chess-a0r.3.2) is unaffected.
+- **`SDD-chess-rules` (0.3.5 DRAFT): decided intent** is to baseline it at v1.0 together with the first step-1 code; trigger: the first `chess-rules` code lands and its review passes (tasks chess-a0r.2.3 to chess-a0r.2.5 and chess-a0r.2.9). It is **not baselined now**.
+
+### Phase 1 closed
+- **Phase 1 (design closure, `chess-a0r.1`) is closed:** all 55 children are closed, the last being OQ-17 part 1 (`chess-a0r.1.49`). The plan baseline stays B4. No Phase 2 task is started or authorised by this entry; the next task is `chess-a0r.2.2` (Cargo workspace, CI and quality-gate scaffolding), which needs Brian Prascher's go-ahead. The tracker holds 153 issues: 75 closed, 78 open, none in progress.
+
+### Open conditions (changes from the 2026-11-05 table)
+| Tracker | Condition | Status |
+|---|---|---|
+| chess-e64 | TBR-4 | **Closed 2026-11-06 (CR-15)** |
+| chess-out | OQ-17 part 1 acceptance | **Closed 2026-11-06 (CR-15)** |
+| chess-ddu, chess-bix, chess-2bb, chess-ckq, TBD-36 | as listed 2026-11-05 | unchanged, still open |
+
+### Documents changed
+- `docs/requirements.md` (stays 1.0, Amendment 8, now extension 5; header date 2026-11-06): CR-15 Decision Log row and change-history row; dated notes in the NFR-2 Verification cell and the TBR-4 register row (case text unchanged); header.
+- `docs/engineering/dependency-lookup-step1.md`: status line only.
+- `RELEASE_NOTES.md`: this entry; superseded-by notes in the 2026-11-05 entry.
+
+### Not done, not verified
+- Baselined SDDs `SDD-chess-store` (section 2.x matrix row at line ~970 says the mapping "is the text to accept before this SDD is baselined"; change-log 1.0 row lists chess-e64 and chess-out as open) and `SDD-chess-app` (change-log 1.0 row) carry the 2026-11-05 wording. They are history as of their date; not edited, because they are baselined documents. Suggest the software-engineer refresh them with the next SDD revision.
+- No test, build or run exists.
+
 ## SDD baseline v1.0: 2026-11-05
 
 Documentation-only (G0 record keeping). No code exists. Brian Prascher (G2/G3 approver) ruled on 2026-11-05 (tracker chess-a0r.1.53) accepting the program manager's recommendations; work order CR-4 task T-D (chess-a0r.1.54.4). **No requirement statement, pass criterion, decision text or ID changed. Nothing was renumbered.** The Decision Log entry is **CR-14** in `docs/requirements.md`. This entry supersedes the line "The SDD baseline v1.0 decision (`chess-a0r.1.11`, G2) is NOT made" in the entry below, which is history as of its date.
@@ -18,12 +46,12 @@ Documentation-only (G0 record keeping). No code exists. Brian Prascher (G2/G3 ap
 
 Each SDD has a change-log row 1.0, an Approver and Gate-record statement ("baselined at v1.0 by Brian Prascher, G2, 2026-11-05; G1 desk reviews as recorded; open conditions listed") and a baseline row in its review record. The change logs of the CLI, server, UI and Tauri SDDs were re-sorted into version order (FIND-R23-007, mechanical; no row text changed). No other approval is claimed.
 
-**Not baselined: `SDD-chess-rules` (0.3.5 DRAFT).** It was readiness-checked separately and the ruling did not name it. Open question for Brian: baseline it, and when.
+**Not baselined: `SDD-chess-rules` (0.3.5 DRAFT).** It was readiness-checked separately and the ruling did not name it. Open question for Brian: baseline it, and when. *(Superseded 2026-11-06, CR-15: intent is to baseline it with the first step-1 code.)*
 
 ### Rulings recorded (CR-14)
 - OQ-APP-015: option B (D-89); desk review `SDD-G1-rereview-2026-11-05.md` APPROVE WITH CONDITIONS; fix pass applied.
-- TBR-5: N >= 10 000 generated cases per NFR-3 property per run accepted as **PROVISIONAL** (runtime measured at step 1). TBR-4 stays open and is carried as a condition. CR-12 item 5 and FIND-R23-005 said TBR-4 should be accepted before the store SDD baseline; Brian is asked to confirm the reading. CR-12 is not amended.
-- Draw-offer interval is not counted (D-78 default stands; the DAT-3 case accepts the shortfall). TBD-36 is deferred to chess-a0r.3.16 and stays open in the register. ASM-9 closes at the baseline (architecture.md is edited by the architect, not in this entry). OQ-17 part 1 reissue waits for Brian's final G2 acceptance.
+- TBR-5: N >= 10 000 generated cases per NFR-3 property per run accepted as **PROVISIONAL** (runtime measured at step 1). TBR-4 stays open and is carried as a condition *(superseded 2026-11-06: TBR-4 closed, CR-15)*. CR-12 item 5 and FIND-R23-005 said TBR-4 should be accepted before the store SDD baseline; Brian is asked to confirm the reading. CR-12 is not amended.
+- Draw-offer interval is not counted (D-78 default stands; the DAT-3 case accepts the shortfall). TBD-36 is deferred to chess-a0r.3.16 and stays open in the register. ASM-9 closes at the baseline (architecture.md is edited by the architect, not in this entry). OQ-17 part 1 reissue waits for Brian's final G2 acceptance *(superseded 2026-11-06: accepted, CR-15)*.
 
 ### Open conditions (owner, date)
 | Tracker | Condition | Owner | Due |
@@ -31,8 +59,8 @@ Each SDD has a change-log row 1.0, an Approver and Gate-record statement ("basel
 | chess-ddu | OQ-APP-016(b), FND-RR2-04 and FND-RR2-06 | software-engineer, architect desk review | before CLI and UI reducers are coded |
 | chess-bix | architecture 11.4.15 fact 8 and D-89 untimed-game alignment | architect | with the next architecture amendment, before app code |
 | chess-2bb | XC-DOM-A8-5 | software-engineer | step-1 domain code |
-| chess-e64 | TBR-4 (NFR-2 full-sync refusal case) | systems-engineer proposes, Brian reviews | before store code, chess-a0r.3.6 |
-| chess-out | OQ-17 part 1: final G2 acceptance of `dependency-lookup-step1.md` v0.2 | Brian Prascher | before the first Cargo.toml entry, chess-a0r.2.2 |
+| chess-e64 | TBR-4 (NFR-2 full-sync refusal case) | systems-engineer proposes, Brian reviews | before store code, chess-a0r.3.6. **Closed 2026-11-06 (CR-15).** |
+| chess-out | OQ-17 part 1: final G2 acceptance of `dependency-lookup-step1.md` v0.2 | Brian Prascher | before the first Cargo.toml entry, chess-a0r.2.2. **Closed 2026-11-06 (CR-15).** |
 | chess-ckq | OQ-14 spike scope and GATE-101+ records | software-engineer | first store code; each block's first code task |
 | (register) TBD-36 | CLI signal and subcommand exit status (G3) | Brian Prascher | chess-a0r.3.16, before CLI code |
 
