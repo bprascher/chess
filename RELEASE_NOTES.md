@@ -1,5 +1,80 @@
 # Release Notes
 
+## SDD baseline v1.0: 2026-11-05
+
+Documentation-only (G0 record keeping). No code exists. Brian Prascher (G2/G3 approver) ruled on 2026-11-05 (tracker chess-a0r.1.53) accepting the program manager's recommendations; work order CR-4 task T-D (chess-a0r.1.54.4). **No requirement statement, pass criterion, decision text or ID changed. Nothing was renumbered.** The Decision Log entry is **CR-14** in `docs/requirements.md`. This entry supersedes the line "The SDD baseline v1.0 decision (`chess-a0r.1.11`, G2) is NOT made" in the entry below, which is history as of its date.
+
+### Baselined at v1.0 (label change only; no design content changed)
+| SDD | Version before | Version now |
+|---|---|---|
+| `docs/design/SDD-chess-domain.md` | 0.4.6 DRAFT | **1.0 BASELINED** |
+| `docs/design/SDD-chess-store.md` | 0.4.5 DRAFT | **1.0 BASELINED** |
+| `docs/design/SDD-chess-engine.md` | 0.3.4 DRAFT | **1.0 BASELINED** |
+| `docs/design/SDD-chess-app.md` | 0.4.8 DRAFT | **1.0 BASELINED** |
+| `docs/design/SDD-chess-cli.md` | 0.4.5 DRAFT | **1.0 BASELINED** |
+| `docs/design/SDD-chess-server.md` | 0.4.2 DRAFT | **1.0 BASELINED** |
+| `docs/design/SDD-ui.md` | 0.4.5 DRAFT | **1.0 BASELINED** |
+| `docs/design/SDD-desktop-tauri.md` | 0.4.3 DRAFT | **1.0 BASELINED** |
+
+Each SDD has a change-log row 1.0, an Approver and Gate-record statement ("baselined at v1.0 by Brian Prascher, G2, 2026-11-05; G1 desk reviews as recorded; open conditions listed") and a baseline row in its review record. The change logs of the CLI, server, UI and Tauri SDDs were re-sorted into version order (FIND-R23-007, mechanical; no row text changed). No other approval is claimed.
+
+**Not baselined: `SDD-chess-rules` (0.3.5 DRAFT).** It was readiness-checked separately and the ruling did not name it. Open question for Brian: baseline it, and when.
+
+### Rulings recorded (CR-14)
+- OQ-APP-015: option B (D-89); desk review `SDD-G1-rereview-2026-11-05.md` APPROVE WITH CONDITIONS; fix pass applied.
+- TBR-5: N >= 10 000 generated cases per NFR-3 property per run accepted as **PROVISIONAL** (runtime measured at step 1). TBR-4 stays open and is carried as a condition. CR-12 item 5 and FIND-R23-005 said TBR-4 should be accepted before the store SDD baseline; Brian is asked to confirm the reading. CR-12 is not amended.
+- Draw-offer interval is not counted (D-78 default stands; the DAT-3 case accepts the shortfall). TBD-36 is deferred to chess-a0r.3.16 and stays open in the register. ASM-9 closes at the baseline (architecture.md is edited by the architect, not in this entry). OQ-17 part 1 reissue waits for Brian's final G2 acceptance.
+
+### Open conditions (owner, date)
+| Tracker | Condition | Owner | Due |
+|---|---|---|---|
+| chess-ddu | OQ-APP-016(b), FND-RR2-04 and FND-RR2-06 | software-engineer, architect desk review | before CLI and UI reducers are coded |
+| chess-bix | architecture 11.4.15 fact 8 and D-89 untimed-game alignment | architect | with the next architecture amendment, before app code |
+| chess-2bb | XC-DOM-A8-5 | software-engineer | step-1 domain code |
+| chess-e64 | TBR-4 (NFR-2 full-sync refusal case) | systems-engineer proposes, Brian reviews | before store code, chess-a0r.3.6 |
+| chess-out | OQ-17 part 1: final G2 acceptance of `dependency-lookup-step1.md` v0.2 | Brian Prascher | before the first Cargo.toml entry, chess-a0r.2.2 |
+| chess-ckq | OQ-14 spike scope and GATE-101+ records | software-engineer | first store code; each block's first code task |
+| (register) TBD-36 | CLI signal and subcommand exit status (G3) | Brian Prascher | chess-a0r.3.16, before CLI code |
+
+### Accepted residual risks
+- FIND-R23-015: lightly reviewed text (accepted by Brian).
+- The fix-pass text applied after the G1 limited re-review was not independently re-reviewed.
+- OQ-APP-016(b) is open, Minor.
+
+### Other documents changed
+- `docs/requirements.md` (stays 1.0, Amendment 8, extension 4): CR-14; TBR-5, TBR-4 and TBD-36 register notes (TBD-36 close-by now names chess-a0r.3.16, FIND-R23-011); header and change-history row.
+- `docs/engineering/SWE-001-engagement-profile.md`: "Upstream artifacts" row now says eight SDDs are baselined v1.0 and the rules SDD is DRAFT. Its other upstream citations (requirements through CR-12, architecture through D-88) were not refreshed here.
+- `README.md` status lead and the Project management paragraph; `CLAUDE.md` document-map line 5 and the Architecture-in-brief SDD sentence.
+- `docs/architecture.md`: not edited by this entry (the architect closes ASM-9 and aligns wording in parallel).
+
+### Not done, not verified
+- Stale "upstream baselines read" statements in `SDD-chess-domain` (header row, "not re-read for 0.4.5"), `SDD-chess-engine` (header row) and `SDD-chess-store` (section 2.1) were not refreshed: a refresh would claim a re-read that was not done. They need an owner (suggest software-engineer, with chess-bix).
+- No test, build or run exists; every claim about code is design text.
+
+## Status wording and record keeping after G-2: 2026-11-05
+
+Documentation-only (G0). No code exists. **This entry records status wording and register edits. It records no new decision, no new gate result and no change to any requirement statement, pass criterion, decision text or ID. Nothing was renumbered.** It closes two items listed as open in the 2026-11-04 entry below: the Decision Log entry for the G-2 closure is now written (CR-13), and most of the stale "OQ-16 is open" wording now carries a dated pointer. That entry stays as history.
+
+### Readiness verdict (not a baseline decision)
+- `docs/engineering/readiness-step2-3.md` (new, a fresh reviewer-stance invocation, 2026-11-05) gives **READY-WITH-CONDITIONS for all eight blocks** (`chess-domain`, `chess-store`, `chess-engine`, `chess-app`, `chess-cli`, `chess-server`, `ui`, `desktop-tauri`): 0 Blocker, 5 Major, 10 Minor, conditions dated to the step that needs them. It is findings and questions only and approves nothing.
+- **The SDD baseline v1.0 decision (`chess-a0r.1.11`, G2) is NOT made.** It is Brian Prascher's. The SDDs stay DRAFT.
+
+### Changed, per document
+- `docs/requirements.md` (stays 1.0, Amendment 8; header date 2026-11-05): Decision Log entry **CR-13** (G-2 passed, OQ-16 closed 2026-11-04; supersedes "OQ-16 stays open" in CR-10, CR-11 and CR-12, whose rows are unchanged; recommended case count N for TBR-5 as a proposal, not binding; ASM-DOM-008 reading confirmed as an interpretation); change-history row and header status extended for CR-13; register: **TBR-5 added** (NFR-3 has no case count N, finding RR-S-3; Brian decides, G2), TBD-36 close-by wording corrected ("before step 5" matched no step of architecture section 13), TBR-4 close-by wording corrected (it stays open; not accepted). No requirement statement changed.
+- `docs/architecture.md`: change-log row 2026-11-05 (status-wording pass, no amendment number, no addendum, no decision added). Pointers after the sentences that said OQ-16 is open or the Board pass is required; OQ-22 closed (its condition was met); ASM-9 annotated and left open pending a ruling; section 3.4 Rust and Node notes refreshed (`[RAN 2026-11-05]` on the development Mac: Rust 1.99.1, Node v26.13.0; other machines not checked).
+- SDDs (all still DRAFT, G0/G1 wording, not reviewed): `SDD-chess-rules` 0.3.4, `SDD-chess-domain` 0.4.4, `SDD-chess-store` 0.4.4, `SDD-chess-app` 0.4.5, `SDD-chess-engine` 0.3.4, `SDD-chess-cli` 0.4.2, `SDD-chess-server` 0.4.2, `SDD-ui` 0.4.2, `SDD-desktop-tauri` 0.4.2.
+- `CLAUDE.md`: the status line on the SDDs and OQ-16 now says OQ-16 closed on 2026-11-04 (Brian Prascher, G-2, chess-a0r.1.47), SDDs are 0.3.x/0.4.x DRAFT, and Brian has not decided the SDD baseline.
+- `docs/engineering/SWE-001-engagement-profile.md`: 1.1.1 (2026-11-05), wording update.
+- `docs/engineering/readiness-step2-3.md`: new (see above).
+- `README.md`: the document table said "Amendment 3" for requirements and "amendment 3" for the architecture. It now says Amendment 8 (and addenda A to F for the architecture).
+
+### Open at this release
+- **SDD baseline v1.0 (`chess-a0r.1.11`, G2): Brian's decision, not made.**
+- **TBR-5** (NFR-3 case count N), **TBR-4** (NFR-2 full-sync refusal case, until the store SDD baseline) and **TBD-36** (CLI signal exit status, G3) are open for Brian.
+- **No `chess-store` code starts until** the `flock`/`F_FULLFSYNC` spike (`chess-a0r.3.1`, OQ-14), the part 2 crate lookups (`chess-a0r.3.2`, OQ-17) and `chess-domain` part B (`chess-a0r.2.7`) close. OQ-16 no longer blocks it.
+- The draw-offer time before a stop (`chess-a0r.1.45`, G3), ASM-9, and the post-G-2 minors (`chess-a0r.1.38`).
+- Nothing is built. Every test, crash and timing claim is design text, not run.
+
 ## Gate G-2 passed and OQ-16 closed: 2026-11-04
 
 Documentation-only. No code exists. Nothing here changes a requirement statement, a decision text or a number. The entries below this one that say OQ-16 is open are dated history; this entry supersedes them.

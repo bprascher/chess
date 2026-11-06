@@ -2,7 +2,7 @@
 
 An offline, single-machine chess application for macOS with three front-ends (terminal UI, local web UI, desktop app) on top of one shared Rust core, using Stockfish as the engine.
 
-> **Status: requirements and architecture baselined as v1.0 (2026-10-26), amended on 2026-10-27 (reset with unfinished games, Stockfish 19) and on 2026-10-28 (Amendments 2 and 3: use-case gaps closed, install and recovery rules; Amendment 4: criticality, coding standard and design approvers recorded).** No code is implemented yet. This repository holds the requirements, the test strategy, the architecture, the use cases and functional decomposition (baselined v1.0, 2026-10-28), plus the trade studies behind the GUI board choice. Every requirement and every architecture decision is agreed, except the GUI Elo chart library, which is deferred to implementation. What remains open needs measurement or a check during implementation, not a user decision (see the TBD register in [docs/requirements.md](docs/requirements.md) and §14 of [docs/architecture.md](docs/architecture.md)). The delivery plan (design closure through release) was approved on 2026-11-04 and is tracked in beads; the Review Board pass is done, gate G-2 passed and OQ-16 closed the same day, and Amendment 8 (the stored-format batch) is approved; see [Project management](#project-management). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced so far.
+> **Status: requirements and architecture baselined v1.0 (2026-10-26) with Amendment 8 and its addenda; eight of the nine SDDs (domain, store, engine, app, cli, server, ui, desktop-tauri) baselined v1.0 on 2026-11-05 (the rules SDD is still DRAFT 0.3.5); no code yet.** The delivery plan is tracked in beads (see [Project management](#project-management)). Open items need measurement or a check during implementation (TBD register in [docs/requirements.md](docs/requirements.md), §14 of [docs/architecture.md](docs/architecture.md)). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced.
 
 ## Planned features
 
@@ -46,9 +46,9 @@ An offline, single-machine chess application for macOS with three front-ends (te
 
 | Document | Contents |
 |---|---|
-| [docs/requirements.md](docs/requirements.md) | Requirements (baseline v1.0, Amendment 3) with verification test cases, TBD register, out-of-scope list, and decision log |
+| [docs/requirements.md](docs/requirements.md) | Requirements (baseline v1.0, Amendment 8) with verification test cases, TBD register, out-of-scope list, and decision log |
 | [docs/test-strategy.md](docs/test-strategy.md) | Test levels, focus areas, determinism, quality gates |
-| [docs/architecture.md](docs/architecture.md) | Architecture (baseline v1.0, amendment 3): principles, code organisation, core, protocol, front-ends, persistence and move journal, offline operation, packaging, traceability, decisions and decision log, risks, open questions, next steps |
+| [docs/architecture.md](docs/architecture.md) | Architecture (baseline v1.0, amendment 8 with addenda A to F): principles, code organisation, core, protocol, front-ends, persistence and move journal, offline operation, packaging, traceability, decisions and decision log, risks, open questions, next steps |
 | [docs/use_cases/README.md](docs/use_cases/README.md) | Use cases UC-1 to UC-29 (baselined v1.0): summary, use-case diagram, requirement and function coverage, issue resolution |
 | [docs/functional_decomp.md](docs/functional_decomp.md) | Functional decomposition (baselined v1.0): function hierarchy, allocation to architecture blocks, requirement-to-function matrix |
 | [docs/engineering/SWE-001-engagement-profile.md](docs/engineering/SWE-001-engagement-profile.md) | Software engineering profile: criticality, coding standard, design approvers, toolchain, assumptions |
@@ -68,4 +68,4 @@ Work is tracked with [beads](https://github.com/gastownhall/beads) (`bd`). The a
 
 ## Next steps
 
-The Review Board pass on the stored-format decisions is done and OQ-16 is closed (2026-11-04); Amendment 8 carries the format batch. The SDDs are still DRAFT, and the decision to baseline them (`chess-a0r.1.11`) is open. The toolchain is at the baseline versions. Step 1 (workspace, `chess-rules`, `chess-domain`) is next; `chess-store` code waits on the `flock`/`F_FULLFSYNC` spike and the remaining crate lookups. See section 13 of [docs/architecture.md](docs/architecture.md) and `bd ready`.
+The Review Board pass on the stored-format decisions is done and OQ-16 is closed (2026-11-04); Amendment 8 carries the format batch. Eight SDDs were baselined at v1.0 on 2026-11-05 by Brian Prascher (G2, `chess-a0r.1.53`) with open conditions (see RELEASE_NOTES.md); the rules SDD stays DRAFT 0.3.5 pending his decision. The toolchain is at the baseline versions. Step 1 (workspace, `chess-rules`, `chess-domain`) is next; `chess-store` code waits on the `flock`/`F_FULLFSYNC` spike and the remaining crate lookups. See section 13 of [docs/architecture.md](docs/architecture.md) and `bd ready`.
