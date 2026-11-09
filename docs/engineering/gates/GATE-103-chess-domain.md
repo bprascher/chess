@@ -82,3 +82,7 @@
 ## Rework note (chess-a0r.2.12, 2026-11-06, Engineer stance)
 
 Minor findings DF-02, DF-03 and DF-06 of `review-chess-domain-code.md` were worked; DF-07 was resolved as "SDD silent, behavior unchanged, finding recorded". DF-01, DF-05, DF-08, DF-09 and DF-10 were not touched (owner decisions pending). No public signature change, no journal contract change, no change to `chess-rules`. Gate class of the rework: G0 (tests, doc comments) plus a behavior-preserving-in-range fix in one function (`Tally::games`). Evidence: `docs/engineering/step1-domain-rework-evidence.md`. Dispositions of the findings belong to the named owners; none is recorded here. Approved by: nobody.
+
+## Desk review result (chess-a0r.2.9, 2026-11-09, System Architect desk review, G1)
+
+G1 desk review recorded in `docs/engineering/desk-review-G1-step1.md`: **PASS WITH CONDITIONS** (design conformance confirmed, class G1 ruled; conditions C-D1 to C-D6). This is a desk review, **not** a Brian Prascher approval; G2/G3 items B2, B3 (and B5 if wanted) are for Brian and are not decided.
