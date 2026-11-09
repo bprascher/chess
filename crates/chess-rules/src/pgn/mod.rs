@@ -39,8 +39,11 @@ pub enum ImportWarning {
     TimeControlIgnored { value: String },
     /// A `Termination` outside the three written values was dropped.
     TerminationIgnored { value: String },
-    /// A payload of the game was not UTF-8, so all text of the game was decoded as Latin-1
-    /// (IF-2). Valid UTF-8 text with non-ASCII characters in the same game may be garbled.
+    /// One text payload (a tag value or a comment) was not valid UTF-8 and was decoded as
+    /// Latin-1 (IF-2). The decision is per payload: other payloads of the game that are valid
+    /// UTF-8 are read as UTF-8. There is one entry per payload that fell back, in the order the
+    /// payloads were met (so a game can carry several); the entry has no position. A comment
+    /// that is dropped (`CommentDropped`) is still decoded and still counts.
     Latin1Fallback,
     /// The last entry of a list that hit the cap: `dropped` further warnings of this game were
     /// counted and not kept (RC-03). Always the final entry, and never present with fewer
@@ -79,9 +82,9 @@ impl fmt::Display for ImportWarning {
                     "the termination {value:?} is not one this application writes and was dropped"
                 )
             }
-            ImportWarning::Latin1Fallback => {
-                f.write_str("the game text is not valid UTF-8, so all of it was read as Latin-1")
-            }
+            ImportWarning::Latin1Fallback => f.write_str(
+                "a text in the game is not valid UTF-8, so that text was read as Latin-1",
+            ),
             ImportWarning::WarningsTruncated { dropped } => {
                 write!(
                     f,

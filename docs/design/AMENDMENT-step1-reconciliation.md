@@ -8,7 +8,7 @@
 | Author and stance | system-architect agent, Architect (author). This is not a review and not an approval |
 | Gate | G1 text work (one crate each; the amendments record decisions already made). The decisions themselves were made by Brian Prascher on 2026-11-09 (G-3 passed with conditions; tracker chess-b9j, chess-9mm, chess-7m5, chess-4yc, chess-ebi, chess-0yz). Nothing here is a new G2 or G3 decision |
 | Evidence tags | `[OBS]` read, `[RAN]` executed by me, `[INF]` inferred, `[UNV]` not verified |
-| Status | Text applied to the five documents in section 1. **Not reviewed.** The Reviewer re-check of `SDD-chess-rules` 0.4 and of the domain 1.0.1 text is PENDING. Baselining `SDD-chess-rules` at v1.0 is Brian Prascher's decision and is PENDING; the label stays 0.4 DRAFT |
+| Status | (Section 8 added 2026-11-09, task chess-bmx: follow-up decisions; see 8.) Text applied to the five documents in section 1. **Not reviewed.** The Reviewer re-check of `SDD-chess-rules` 0.4 and of the domain 1.0.1 text is PENDING. Baselining `SDD-chess-rules` at v1.0 is Brian Prascher's decision and is PENDING; the label stays 0.4 DRAFT |
 
 ## 1 Index of every change
 
@@ -90,6 +90,8 @@ Not changed: the `Code: (pending)` lines of section 4 (stale, see 3).
 Mapping of Brian's items to D-numbers (B1 to B6 as named in `desk-review-G1-step1.md` section 7 and the work order): B1 = D-90, B2 = D-91, B3 = D-92, B4 = D-93, B5 = D-94, B6 = D-95. **The numbering is the architect's.** The tracker identifiers are cited as one group; I did not assert which bead belongs to which decision.
 
 ## 2 FOR BRIAN
+
+*Section 8.4 (2026-11-09 follow-up, task chess-bmx) supersedes this list: items 1, 2, 4, 5, 6, 7, 8 and 9 are decided, item 3 is done (rules SDD 1.0). The text below is history.*
 
 1. **OQ-29 / OQ-RUL-006 (chess-9o7), not decided:** decode non-UTF-8 PGN per payload or per whole game. It changes the `White` string, hence the `canonical_form` and `content_hash`, of an import from a mixed file. The cheapest moment is before the first stored hash. Class G3. The reader warns and decodes the whole game as before.
 2. **After the B1 freeze, what does a byte change before the first release mean?** D-68 (d) and ASM-6 say a change before release stays `v1`. The freeze with golden bytes suggests any change is a conscious decision. The SDD text says only that a change to the pinned bytes needs your decision and is `v2` after release; please confirm or correct (G3, text).
@@ -190,3 +192,106 @@ Inputs: [review-step1-recheck.md](../engineering/review-step1-recheck.md) (Revie
 | CND-5 / RC-05 | Domain SDD | The SE confirmation stays open for the items above; the independent table does not replace it (disclosed in UT-DOM-129) |
 
 Files touched: `docs/design/SDD-chess-rules.md` (stays 0.4 DRAFT, new change-log row), `docs/design/SDD-chess-domain.md` (stays 1.0.1), this file. Mermaid `validate-mermaid.mjs`: rules 7/7, domain 8/8 `[RAN]`; no diagram was edited in this round. Test and coverage figures of the re-check are cited from the evidence files (rules coverage 97.70 %, domain 98.90 %), not re-run.
+
+
+## 8 Follow-up of 2026-11-09 (task chess-bmx, baseline B4): per-payload Latin-1, pre-release `v1`, policy decisions
+
+| Field | Value |
+|---|---|
+| Date | 2026-11-09 |
+| Author and stance | system-architect agent, Architect (author). Not a review, not an approval |
+| Gate | G1 text work (one crate each). The decisions were made by Brian Prascher on 2026-11-09, typed in the session and relayed by the coordinator (not a new G2 or G3 decision by me). Class of the decisions: G3 for D-96 and D-97 (stored-format effect), G1 for D-98 to D-100 |
+| Inputs | [step1-rules-conditions-evidence.md](../engineering/step1-rules-conditions-evidence.md) ("Latin-1 per-payload"), [step1-domain-conditions-evidence.md](../engineering/step1-domain-conditions-evidence.md) ("R-1 / R-2 / PD-2"), [se-confirmation-policy-readings.md](../engineering/se-confirmation-policy-readings.md) |
+| Status | Text applied to the four documents of 8.1. **Not reviewed.** The code (task chess-n3h for rules, chess-3ey for domain) has no system-architect desk review yet. No approval is claimed |
+
+### 8.1 Index of every change
+
+No code, `requirements.md`, `RELEASE_NOTES.md`, `CLAUDE.md`, `README.md`, bead or git state was touched. No Mermaid block was added or edited.
+
+| File | What |
+|---|---|
+| `docs/architecture.md` (Addendum I, 11.4.17) | Header bullet. Dated notes under 4.4 (after the `allowed_actions` paragraph) and 4.5 (after the gateway paragraph); **no table row or enum text rewritten**. New decisions **D-96** (per-payload Latin-1; closes OQ-29), **D-97** (a pre-release byte change of `canonical_form` stays `v1`; D-68 (d), ASM-6), **D-98** (`SelectClock` out of the in-game policy; `check_setup` owns the clock rules), **D-99** (Training `WhatIf` live only in `AwaitingMove` with a human to move), **D-100** (`RespondDraw` by a wrong answerer keeps `state_not_allowed`). Notes in the D-95 row ("OQ-29 closed by D-96") and the GATE-013 line (no ADR files for D-90 and D-91, Brian's decision). 11.2 log row, **GATE-014** (R1, score 6, author's own), five door rows (D-96 one-way at release; D-97 to D-100 two-way), a 11.4.1 row, section 11.4.17, OQ-29 marked closed in section 14. The highest earlier D-number was D-95 `[OBS grep]` |
+| `docs/design/SDD-chess-rules.md` (1.0 to **1.0.1 BASELINED**, amendment) | Header (Version, Date, Status, Approver sentence), change-log row 1.0.1, 3.11.8 *Encoding* rewritten (per payload), warnings table (`Latin1Fallback` once per fallback payload), cap paragraph and order line, 3.11.10 version rule (D-97), 3.13 `ImportWarning` row, DD-RUL-011 purpose, UT-RUL-020 and UT-RUL-033 wording, new **UT-RUL-036** (`tests/latin1_per_payload.rs`), FIND-RUL-010, OQ-RUL-006 closed, section 12 decisions row. Status stays BASELINED. Not changed: the section 12 "Reviewer pass" and "Baseline" rows |
+| `docs/design/SDD-chess-domain.md` (1.0.1 to **1.0.2 BASELINED**, amendment) | Header (Version, Date, Status, Approver sentence), change-log row 1.0.2, `DeniedReason` note (IFP-DOM-1), 3.11.5 table rows (`LiveAnalysis`, `WhatIf`, `SelectClock`, `RespondDraw`, `MakeMove`, last row) and notes (c), (d) replaced, new (d2) and (d3), (e), (f), precedence (PD-4), the SE bullet replaced by "applied 1.0.2", F-3 terms; UT-DOM-022 note, new **UT-DOM-130**, traceability row; OQ-DOM-010 to OQ-DOM-016 closed or applied, new OQ-DOM-018 (OQ-DOM-017 stays open). Not changed: `Code:` lines of section 4 |
+| `docs/design/AMENDMENT-step1-reconciliation.md` | This section 8; one pointer line at the top of section 2 |
+| `SDD-chess-store`, `SDD-chess-app` and the other baselined SDDs | Not changed (see 8.5) |
+
+Mapping of Brian's decisions to D-numbers: (1) Latin-1 = D-96; (2) pre-release byte change = D-97; (3) R-1 = D-98, R-2 = D-99, PD-2 = D-100; (4) no ADR files for D-90 and D-91: recorded in GATE-013 and GATE-014, no D-number; (5) the six decision beads cited as one group: done in Addendum I and below. **The numbering is the architect's.**
+
+### 8.2 Proposed Decision Log entry (for the systems engineer; not entered by me)
+
+**Proposal: extension 7 with its own entry, number CR-17** (the highest entry in `docs/requirements.md` is CR-16 `[OBS grep 2026-11-09]`; the systems engineer confirms that CR-17 is free). Reason: CR-16 is dated and logged as it was decided, and its "Not decided" sentence (OQ-29) is history that should not be rewritten; amendments add. The only edit to the CR-16 entry that I propose is optional and one line at its end: "*Follow-up 2026-11-09: see CR-17 (OQ-29 decided, pre-release `v1` rule, policy decisions).*" If the systems engineer prefers to amend CR-16 in place, the text below can be appended to it as "Follow-up of 2026-11-09", with the same content; I recommend against it, with Medium confidence, because it blurs which decisions were made at gate G-3 and which afterwards.
+
+> | 2026-11-09 | **CR-17 (Amendment 8, extension 7; Brian Prascher's follow-up decisions of 2026-11-09, typed in the session and relayed by the coordinator; the six decision beads of CR-16 (chess-b9j, chess-9mm, chess-7m5, chess-4yc, chess-ebi, chess-0yz) are cited as one group by his decision; task chess-bmx; G0 record keeping):** Decision Log entry CR-17 records follow-up decisions of Brian Prascher and their text in the architecture and two SDDs. (1) **OQ-29 / OQ-RUL-006 closed, option B (G3):** non-UTF-8 PGN text is decoded per payload: each tag value and each comment is read as UTF-8 if valid, else that payload alone is read as Latin-1; `ImportWarning::Latin1Fallback` is recorded once per payload that fell back (architecture D-96). All-UTF-8 and all-Latin-1 files give the same bytes and hashes as before; only a file that mixes encodings reads differently. (2) **A byte change to `canonical_form` before the first release still counts as `v1` (G3):** D-68 (d) and ASM-6 stand; each such change still needs Brian's decision; after the first release it is `v2` (D-97). (3) **Mode policy (G1, inside `chess-domain`):** R-1, a clock may not be changed after a game has started: `SelectClock` is removed from the in-game actions and `allowed_actions` and answers `state_not_allowed`; `check_setup` is the single owner of the clock rules (D-98). R-2, Training `WhatIf` on a live game only in `AwaitingMove` with a human to move; finished games unconditional (D-99). PD-2, `RespondDraw` by a wrong side or actor keeps `state_not_allowed`, no new denial reason (D-100). (4) No ADR files are written for D-90 and D-91. **Not decided:** whether `DeniedReason::TrainingUntimed`, which `Policy::check` no longer produces, is retired from the enum (a protocol change, G2). **No requirement statement, pass criterion, verification-case content or ID changed. Nothing was renumbered.** The Systems Engineer has not recorded a confirmation of the domain wording items of SE-CONF-POLICY-1 (domain SDD OQ-DOM-018). The text is in architecture Addendum I (11.4.17), SDD-chess-rules 1.0.1 and SDD-chess-domain 1.0.2. |
+
+Optional change-history row (same style as extension 6): "**1.0, Amendment 8, extension 7** | 2026-11-09 | **CR-17** (Brian Prascher's follow-up decisions of 2026-11-09; G0 record keeping): Decision Log entry CR-17; no requirement text changed."
+
+### 8.3 Proposed RELEASE_NOTES.md entry (for the systems engineer; not entered by me)
+
+> ## Follow-up decisions of 2026-11-09: per-payload Latin-1, pre-release `v1`, mode-policy changes (CR-17)
+>
+> Documentation for the decisions (G0 record keeping) and G1 text amendments of two SDDs; code changes by the software engineer are listed in the evidence files, not here. Brian Prascher decided on 2026-11-09, typed in the session; logged as **CR-17**. **No requirement statement, pass criterion, verification-case content or ID changed. Nothing was renumbered.** The six decision beads of CR-16 are cited as one group by his decision.
+>
+> ### Decisions recorded (architecture D-96 to D-100, Addendum I)
+> - **Latin-1 per payload (D-96; closes OQ-29):** each PGN tag value and comment is decoded on its own (valid UTF-8 kept, else Latin-1). `ImportWarning::Latin1Fallback` is now once per fallback payload. Output for all-UTF-8 and all-Latin-1 files is unchanged (differential over 300 000 generated files, 0 differences in 200 227 pure files, `[RAN by the software engineer]`); only a file that mixes encodings reads differently.
+> - **A byte change to `canonical_form` before the first release stays `v1` (D-97).**
+> - **A clock cannot change after a game starts (D-98):** `SelectClock` is not an in-game action; `check_setup` owns the clock rules.
+> - **Training what-if on a live game only on the human's turn in `AwaitingMove` (D-99);** finished games unconditional.
+> - **`RespondDraw` by a wrong answerer keeps `state_not_allowed` (D-100).**
+> - No ADR files for D-90 and D-91.
+>
+> ### Documents changed
+> - `docs/architecture.md` (Addendum I, 11.4.17; D-96 to D-100, GATE-014; notes under 4.4 and 4.5; OQ-29 closed).
+> - `docs/design/SDD-chess-rules.md` (1.0 to 1.0.1; status stays BASELINED; amendment text unreviewed).
+> - `docs/design/SDD-chess-domain.md` (1.0.1 to 1.0.2; status stays BASELINED; amendment text unreviewed).
+> - `docs/design/AMENDMENT-step1-reconciliation.md` (section 8).
+> - `docs/requirements.md` (CR-17 row) and `RELEASE_NOTES.md`: by the systems engineer.
+>
+> ### Open
+> | Item | Owner |
+> |---|---|
+> | Retire `DeniedReason::TrainingUntimed` from the enum (no longer produced by `Policy::check`; protocol change) | Brian Prascher (G2) |
+> | Confirm that architecture 4.4 and 4.5 need no table-text change (architect's reading: none; dated notes only) | Brian Prascher |
+> | System-architect desk review of the per-payload code (chess-rules) and the policy code (chess-domain) | System architect, then Brian for any G2 finding |
+> | Systems Engineer confirmation of the applied domain wording (OQ-DOM-018) | Systems Engineer |
+> | Independent Reviewer text review of the rules SDD: not requested; open note only | Brian Prascher decides whether to ask |
+> | `CLAUDE.md` and `README.md` statements that depend on these changes, if any | Systems engineer / program manager |
+>
+> ### Not done, not verified
+> - Test, coverage, mutation and differential figures are cited from the evidence files, not re-run for this entry. Intel Macs: not run.
+> - No approval of the amended SDD text is claimed.
+
+### 8.4 FOR BRIAN (only what is still open)
+
+1. **Retire `DeniedReason::TrainingUntimed`?** `Policy::check` no longer produces it after D-98; `SetupReason::TrainingUntimed` is unchanged and is the only user-visible `training_untimed` now. Options: (a) keep the dead variant (no protocol change; a reader of the wire enum sees a reason that never occurs); (b) retire it (a protocol enum change, G2, cheap now because no consumer exists `[UNV: chess-app and chess-server do not exist yet]` and nothing is released). Recommendation: (b), at the time `chess-app` first generates the TypeScript types, so the enum is right before the first consumer; Medium confidence (a dead code is harmless, so the urgency is low). Not done by me.
+2. **Reviewer text review of the rules SDD: not requested** (open note only, as instructed). The rules SDD text, including amendment 1.0.1, has had no independent Reviewer text review.
+3. **Is Addendum I's reading of architecture 4.4 right (new)?** I read D-98 and D-99 as G1 inside `chess-domain` plus dated notes, because no row of the 4.4 table changes meaning (clock selection is a setup capability; "human only" analysis includes the narrower "`AwaitingMove`, human to move"), and no edge, command, reason code or stored format changes. Please confirm, or say that the 4.4 table text should be edited (that is a G2 change to a baselined table). I did not edit the table, the `EnginePurpose` comment, or the "in progress" wording of 4.4 and 4.5 (the term "unfinished" is proposed in the domain SDD only).
+
+Pending but not for Brian: the system-architect desk review of the code of chess-n3h and chess-3ey (G1); the Systems Engineer's confirmation of the applied wording (OQ-DOM-018); the confirmation of CR-17 as the next free number (systems engineer).
+
+Nothing else was found that needs a new G2 or G3 decision. I stopped at none.
+
+### 8.5 Left out, and why
+
+| Item | Why |
+|---|---|
+| `docs/requirements.md`, `RELEASE_NOTES.md`, `CLAUDE.md`, `README.md` | Not mine; drafts in 8.2 and 8.3. CLAUDE.md's statements about the Latin-1 question or the policy readings, if any, are the systems engineer's to check `[UNV]` |
+| ADR files for D-90 and D-91 | Brian decided that none is written (recorded under GATE-013) |
+| Retiring `DeniedReason::TrainingUntimed` | G2, protocol (FOR BRIAN 1) |
+| Rewrite of the 4.4 and 4.5 table and prose ("in progress", the `EnginePurpose` comment) | A baselined table; notes only (FOR BRIAN 3) |
+| `SDD-chess-store`, `SDD-chess-app`, `SDD-ui`, engine, cli, server, desktop-tauri | No text depends on `SelectClock`, per-game Latin-1 or the changed `WhatIf` reading `[OBS grep of docs/ for SelectClock, training_untimed, TrainingUntimed: hits only in engineering files, the domain SDD and one line of the app SDD (the degraded-session `allowed_actions` item, which lists `SelectClock` among the kinds left out: still true, now moot)]`. `[UNV]` for `SDD-ui` and `test-strategy.md`: a control or test that relies on what-if in `DrawOffered` was not searched for by phrase |
+| `Code:` lines of `SDD-chess-domain` section 4 | Unchanged by this task (stale, see section 3) |
+| Reviewer text review of the rules SDD | Not requested (FOR BRIAN 2) |
+| `docs/engineering/*` evidence files | Owned by the software engineer; read only |
+| `desk-review-G1-step1.md` A-D3 rulings (D3) | History; the 1.0.2 text supersedes reading (d) |
+
+### 8.6 Verification of section 8
+
+| Check | Result |
+|---|---|
+| Mermaid, `validate-mermaid.mjs` | architecture 14/14, rules 7/7, domain 8/8 parsed `[RAN 2026-11-09]`; no diagram edited |
+| Highest earlier D-number and CR number | D-95 (grep of `architecture.md`), CR-16 (grep of `requirements.md`) `[OBS]` |
+| Table row column counts of the rows I added | Checked by awk; one row (UT-DOM-130) had an extra pipe and was fixed |
+| Facts quoted from the code (policy behaviour, warning shape, test names, figures) | Taken from the two evidence files `[OBS]`; **not checked against the code by me, and no test, coverage or mutation run was repeated** `[UNV by this edit]` |
+| That the code matches the new SDD text | `[UNV]`: no code was read by me; the desk review of the code is PENDING |
+| That the requirements and test-strategy do not contradict D-98 to D-100 | `[UNV]`: not re-read; SE-CONF-POLICY-1 cites GAME-1, RULE-4, ANA-1, ANA-4 as consistent |

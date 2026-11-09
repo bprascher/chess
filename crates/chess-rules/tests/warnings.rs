@@ -117,10 +117,11 @@ fn b6_a_termination_outside_the_written_values_is_reported() {
 }
 
 #[test]
-fn b6_whole_game_latin_1_fallback_is_reported_once() {
+fn b6_latin_1_fallback_is_reported_once_per_fallback_payload() {
     let mut bytes = b"[White \"Caf\xe9\"]\n[Black \"ok\"]\n\n1. e4 {caf\xe9} e5 *\n".to_vec();
     let g = read(&bytes);
-    assert_eq!(g.warnings, vec![ImportWarning::Latin1Fallback]);
+    // The White tag value and the comment each fell back (chess-n3h).
+    assert_eq!(g.warnings, vec![ImportWarning::Latin1Fallback; 2]);
     assert_eq!(g.tags.white, "Caf\u{e9}");
     // Valid UTF-8 is not a fallback.
     bytes = "[White \"Caf\u{e9}\"]\n\n1. e4 *\n".as_bytes().to_vec();
@@ -199,19 +200,11 @@ fn b6_a_comment_between_two_games_is_reported_on_the_game_after_it() {
 }
 
 #[test]
-fn b6_characterization_latin_1_is_still_applied_to_the_whole_game_suspect() {
-    // SUSPECT (RF-04, finding C-R5-F1): one bad payload makes the valid UTF-8 payload of the
-    // same game read as mojibake. Per-payload decoding would change the bytes of the game and
-    // so of `canonical_form` for such files (a v1 hash matter), so it was NOT done.
-    let bytes = "[White \"Zo\u{eb}\"]\n[Black \"Caf\u{e9}\"]\n\n1. e4 *\n"
-        .replace("Caf\u{e9}", "Caf@")
-        .into_bytes();
-    let mut bytes = bytes;
-    if let Some(i) = bytes.iter().position(|b| *b == b'@') {
-        bytes[i] = 0xe9;
-    }
-    let g = read(&bytes);
+fn b6_latin_1_is_decided_per_payload_so_valid_utf_8_in_the_same_game_is_kept() {
+    // chess-n3h (Brian Prascher, 2026-11-09): replaces the SUSPECT whole-game characterization
+    // of finding C-R5-F1. White is valid UTF-8 "Zo\u{eb}"; Black holds a Latin-1 byte.
+    let g = read(b"[White \"Zo\xc3\xab\"]\n[Black \"Caf\xe9\"]\n\n1. e4 *\n");
     assert_eq!(g.warnings, vec![ImportWarning::Latin1Fallback]);
     assert_eq!(g.tags.black, "Caf\u{e9}");
-    assert_eq!(g.tags.white, "Zo\u{c3}\u{ab}"); // the UTF-8 "Zoë" read as Latin-1
+    assert_eq!(g.tags.white, "Zo\u{eb}");
 }

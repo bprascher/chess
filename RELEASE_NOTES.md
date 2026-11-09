@@ -1,5 +1,62 @@
 # Release Notes
 
+## Follow-up decisions recorded (CR-17): per-payload Latin-1, pre-release `v1`, mode-policy changes: 2026-11-09
+
+Documentation for the decisions (G0 record keeping) plus G1 text amendments of two SDDs and the architecture addendum. Brian Prascher (G2/G3 approver) decided on 2026-11-09, typed in session and relayed by the coordinator (no verbatim quotation was supplied); logged as **CR-17** (`docs/requirements.md`, Decision Log and change history, Amendment 8, extension 7). **No requirement statement, pass criterion, verification-case content or ID changed. Nothing was renumbered.** The six decision beads of CR-16 (chess-b9j, chess-9mm, chess-7m5, chess-4yc, chess-ebi, chess-0yz) are cited as one group by his decision. Trackers: chess-9o7 (closed), chess-n3h, chess-3ey (closed), chess-9iy.
+
+### Decisions recorded (CR-17; architecture D-96 to D-100, Addendum I)
+- **Latin-1 per payload, option B (D-96; G3; closes OQ-29 and OQ-RUL-006):** each PGN tag value and comment is decoded on its own (valid UTF-8 kept, otherwise that payload alone is read as Latin-1). `ImportWarning::Latin1Fallback` is now once per fallback payload (was once per game). All-UTF-8 and all-Latin-1 files give the same output as before; only a file that mixes encodings reads differently, and its `canonical_form` bytes and `content_hash` change if it is imported again.
+- **A byte change to `canonical_form` before the first release still counts as `v1` (D-97; G3):** each such change still needs Brian Prascher's decision.
+- **R-1 (D-98; G1):** `SelectClock` is removed from the in-game actions and answers `state_not_allowed`; `check_setup` owns the clock rules.
+- **R-2 (D-99; G1):** Training `WhatIf` on a live game only in `AwaitingMove` with a human to move; finished games unconditional.
+- **PD-2 (D-100; G1):** `RespondDraw` by a wrong answerer keeps the generic `state_not_allowed`.
+- No ADR files for D-90 and D-91.
+
+### SDD changes
+| Document | Change | Status |
+|---|---|---|
+| `docs/design/SDD-chess-rules.md` | 1.0 to **1.0.1** (amendment: 3.11.8 per payload, warnings, D-97 version rule, UT-RUL-036, OQ-RUL-006 closed) | Stays BASELINED. Amendment text not independently reviewed |
+| `docs/design/SDD-chess-domain.md` | 1.0.1 to **1.0.2** (amendment: policy table and notes for R-1, R-2, PD-2, UT-DOM-130, OQ-DOM-018 added) | Stays BASELINED. Amendment text not independently reviewed |
+| `docs/architecture.md` | **Addendum I** (11.4.17): D-96 to D-100, GATE-014, dated notes under 4.4 and 4.5 (no table row or enum text rewritten), OQ-29 closed | Architect text; no approval claimed |
+| `docs/design/AMENDMENT-step1-reconciliation.md` | Section 8 (index, drafts, FOR BRIAN) | Working record |
+
+### Code changed (working tree, uncommitted; stated carefully)
+- `crates/chess-rules` reader (tracker chess-n3h): Latin-1 decided per payload; new `tests/latin1_per_payload.rs`; `pgn.rs` and `warnings.rs` expectations changed as the new rule requires (Reviewer: no test removed, skipped or loosened `[OBS git diff, review-latin1-policy-recheck.md]`).
+- `crates/chess-domain` policy (tracker chess-3ey): R-1 and R-2 in `policy.rs`; `policy_independent_table.txt`, `policy.rs` and `policy_independent.rs` tests updated.
+
+### Checks run (cited from the records, not re-run for this entry)
+- Author's differential, rules `[RAN, step1-rules-conditions-evidence.md]`: 300 000 generated files (600 436 games); **0 differences in 200 227 pure (all-UTF-8 or all-Latin-1) files** on tags, moves, result, `canonical_form` bytes, `write_pgn`, errors and all warnings except `Latin1Fallback`; mixed files equal the old reader on the same file transcoded per payload, 0 differences in 270 782 files (the generator is sensitive: old and new differ on 93 869 of 99 773 mixed files).
+- Reviewer's separate differential `[RAN, review-latin1-policy-recheck.md]`: 4 seeds x 100 000 iterations x 5 file classes, 0 failures; the only difference found is FIND-001 below. Mutation on the changed reader functions: 34 mutants, 22 caught, 10 unviable, 2 missed (FIND-007, pre-existing, not in the diff). Reviewer's policy sweep: `SelectClock` allowed in 0 of 108 000 rows; `TrainingUntimed` produced 0 times (was 1 296).
+- `cargo test -p chess-domain` `[RAN, step1-domain-conditions-evidence.md]`: 232 passed, 0 failed.
+- Workspace `[RAN by the program manager, relayed by the coordinator]`: 476 tests passed, 0 failed, 4 ignored; `ci/check.sh` exit 0 (`All gates passed.`; `npm audit` skipped offline); deep perft (`--release -- --ignored`) 4 passed (also `[RAN]` by the Reviewer).
+- Coverage `[RAN, evidence files]`: chess-rules lines 97.68 % after the Latin-1 change; chess-domain lines 98.90 % (policy.rs 0 missed lines).
+- Reviewer re-check `docs/engineering/review-latin1-policy-recheck.md`: **PASS WITH CONDITIONS**, no critical or major finding. Conformance to SEI CERT or any other standard is not claimed.
+
+### Review findings still open (all minor or informational)
+| ID | Finding | Disposition needed |
+|---|---|---|
+| FIND-001 (minor) | An all-Latin-1 game whose `FEN` tag is longer than 128 characters reports a different `BadFen(TooLong { len })` length than before (error value only; no stored output) | Accept and document, or fix (owner of chess-rules / desk review) |
+| FIND-002, FIND-003 (minor) | Stale comment in `policy_independent_table.txt` line 53; test name `ut_rul_020_..._per_game_...` still says "per_game" (renaming would change a test ID the SDD references) | Wording follow-ups (test owner) |
+| FIND-004 (info) | `Action::SelectClock`, `ActionKind::SelectClock` and `DeniedReason::TrainingUntimed` are permanently unreachable from `Policy::check` | Decision on retiring them: see "Still open for Brian" |
+FIND-005 to FIND-007 are informational and need no action by this entry.
+
+### Still open for Brian Prascher (not decided by this entry)
+1. **Retire `DeniedReason::TrainingUntimed`?** A protocol enum change (G2). The architect recommends retiring it before `chess-app` first generates the TypeScript types (Medium confidence; a dead variant is harmless, so urgency is low).
+2. **Confirm the reading of architecture 4.4 and 4.5:** D-98 and D-99 are G1 inside `chess-domain` with dated notes only, not a G2 rewrite of a baselined table. Say so if the table text should be edited instead.
+3. **Reviewer text review of `SDD-chess-rules`:** not requested; open note only (the rules SDD text, including 1.0.1, has had no independent Reviewer text review).
+
+### Not done, not verified
+- Systems Engineer confirmation of the applied domain wording (domain SDD OQ-DOM-018) is pending; chess-g1h (policy readings F-D6, PD-1 to PD-4) was still open when read.
+- System-architect desk review of the new rules reader and domain policy code is pending; no approval of the code or of the amended SDD text is claimed.
+- Test, coverage, mutation and differential figures are cited from the records, not re-run here. Intel Macs: not tested. `npm audit`: skipped (offline).
+- Whether `SDD-ui` or `test-strategy.md` rely on what-if in `DrawOffered` was not searched (architect's note, `[UNV]`).
+- Consumers of the changed behaviour (`chess-app`, `chess-server`, CLI, UI) do not exist yet; impact unassessed.
+
+### Documents changed by this entry
+- `docs/requirements.md` (stays 1.0, Amendment 8, now extension 7; header date 2026-11-09): CR-17 Decision Log row, change-history row, header sentence, and one cross-reference in CR-16's "Not decided" sentence.
+- `RELEASE_NOTES.md`: this entry.
+- `CLAUDE.md`, `README.md`: unchanged (CLAUDE.md already states nine SDDs baselined v1.0; the 1.0.1 and 1.0.2 amendments keep that true).
+
 ## Step-1 decisions recorded (CR-16), SDD-chess-rules baselined v1.0: 2026-11-09
 
 Documentation-only for the records (G0 record keeping) plus the SDD baseline label, which is Brian Prascher's decision B4. Brian Prascher (G2/G3 approver) decided on 2026-11-09 at gate G-3 (**passed with conditions**, tracker chess-y7e); his words, typed in session and relayed by the coordinator: "I accept the PM's recommendations above. Do the work to implement these decisions, but do not start Phase 3 until I say." Logged as **CR-16** in `docs/requirements.md` (Amendment 8, extension 6). **No requirement statement, pass criterion, verification-case content, decision text or ID changed. Nothing was renumbered. Phase 3 is not started and is not authorised by this entry.**

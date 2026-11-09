@@ -163,3 +163,54 @@ Unchanged bytes: `c_r3_legal_game_corpus_bytes_are_those_of_v1` passes with dige
 Gates `[RAN]`: `CHESS_CI_OFFLINE=1 CARGO_NET_OFFLINE=true ci/check.sh` ended `All gates passed.` (fmt, build, clippy -D warnings, all workspace tests, crate edges, ECO checksums, cargo-deny). Deep perft `cargo test -p chess-rules --release -- --ignored`: `4 passed; 0 failed`. Coverage after `cargo llvm-cov clean --workspace`, `cargo llvm-cov -p chess-rules --summary-only`: lines 97.70 % (2132 lines, 49 missed), regions 96.78 %, functions 96.38 %. `Cargo.lock` unchanged `[OBS git status]`.
 
 Not verified: that the SDD (docs/design, not touched here) states the cap and the new variant; the architect owns that edit (RC-14 and the SDD 3.12 / TBD-25 factor named in the re-check).
+
+## Latin-1 per-payload (2026-11-09, task chess-n3h, Engineer stance, gate G1 for chess-rules, PENDING desk review)
+
+Implements Brian Prascher's decision typed 2026-11-09 ("option B"): the PGN Latin-1 fallback is decided per text payload, not per game. This closes finding C-R5-F1 (4.6 above, which said "NOT done"). Nothing here is approved; no commit was made. Base: HEAD a166990, `crates/chess-rules` unmodified at the start `[OBS git status]`.
+
+### Rule as implemented
+- Every text payload the reader decodes (each tag value; each `{...}` comment and `;` comment in the movetext) is decoded on its own: valid UTF-8 is kept as it is; otherwise that payload, as a whole, is read byte for byte as Latin-1. No other payload of the game is affected. `[OBS reader.rs Decoder::decode]`
+- The reader makes one pass per game (the second, Latin-1 pass and the `all_utf8` return value are gone). `[OBS reader.rs parse_game, Iterator::next]`
+- Unchanged: BOM drop, `\r\n` and lone `\r` as one line break, tag-name and movetext bytes (never decoded as text), between-game comments (their text is not kept; only the non-empty test, still on `from_utf8_lossy`), `parse_line` (takes `&str`), the warning cap `MAX_IMPORT_WARNINGS_PER_GAME = 256`, `CANONICAL_FORM_VERSION = 1`.
+- Warning shape: `ImportWarning::Latin1Fallback` stays a unit variant. It is now **once per payload that fell back** (was once per game), pushed when the payload is decoded, so in the order met: between-game comments first, then tag-section fallbacks, then typed-tag warnings (`DateIgnored`, ...; they are appended when the tag section ends, RC-13), then movetext warnings and fallbacks in reading order. It carries no position (adding fields would break an exhaustive match). A comment that is dropped (`CommentDropped`) was still decoded and still adds a `Latin1Fallback`. Each fallback counts against the cap like any warning. Display text changed to "a text in the game is not valid UTF-8, so that text was read as Latin-1".
+
+### Public API changes
+- None in signatures, types or constants `[RAN]` (the crate and all existing tests build; test edits are listed below). Behavioral and documented changes only: (1) `ImportWarning::Latin1Fallback` doc and `Display` text (per payload); (2) a game with k fallback payloads now has k `Latin1Fallback` entries (was 1); (3) mixed-encoding games read differently (below). A consumer that counts `Latin1Fallback` as "game was Latin-1" must be told (none in the workspace: grep for `Latin1Fallback` finds only `chess-rules` `[RAN]`).
+
+### Tests (written first; 8 of 11 failed before the change `[RAN]`)
+- New `crates/chess-rules/tests/latin1_per_payload.rs`, 11 tests: the 'Zoë' (`Zo\xc3\xab`) + Latin-1 (`Caf\xe9`) example in tag values, both orders; comments one by one (including a `;` comment holding a valid sequence and a stray byte, which is one Latin-1 payload); one warning per fallback payload in order; warning order with between-game comment and a typed-tag warning; the cap holds (306 fallback comments give 256 + `WarningsTruncated { dropped: 50 }`); per-game independence with BOM and the three line separators; `canonical_form` and `write_pgn` carry the per-payload text; robustness: 9 invalid sequences (lone `\xff`, truncated 2/3/4-byte, overlong, surrogate, above U+10FFFF, bare continuation, BOM inside a payload) at 18 positions each (tag name, whole/inside/after-backslash/unterminated tag value, comments whole/inside/unterminated, `;` comment mid and at EOF, movetext word, inside a variation, NAG, between games, after the game, truncated at EOF): no panic, terminates; and every one of 6 byte values substituted or inserted at every position of a small game with a variation, comment and NAG.
+- Changed existing tests (their expectation was the old whole-game rule): `warnings.rs` `b6_whole_game_latin_1_fallback_is_reported_once` is now `b6_latin_1_fallback_is_reported_once_per_fallback_payload` (2 entries); the SUSPECT characterization `b6_characterization_latin_1_is_still_applied_to_the_whole_game_suspect` is replaced by `b6_latin_1_is_decided_per_payload_so_valid_utf_8_in_the_same_game_is_kept`; `pgn.rs` `ut_rul_020_if_2_reader_decodes_utf_8_and_latin_1_per_game_and_drops_a_bom` now expects the UTF-8 comment `é` kept next to the Latin-1 tag value. No test was removed, skipped or loosened.
+- Unchanged and passing: `c_r3_legal_game_corpus_bytes_are_those_of_v1` (digest `0xb679052c13383ab7`), the custom-start golden, all other goldens `[RAN]`.
+
+### Differential proof (old = `git archive HEAD crates/chess-rules third_party/eco` copy; new = working tree)
+Harness (scratchpad, not in the repo): `/private/tmp/claude-501/-Users-brianprascher-Projects-chess/093edff2-fc6d-44b4-88b5-ba2bb1914e40/scratchpad/harness/src/main.rs`, depending on the old copy (renamed `chess-rules-old`) and the new crate by path; `cargo build --release --offline`, then `./target/release/harness 300000` (fixed seed, 68 s). Generator: random legal playouts with NAGs, `{}` and `;` comments, variations (depth 2), BOM, `\n`/`\r\n`/`\r`, 1 to 3 games per file, tag values (including `\"` and `\\` escapes) and comments, between-game comments, 5 % illegal-move games; payload classes ASCII, valid UTF-8 non-ASCII (U+0080 up to U+1F600), and Latin-1 bytes constrained to be invalid UTF-8; 299 596 of the 300 000 files contain non-ASCII bytes.
+`[RAN]` output:
+```
+files=300000 games=600436 files_with_nonascii_bytes=299596
+A (pure-class files, old(orig) == new(orig) on tags/moves/result/canonical_form/write_pgn/errors/non-Latin1 warnings): checked=200227 (all-UTF-8 files=55650, files with non-UTF-8 bytes=144577) FAIL=0
+   among pure files: Latin1Fallback warning-count differs old vs new in 133651 files; ...
+B (all files without injected errors, new(orig) == old(transcode every payload to UTF-8)): checked=270782 FAIL=0
+   B files where only the non-Latin1 warning list differs (all fields above equal): 28
+mixed-generator files=99773; of these old(orig) != new(orig) in 93869
+```
+- A: a pure file has each game wholly UTF-8 or wholly Latin-1 (every non-ASCII payload invalid UTF-8; these are exactly the games the old reader decoded as Latin-1 as a whole). Compared per item, old vs new: ok/err, tags, start, moves with comments/NAGs/variations, result, `canonical_form` bytes, `write_pgn` result, error kind/line/col/game_index, and all warnings except `Latin1Fallback`: **0 differences in 200 227 files** (so the all-UTF-8 and all-Latin-1 outputs are identical to before).
+- B (mixed encodings, the only inputs allowed to change): new on the mixed bytes equals old on the same file with every payload transcoded to UTF-8 (that is, per-payload decoding): **0 differences in 270 782 files**; the generator is sensitive: old differs from new on 93 869 of 99 773 mixed files.
+- Observation `[OBS]`, not a failure: in 28 B files only the warning list differs. Cause: a between-game comment made only of a lone Latin-1 byte 0x85 or 0xA0 is "non-empty" under `from_utf8_lossy` (U+FFFD) but empty once transcoded (NEL/NBSP are whitespace), so `CommentDropped` appears. This is existing behavior (the same in old and new, check A) and touches no game content; left alone.
+- Known corner `[INF]`, not covered by the generator: a game whose `FEN` tag is non-UTF-8 fails in both versions with `BadFen`; the error is built from the lossy text in the old first pass and from the Latin-1 text now, so `FenError::TooLong { len }` could report a different `len` for a >128-byte non-UTF-8 FEN. Error value only, no stored output.
+- STOP condition (any all-UTF-8 or all-Latin-1 output change) did not occur.
+
+### Gates `[RAN]`
+- `cargo fmt -p chess-rules -- --check`: clean. `cargo clippy -p chess-rules --all-targets --locked --offline -- -D warnings` (with `RUSTFLAGS=-D warnings`): clean.
+- `CHESS_CI_OFFLINE=1 CARGO_NET_OFFLINE=true ci/check.sh`: exit 0, last line `All gates passed.` (fmt, build, clippy, all workspace tests, crate edges, ECO checksums, cargo-deny; npm audit skipped offline). It ran with another engineer's uncommitted chess-domain edits in the tree.
+- `cargo test -p chess-rules --release -- --ignored`: `4 passed; 0 failed`.
+- `cargo llvm-cov clean --workspace`, `cargo llvm-cov -p chess-rules --summary-only`: lines 97.68 % (2115 lines, 49 missed), regions 96.76 %, functions 96.38 %.
+- `Cargo.lock` unchanged, no new dependency `[OBS git status]`.
+
+### Wording the SDD needs (SDD-chess-rules 3.11.8 and the Latin-1 notes; the architect owns the edit)
+1. IF-2 / 3.11.8: "Text payloads (tag values and comments) are decoded one by one. A payload that is valid UTF-8 is read as UTF-8; a payload that is not valid UTF-8 is read as Latin-1 as a whole, and only that payload. Other payloads of the same game are not affected. Tag names, move text and structure are ASCII and are not decoded as text."
+2. Replace the whole-game sentence and the "mixed file reads as mojibake" caveat; remove "pending Brian's decision on C-R5-F1" (A-R5 note in section 6 above) and mark finding C-R5-F1 closed by decision 2026-11-09.
+3. Warnings: "`ImportWarning::Latin1Fallback` is recorded once for each payload that fell back (it has no position), in the order met, and counts against `MAX_IMPORT_WARNINGS_PER_GAME`." Order: between-game comments, tag-section fallbacks, typed-tag warnings, movetext warnings and fallbacks (4.5 item 5 and its order line change accordingly).
+4. Canonical form: no change to `v1`. Stored bytes change only for a game read from a file that mixes UTF-8 and non-UTF-8 payloads, when that file is imported again (a decision of Brian's, recorded 2026-11-09); all-UTF-8 and all-Latin-1 files give the same bytes and hashes as before (differential above).
+5. Test references: `tests/latin1_per_payload.rs`, `b6_latin_1_is_decided_per_payload_so_valid_utf_8_in_the_same_game_is_kept`.
+
+Not verified: that the SDD or architecture state this (not touched, per instruction); behavior on non-macOS targets; any consumer outside `crates/chess-rules` (none exists yet that reads `PgnGame::warnings`, grep `[RAN]`).

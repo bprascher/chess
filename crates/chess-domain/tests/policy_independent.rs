@@ -487,9 +487,15 @@ fn df_08_the_table_pins_the_reasons_in_the_data_file_not_only_ok_or_denied() {
     reasons.sort();
     reasons.dedup();
     for r in DeniedReason::ALL.iter().map(|r| r.as_str()) {
-        let player_side = matches!(r, "computer_player" | "active_player" | "archived_player");
+        // `training_untimed` as a DeniedReason is no longer produced by Policy::check after R-1
+        // (2026-11-09); the clock rule lives in check_setup (SetupReason::TrainingUntimed). The
+        // variant stays in the public enum (removing it is a protocol change, not made here).
+        let exempt = matches!(
+            r,
+            "computer_player" | "active_player" | "archived_player" | "training_untimed"
+        );
         assert!(
-            player_side || reasons.iter().any(|x| x == r),
+            exempt || reasons.iter().any(|x| x == r),
             "the table never expects {r}"
         );
     }

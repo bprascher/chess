@@ -422,12 +422,14 @@ fn ut_rul_020_if_2_reader_decodes_utf_8_and_latin_1_per_game_and_drops_a_bom() {
         read_all(&with_bom)[0].as_ref().unwrap().tags.white,
         "M\u{fc}ller"
     );
-    // One invalid payload makes the whole game Latin-1; the next game is judged on its own.
+    // Each payload is judged on its own (chess-n3h): the invalid tag value is Latin-1, the
+    // valid UTF-8 comment of the same game stays UTF-8; the next game is judged on its own.
     let mixed = b"[White \"M\xfcller\"]\n\n1. e4 {\xc3\xa9} *\n\n[White \"\xc3\xa9\"]\n\n1. d4 *\n";
     let all = read_all(mixed);
+    assert_eq!(all[0].as_ref().unwrap().tags.white, "M\u{fc}ller");
     assert_eq!(
         all[0].as_ref().unwrap().moves[0].comment.as_deref(),
-        Some("\u{c3}\u{a9}")
+        Some("\u{e9}")
     );
     assert_eq!(all[1].as_ref().unwrap().tags.white, "\u{e9}");
 }

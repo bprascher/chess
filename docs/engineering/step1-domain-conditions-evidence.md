@@ -131,3 +131,47 @@ RC-02 of `review-step1-recheck.md`. `Game::journal_eq` is unchanged (ruling B5 s
 - New test `ut_dom_042_rc_02_a_finished_game_compares_the_clock_spec_but_no_remaining_time` `[RAN]`: with a `Clock` fact inserted before `Ended`, (a) content `{1, 260000}` is applied (replayed White remaining `Some(1)`, differs from live) and `journal_eq` is true, (b) a different running side is true, (c) the dropped fact is true; a different clock spec (6+0 vs 5+0) is false.
 
 Public API changes: none. Gates: see the rules section above (`ci/check.sh` passed for the workspace; `cargo llvm-cov -p chess-domain --summary-only` lines 98.90 %, functions 98.68 % `[RAN]`).
+
+## R-1 / R-2 / PD-2 (2026-11-09, task chess-3ey, Engineer stance, baseline B4)
+
+Decisions by Brian Prascher, typed 2026-11-09 (R-1, R-2, PD-2 of `se-confirmation-policy-readings.md`). Gate: G1 inside `chess-domain` (no protocol, journal, denial-reason or arch 4.4 table change was needed); the system-architect desk review and the SDD amendment are PENDING. Nothing here is approved by me.
+
+### Change
+- `Policy::check`, `Action::SelectClock` -> `deny(StateNotAllowed)` for every game state and mode that passes the global rows (previously `allow_if(strict, TrainingUntimed)`). Finished games still get `voided` / `game_over` first. `allowed_actions` therefore never lists `SelectClock` [OBS policy.rs `allowed_actions` filters on `check`].
+- `Action::WhatIf`: finished unchanged (unconditional, both modes); Strict unfinished -> `strict_mode` (unchanged); Training unfinished -> allowed only in `AwaitingMove` with a human to move (was: any in-progress state with a human to move, i.e. also `DrawOffered`, `EngineThinking`, `EngineError`, `Paused`); all other unfinished states -> `state_not_allowed`. `Suspended` was already `state_not_allowed` (Training) and `strict_mode` (Strict).
+- `RespondDraw` by the wrong side or actor: unchanged, `state_not_allowed`; no reason added (PD-2). Regression test added.
+- `check_setup` untouched; it remains the single owner of the clock rules (`TrainingUntimed`, Strict timed/untimed). `Game::new` path verified by test.
+
+### Public behaviour changes
+1. `Policy::check(SelectClock, ctx)` in any unfinished state: `Err(state_not_allowed)` (was `Ok` in Strict, `training_untimed` in Training).
+2. `Policy::allowed_actions` (hence `GameView`/snapshots built from it): `SelectClock` no longer listed in any state.
+3. `Policy::check(WhatIf, ctx)`, Training, unfinished, in `DrawOffered`, `EngineThinking`, `EngineError`, `Paused`, `Suspended`, or when not the human's turn: `Err(state_not_allowed)` (was `Ok` in the first four with a human to move). `allowed_actions` follows.
+4. No signature or type change. `DeniedReason::TrainingUntimed` stays in the public enum but `Policy::check` no longer produces it [OBS error.rs:40,58,76]; `SetupReason::TrainingUntimed` is unchanged. Removing the variant would change the protocol enum, so I did not (see "Items stopped / noticed").
+
+### Tests (tests first; the table and oracle were changed before policy.rs)
+- `tests/data/policy_independent_table.txt`: FD6d-1 removed (superseded comment), A-WI3 narrowed to `mode=T state=A tomove=H => ok`, A-SC2 replaced by `A-SC1 | SelectClock => state_not_allowed`. Rows derived from the readings text plus the two decisions, not from the code [INF]. Table now has 61 non-comment rows [RAN grep -cv]. `df_08` exempts `training_untimed` from "the table expects every reason" with a comment.
+- `tests/policy.rs` oracle updated (SelectClock, WhatIf). New tests: `ut_dom_027_r_1_select_clock_is_state_not_allowed_in_every_started_state_and_mode` (every unfinished context from `contexts()`, also absent from `allowed_actions`; finished -> `voided`/`game_over`), `ut_dom_027_r_1_started_games_never_list_select_clock_and_setup_clock_rules_are_unchanged` (Strict h-h, Strict h-c, Training games from `Game::new`; `check_setup` Training+clock -> `Clock/TrainingUntimed`), `ut_dom_028_r_2_...` (all six unfinished states, both sides to move, `allowed_actions` agreement, Strict `strict_mode` including `Suspended`, finished unconditional in both modes incl. Voided), `ut_dom_029_pd_2_...`.
+- Reason choices (Training WhatIf, not human's-turn-in-AwaitingMove): `DrawOffered`, `EngineThinking`, `EngineError`, `Paused`, `Suspended` all `state_not_allowed`; no other reason fits. Not obvious: `DrawOffered` where the offering human is the side to move (refused, no draw-specific reason applies, since `draw_*` reasons name offers only).
+
+### Commands [RAN 2026-11-09]
+| Command | Result |
+|---|---|
+| `cargo test -p chess-domain --offline` | 232 passed, 0 failed (sum of suites); `policy_independent`: 5 passed |
+| `cargo fmt -p chess-domain` | no error |
+| `cargo clippy -p chess-domain --all-features --all-targets --offline -- -D warnings` | Finished, no warning |
+| `CHESS_CI_OFFLINE=1 CARGO_NET_OFFLINE=true ci/check.sh` | "All gates passed." (npm audit skipped offline) |
+| `cargo llvm-cov -p chess-domain --offline --summary-only` | lines 2543, missed 28, **98.90%**; policy.rs lines 273, missed 0 (100%) |
+| `CARGO_NET_OFFLINE=true cargo mutants -p chess-domain --re 'Policy::check\|Policy::allowed_actions' -j3` | 77 mutants: **72 caught, 0 missed, 0 timeout, 5 unviable** (3 min). Scoped sample, not the whole crate |
+
+### SDD 3.11.5 wording needed (for the amendment; I did not edit docs/design)
+1. `SelectClock`: "Not an in-game action. The clock is chosen at setup and fixed when the game starts (GAME-1, RULE-4). In every unfinished state and either mode the answer is `state_not_allowed`, and `allowed_actions` omits it. `check_setup` alone enforces the clock rules (`training_untimed`, Strict timed or untimed)." Replace the current SelectClock row and A-SC cells.
+2. Training `WhatIf` on an unfinished game: "allowed only in `AwaitingMove` with a human to move; every other unfinished state, including `DrawOffered`, `EngineThinking`, `EngineError`, `Paused` and `Suspended`, gives `state_not_allowed`. Strict gives `strict_mode`. A finished game allows it unconditionally (ANA-4)."
+3. PD-2: "`RespondDraw` by the offerer, or by an actor kind that does not match the answering seat (a human for a computer, an engine for a human), gives `state_not_allowed`. No response-specific reason exists."
+4. SE wording items (R-3) still to apply: (a) make the last "Any action on ..." row identical to the Voided row ("except `PostGameAnalysis` and `WhatIf`"); precedence sentence (PD-4): global rows first (`voided`, `game_over`), then per-action rules in table order; (b3) cells "strict_mode (S, game not finished)"; F-3 use "unfinished" (A..SU) vs `InProgress` super-state; (c) one sentence that the more specific `not_human_turn` precedes `state_not_allowed`; PD-1 Engine `MakeMove` needs `by` = side to move, a computer, in `EngineThinking`, else `state_not_allowed`; (e) `SetMoveDelay` allowed in any non-finished c-c state including `Suspended`, the app refuses it when no session is attached; (f) add `DrawOffered --EngineFailed--> AwaitingMove` (offer to a computer) to the T4 list and diagram. Arch 4.4 clock row and 4.5 "in-progress Strict game" wording are for the architect's amendment.
+
+### Items stopped / noticed
+- Nothing stopped: no protocol, journal, new-reason or arch 4.4 table text change was required. `DeniedReason::TrainingUntimed` is now unreachable from `Policy::check`; whether to retire it is a protocol decision (G2) for Brian/SA [UNV on consumers: chess-app/server do not exist yet].
+- Arch 4.4 clock row text currently says front-ends render controls from `allowed_actions`; whether its table text lists `SelectClock` as in-game is [UNV] (docs not read this task; architect amendment pending).
+
+### Not run / not verified
+No Reviewer pass, no SA desk review. Whole-crate mutation not run. `ci/check.sh` ran while chess-rules was being edited concurrently. Intel Macs not run.

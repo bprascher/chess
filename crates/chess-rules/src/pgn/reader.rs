@@ -1,5 +1,5 @@
 //! DD-RUL-011 and DD-RUL-012: the PGN reader, an iterative tokenizer with an explicit variation
-//! stack (no recursion over input depth), per-game error recovery and per-game text decoding
+//! stack (no recursion over input depth), per-game error recovery and per-payload text decoding
 //! (SDD 3.9.2, 3.10, 3.11.8). Every loop consumes at least one byte per turn, so every input
 //! terminates.
 
@@ -166,13 +166,12 @@ impl Fail {
     }
 }
 
-/// Text decoding of one game: UTF-8, or Latin-1 for the whole game when any payload was not
-/// valid UTF-8 (IF-2). The first pass runs in UTF-8 mode and records the verdict.
+/// Text decoding of one game (IF-2, chess-n3h): every text payload (a tag value, a comment) is
+/// decoded on its own. Valid UTF-8 is read as it is; a payload that is not valid UTF-8 is read
+/// as Latin-1, as a whole, and nothing else in the game is affected. Each such payload adds one
+/// [`ImportWarning::Latin1Fallback`] to `warnings`.
 struct Decoder {
-    latin1: bool,
-    all_utf8: bool,
-    /// Import warnings of the game being read (B6). Dropped with the decoder when the first,
-    /// UTF-8 pass is repeated as Latin-1.
+    /// Import warnings of the game being read (B6), in the order met.
     warnings: WarnLog,
 }
 
@@ -208,14 +207,11 @@ impl WarnLog {
 
 impl Decoder {
     fn decode(&mut self, bytes: Vec<u8>) -> String {
-        if self.latin1 {
-            return bytes.iter().map(|b| char::from(*b)).collect();
-        }
         match String::from_utf8(bytes) {
             Ok(s) => s,
             Err(e) => {
-                self.all_utf8 = false;
-                String::from_utf8_lossy(e.as_bytes()).into_owned()
+                self.warnings.push(ImportWarning::Latin1Fallback);
+                e.as_bytes().iter().map(|b| char::from(*b)).collect()
             }
         }
     }
@@ -527,8 +523,6 @@ fn move_number_rest(word: &[u8]) -> Option<&[u8]> {
 pub fn parse_line(start: &Position, text: &str) -> Result<Vec<PgnNode>, PgnParseError> {
     let mut lex = Lexer::new(text.as_bytes(), 0);
     let mut decoder = Decoder {
-        latin1: false,
-        all_utf8: true,
         warnings: WarnLog::default(),
     };
     let (nodes, _end) = movetext(&mut lex, start, &PgnLimits::default(), &mut decoder, false)
@@ -786,17 +780,11 @@ impl<'a> PgnReader<'a> {
         Ok(())
     }
 
-    fn parse_game(&mut self, latin1: bool) -> Result<(PgnGame, bool), Fail> {
+    fn parse_game(&mut self) -> Result<PgnGame, Fail> {
         let mut decoder = Decoder {
-            latin1,
-            all_utf8: true,
-            // Between-game comments met before this game come first (B6); the Latin-1 pass
-            // starts from the same list because the first pass's list is dropped.
+            // Between-game comments met before this game come first (B6).
             warnings: self.pending.clone(),
         };
-        if latin1 {
-            decoder.warnings.push(ImportWarning::Latin1Fallback);
-        }
         let mut raw = RawTags::default();
         let mut tags_read = false;
         loop {
@@ -841,16 +829,13 @@ impl<'a> PgnReader<'a> {
             End::NextGame | End::Eof => raw.result.unwrap_or(PgnResult::Unknown),
         };
         let warnings = decoder.warnings.into_vec();
-        Ok((
-            PgnGame {
-                tags: raw.tags,
-                start,
-                moves,
-                result,
-                warnings,
-            },
-            decoder.all_utf8,
-        ))
+        Ok(PgnGame {
+            tags: raw.tags,
+            start,
+            moves,
+            result,
+            warnings,
+        })
     }
 }
 
@@ -928,15 +913,7 @@ impl Iterator for PgnReader<'_> {
             }
             Ok(true) => {
                 self.game_index += 1;
-                let snapshot = self.lex.c;
-                match self.parse_game(false) {
-                    Ok((_, false)) => {
-                        // A payload was not UTF-8: decode the whole game as Latin-1.
-                        self.lex.c = snapshot;
-                        self.parse_game(true).map(|(game, _)| game)
-                    }
-                    other => other.map(|(game, _)| game),
-                }
+                self.parse_game()
             }
             Err(fail) => {
                 self.game_index += 1;

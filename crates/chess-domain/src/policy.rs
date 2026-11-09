@@ -318,11 +318,16 @@ impl Policy {
                 if strict {
                     return deny(DeniedReason::StrictMode);
                 }
-                allow_if(state.is_in_progress() && ctx.human_to_move(), not_allowed)
+                allow_if(
+                    state == GameState::AwaitingMove && ctx.human_to_move(),
+                    not_allowed,
+                )
             }
             Action::PostGameAnalysis => allow_if(state.is_finished(), not_allowed),
             Action::Rewind => allow_if(!cc && state.is_in_progress(), not_allowed),
-            Action::SelectClock => allow_if(strict, DeniedReason::TrainingUntimed),
+            // R-1 (2026-11-09): the clock is fixed when the game starts. `check_setup` owns the
+            // clock rules; a started game never accepts a clock change, in any mode.
+            Action::SelectClock => deny(not_allowed),
             Action::OfferDraw { by } => offer_draw(by, ctx),
             Action::RespondDraw { by, actor } => {
                 let offeree = ctx.pending_offer.map(Side::other) == Some(by);

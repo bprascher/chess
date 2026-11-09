@@ -131,7 +131,7 @@ fn oracle(a: &Action, c: &GameContext) -> Result<(), R> {
                 Ok(())
             } else if strict {
                 Err(R::StrictMode)
-            } else if in_progress && human_to_move {
+            } else if st == S::AwaitingMove && human_to_move {
                 Ok(())
             } else {
                 Err(R::StateNotAllowed)
@@ -151,13 +151,8 @@ fn oracle(a: &Action, c: &GameContext) -> Result<(), R> {
                 Err(R::StateNotAllowed)
             }
         }
-        Action::SelectClock => {
-            if strict {
-                Ok(())
-            } else {
-                Err(R::TrainingUntimed)
-            }
-        }
+        // R-1 (2026-11-09): clocks are fixed at setup; check_setup owns the clock rules.
+        Action::SelectClock => Err(R::StateNotAllowed),
         Action::OfferDraw { by } => {
             if cc || kind_of(c, *by) == C {
                 Err(R::DrawNotAvailable)
@@ -758,4 +753,111 @@ fn ut_dom_025_game_setup_is_self_play_and_serde_shape_rejects_unknown_fields() {
     assert_eq!(Matchup::deserialize(d).unwrap(), Matchup::HumanComputer);
     let d: StrDeserializer<'_, Error> = "HC".into_deserializer();
     assert!(Matchup::deserialize(d).is_err());
+}
+
+// ---------------------------------------------------------------- R-1, R-2, PD-2 (2026-11-09)
+
+const UNFINISHED: [S; 6] = [
+    S::AwaitingMove,
+    S::EngineThinking,
+    S::EngineError,
+    S::DrawOffered,
+    S::Paused,
+    S::Suspended,
+];
+
+#[test]
+fn ut_dom_027_r_1_select_clock_is_state_not_allowed_in_every_started_state_and_mode() {
+    for c in contexts().into_iter().filter(|c| !c.state.is_finished()) {
+        assert_eq!(
+            denied(Action::SelectClock, &c),
+            Some(R::StateNotAllowed),
+            "{c:?}"
+        );
+        assert!(
+            !Policy::allowed_actions(&c).contains(&ActionKind::SelectClock),
+            "{c:?}"
+        );
+    }
+    // Finished games: the global rows still come first.
+    for mode in [Mode::Training, Mode::Strict] {
+        let v = ctx(mode, Matchup::HumanComputer, S::Voided, Side::White);
+        assert_eq!(denied(Action::SelectClock, &v), Some(R::Voided));
+        for s in [S::Completed, S::Finalized, S::Aborted] {
+            let f = ctx(mode, Matchup::HumanComputer, s, Side::White);
+            assert_eq!(denied(Action::SelectClock, &f), Some(R::GameOver));
+        }
+    }
+}
+
+#[test]
+fn ut_dom_027_r_1_started_games_never_list_select_clock_and_setup_clock_rules_are_unchanged() {
+    // Setup path: a timed Strict game is created, and its view has no SelectClock.
+    for setup in [strict_hh(), strict_hc(), training()] {
+        let game = Run::new(setup).game;
+        let ctx = game.context();
+        assert!(!Policy::allowed_actions(&ctx).contains(&ActionKind::SelectClock));
+    }
+    // check_setup still owns the clock rules.
+    assert!(Policy::check_setup(&strict_hh()).is_ok());
+    let mut s = training();
+    s.clock = Some(spec(5, 0));
+    let e = Policy::check_setup(&s).unwrap_err();
+    assert_eq!(
+        (e.field, e.reason),
+        (SetupField::Clock, SetupReason::TrainingUntimed)
+    );
+}
+
+#[test]
+fn ut_dom_028_r_2_training_what_if_on_a_live_game_only_when_awaiting_a_human_move() {
+    for s in UNFINISHED {
+        for turn in [Side::White, Side::Black] {
+            let c = ctx(Mode::Training, Matchup::HumanComputer, s, turn);
+            let human_turn = turn == Side::White; // white is the human seat in ctx()
+            let want = if s == S::AwaitingMove && human_turn {
+                None
+            } else {
+                Some(R::StateNotAllowed)
+            };
+            assert_eq!(denied(Action::WhatIf, &c), want, "{s:?} {turn:?}");
+            assert_eq!(
+                Policy::allowed_actions(&c).contains(&ActionKind::WhatIf),
+                want.is_none(),
+                "{s:?} {turn:?}"
+            );
+        }
+    }
+    // Strict stays strict_mode in every unfinished state, including Suspended.
+    for s in UNFINISHED {
+        let c = ctx(Mode::Strict, Matchup::HumanComputer, s, Side::White);
+        assert_eq!(denied(Action::WhatIf, &c), Some(R::StrictMode), "{s:?}");
+    }
+    // Finished: unconditional, in both modes.
+    for mode in [Mode::Training, Mode::Strict] {
+        for s in [S::Completed, S::Finalized, S::Aborted, S::Voided] {
+            let c = ctx(mode, Matchup::HumanComputer, s, Side::Black);
+            assert_eq!(denied(Action::WhatIf, &c), None, "{s:?}");
+        }
+    }
+}
+
+#[test]
+fn ut_dom_029_pd_2_respond_draw_by_the_wrong_side_or_actor_is_state_not_allowed() {
+    let mut c = ctx(
+        Mode::Strict,
+        Matchup::HumanComputer,
+        S::DrawOffered,
+        Side::White,
+    );
+    c.pending_offer = Some(Side::White); // the human offered; the computer (black) answers
+    let respond = |by, actor| Action::RespondDraw { by, actor };
+    assert_eq!(denied(respond(Side::Black, Actor::Engine), &c), None);
+    for a in [
+        respond(Side::White, Actor::Human), // offerer answers its own offer
+        respond(Side::White, Actor::Engine), // wrong actor kind for a human seat
+        respond(Side::Black, Actor::Human), // a human answers for the computer
+    ] {
+        assert_eq!(denied(a, &c), Some(R::StateNotAllowed), "{a:?}");
+    }
 }

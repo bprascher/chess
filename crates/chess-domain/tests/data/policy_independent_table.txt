@@ -38,7 +38,8 @@ FD6b-3 | LiveAnalysis mode=S state=SU => strict_mode
 FD6b-4 | WhatIf mode=S state=SU => strict_mode
 FD6c-1 | MakeMove actor=H by=other state=ET,EE,DO,P,SU => not_human_turn
 FD6c-2 | MakeMove actor=H by=turn bykind=H state=ET,EE,DO,P,SU => state_not_allowed
-FD6d-1 | SelectClock mode=S state=A,ET,EE,DO,P,SU => ok
+# FD6d (SelectClock) is superseded by R-1 (Brian Prascher, 2026-11-09): clocks cannot change once the
+# game has started; see A-SC1. There is no pre-start GameState, so every unfinished state is started.
 FD6e-1 | SetMoveDelay matchup=CC state=A,ET,EE,DO,P,SU => ok
 # FD6f (EngineFailed accepted in DrawOffered when the offer is to a computer) is a Game
 # transition, not a Policy::check row: tests/policy_independent.rs, scenario test.
@@ -63,13 +64,17 @@ A-LA2 | LiveAnalysis mode=T state=A tomove=H => ok
 A-LA3 | LiveAnalysis => state_not_allowed
 #
 A-WI2 | WhatIf mode=S => strict_mode
-A-WI3 | WhatIf mode=T state=A,ET,EE,DO,P tomove=H => ok
+# R-2 (Brian Prascher, 2026-11-09): on an unfinished game Training what-if only in AwaitingMove with
+# a human to move; DrawOffered, EngineThinking, EngineError, Paused, Suspended are state_not_allowed.
+A-WI3 | WhatIf mode=T state=A tomove=H => ok
 A-WI4 | WhatIf => state_not_allowed
 #
 A-RW1 | Rewind matchup=HH,HC state=A,ET,EE,DO,P => ok
 A-RW2 | Rewind => state_not_allowed
 #
-A-SC2 | SelectClock mode=T => training_untimed
+# R-1: SelectClock on any started game, either mode, is state_not_allowed (finished: G-01/G-02).
+# The setup-time clock rules (Strict/untimed, training_untimed) live in check_setup, not here.
+A-SC1 | SelectClock => state_not_allowed
 #
 # Draw offer: 3.11.4 order of checks (1) c-c or computer offerer, (2) pending, (3) engine busy,
 # (4) any state but AwaitingMove, (5) not the offerer's turn, (6) repeat blocked.
