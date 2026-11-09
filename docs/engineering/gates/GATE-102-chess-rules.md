@@ -7,8 +7,8 @@
 | Approver | System Architect, **desk review**, to be requested after the Reviewer pass (tasks chess-a0r.2.5 and chess-a0r.2.9) |
 | Status | **OPEN. NOT APPROVED.** No approval has been received from anyone. The author is the Engineer stance and does not approve its own gate |
 | Date opened | 2026-11-05 |
-| Opened by | Software engineer (task chess-a0r.2.3, part A) |
-| Covers | Part A (chess-a0r.2.3): `types`, `error`, `position`, `fen`, `testing` (perft). Part B (chess-a0r.2.4: SAN, `parse_move`, PGN, `canonical_form`, ECO, `build.rs`) is added to this record when it lands |
+| Opened by | Software engineer (task chess-a0r.2.3, part A); part B added by the software engineer (task chess-a0r.2.4) |
+| Covers | Part A (chess-a0r.2.3): `types`, `error`, `position`, `fen`, `testing` (perft). Part B (chess-a0r.2.4): `notation` (SAN, `parse_move`), `pgn` (model, writer, reader, line text, `canonical_form`, raw `ECO` tag), part B error types. Added below (section "CHG-102 part B") on 2026-11-06. The ECO table, `build.rs` and `eco::lookup` (DD-RUL-013, IFP-RUL-6) were added in a second pass of part B after the PM ruling; see the part B section |
 
 ## CHG-102 Implement chess-rules part A per SDD-chess-rules 0.3.5 DRAFT
 
@@ -26,10 +26,31 @@
 - **Escalation check (G2 triggers):** none found. The SDD did not force an edge or §5.7 change. Two observations for owners are in the evidence file section "Findings" (en passant normalisation for chess-2bb, and the integration-test feature gap).
 - **Reviewer findings and dispositions:** none yet. The Reviewer pass (chess-a0r.2.5) is a separate stance and has not happened.
 
+## CHG-102 part B (added 2026-11-06, task chess-a0r.2.4, Engineer stance)
+
+- **Goal and driver:** RULE-6 and RULE-7 (PGN export and import), IF-1, IF-2 (formats), CLI-3 and GUI-2 (c) (typed notation, the uppercase `B` rule), ANA-2 (line text), DAT-3 (raw `ECO` tag), D-42 (`canonical_form`), NFR-3 (no panic on any input), NFR-9 (typed errors); functions F-2.2.2, supports F-5.3, F-6.10, F-6.11. Design entities DD-RUL-005, 006, 009, 010, 011, 012, 016, and the part B variants of DD-RUL-014.
+- **Components touched:** `crates/chess-rules` only: new `src/notation.rs`, `src/pgn/{mod,reader}.rs`; edits to `src/{lib,error,position}.rs`; new `tests/{notation,pgn}.rs`; helper additions in `tests/common/mod.rs`. `Cargo.toml` gains the `shakmaty` build-dependency (second pass); `Cargo.lock` is unchanged.
+- **Interfaces touched:** adds the part B provided interface of IFP-RUL-1 (`Position::san`), IFP-RUL-3 (`parse_move`), IFP-RUL-5 (PGN services, `eco_tag`, `canonical_form`). Changes one part A type: `MoveParseError` gains variants and loses `Copy` (see F-B1 in the evidence file). No consumer exists yet.
+- **Gate answers:** Q1 no. Q2 no (first implementation of the cards; the one part A type changed has no consumer). Q3 no. Q4 no (no edge; `ci/check-crate-edges.mjs` still reports 11 edges). Q5 no. Q6 no. Q7 no. Q8 no. Q9 yes. Q10 no. **Result G1, unchanged.** No G2 trigger was found.
+- **Choices inside the SDD's freedom (Reviewer and SA desk review should confirm; listed as F-B1 to F-B9 in the evidence file):** error and type shapes (`MoveParseError` variants and payloads, `PgnErrorKind`, `PgnWriteError`, `San`, `PgnTags`, `PgnDate`, `TimeControl`, `Termination` text); an in-crate tokenizer instead of `pgn-reader` (the SDD's named escape route, OQ-RUL-001); reader leniencies (FEN tag honoured without `SetUp`, a tag section at a line start ends a game that has no terminator).
+- **ECO table (second pass, PM ruling that DD-RUL-013 is in scope):** new `third_party/eco/` (Lichess `chess-openings` at commit `3ba6b20d31b2e6125cb0e6a2e792f400717d9d39`, CC0-1.0, retrieved 2026-11-06, SHA-256 in `SHA256SUMS`, source record in `SOURCE.md`), `build.rs`, `build/eco_gen.rs`, `src/key_derive.rs`, `src/eco.rs`, tests `eco` and `eco_build`, `ci/check-eco.mjs` (one new step in `ci/check.sh`). `[build-dependencies] shakmaty = "=0.30.2"` is added to `chess-rules/Cargo.toml` (D-75; same crate and version already admitted, no new crate in `Cargo.lock`, no workspace edge; Q3, Q4 stay no; `ci/check-crate-edges.mjs` still reports 11 edges). Checks that touched shared files: `deny.toml` and the edge script unchanged; `ci/check.sh` +1 step. A third-party data snapshot is now in the repository (D-20 planned this one-time fetch; NFR-6 licence audit applies). Not delivered: UT-RUL-031 row 5 (shared drift-guard table, left for chess-a0r.2.7).
+- **Evidence:** docs/engineering/step1-rules-B-evidence.md (sections 1 to 10 first pass, section 11 ECO pass).
+- **Risk and rollback:** working tree only, nothing committed. Rollback is deleting the new files and reverting `src/{lib,error,position}.rs` and `tests/common/mod.rs`.
+- **Reviewer findings and dispositions:** none yet. The Reviewer pass is a separate stance and has not happened for part B.
+
 ## Approval record
 
 | Item | Status |
 |---|---|
-| Reviewer pass | NOT DONE |
-| System Architect desk review | NOT REQUESTED yet (after the Reviewer pass) |
+| Reviewer pass (part A and part B) | NOT DONE |
+| System Architect desk review (part A and part B) | NOT REQUESTED yet (after the Reviewer pass) |
 | Approved by | nobody |
+
+## Rework note (chess-a0r.2.11, 2026-11-06)
+
+Rework of the adversarial review `review-chess-rules-code.md` (PASS WITH CONDITIONS). Evidence: `step1-rules-rework-evidence.md`. Status of the gate is unchanged: G1, OPEN, **not approved**, nobody has approved anything, no System Architect desk review has happened.
+
+- **Corrected footprint (RF-12).** The "Components touched: `crates/chess-rules` only ... no CI file edited" lines above understate the change. The real footprint of parts A and B plus the ECO pass is: `crates/chess-rules` (src, `build.rs`, `build/`, tests); **shared CI**: `ci/check.sh` (one new step) and the new `ci/check-eco.mjs`; **a third-party data set**: `third_party/eco/` (Lichess `chess-openings`, CC0-1.0, NFR-6 licence audit applies, one-time external fetch); **a build-script dependency** (`[build-dependencies] shakmaty = "=0.30.2"`, reads `../../third_party/eco` outside the crate directory); and an **in-crate PGN tokenizer** that replaces the `pgn-reader` wrapper named in SDD 3.11.8 and DD-RUL-011 (OQ-RUL-001 escape route; the SDD text is stale and needs an amendment by the SDD owner). Whether the CI edit needs Brian Prascher (G2) is the System Architect's call; this note does not decide it.
+- **Reworked (RF-01, 02, 03, 06) and added (RF-05 part).** No public signature changed. One additive public item: `CANONICAL_FORM_VERSION: u32 = 1` (re-exported from the crate root; requested for D-68 / OQ-RUL-005 (a)). Behaviour changes inside existing signatures: `PgnLimits::max_variation_depth` is clamped to 256; a stray result word between games and a trailing Ctrl-Z no longer produce items; a blank line between two tag sections ends the first game with a `BadSyntax` error; `explain_illegal` returns `CannotReach` instead of `Other` for a promotion piece on a non-promoting move or a promotion to a king or pawn. Two existing assertions that pinned the `Other` behaviour (`tests/rules.rs`, `ut_rul_015_nfr_9_black_castling_reasons_and_other_cases`) were changed on purpose and say so in a comment.
+- **Not changed, owner decision needed.** RF-05 (a) and (b): `canonical_form` is not injective for an illegal mainline tail or for control characters in tag values. The bytes are the stored-format `v1`; no byte was changed (Brian Prascher decides). RF-04, 07, 08, 09 and 10 to 15 were out of scope of this rework.
+- **Reviewer re-check of the rework:** not done. SA desk review: not requested.

@@ -2,12 +2,14 @@
 //! `PositionKey`, the position predicates and the illegal-move explainer. This module and `fen`
 //! are the only ones that import `shakmaty`; every upstream value is converted at the boundary.
 
+use shakmaty::san::SanPlus;
 use shakmaty::{
     CastlingSide, Chess, Color, EnPassantMode, Position as _, Role, Square as ShakSquare,
 };
 
 use crate::error::{IllegalMove, IllegalReason};
 use crate::fen::Fen;
+use crate::notation::San;
 use crate::types::{Move, Piece, PieceKind, Side, Square};
 
 /// A chess position. `play` returns a new value and never changes `self`.
@@ -176,6 +178,20 @@ impl Position {
         }
     }
 
+    /// Canonical SAN of `m` with the `+` or `#` suffix (DD-RUL-005, IFP-RUL-1): piece letter,
+    /// minimal disambiguation, `x`, destination, `=Q`, castling as `O-O` and `O-O-O` with the
+    /// letter O. Formatted by the upstream writer after the same lookup as `play`.
+    pub fn san(&self, m: Move) -> Result<San, IllegalMove> {
+        match self.find(m) {
+            Some(upstream) => Ok(San::new(
+                SanPlus::from_move(self.inner.clone(), upstream).to_string(),
+            )),
+            None => Err(IllegalMove {
+                reason: self.explain_illegal(m.from, m.to, m.promotion),
+            }),
+        }
+    }
+
     // ------------------------------------------------------------ predicates (DD-RUL-004)
 
     pub fn is_check(&self) -> bool {
@@ -236,8 +252,9 @@ impl Position {
     // ------------------------------------------------------------ explainer (DD-RUL-007)
 
     /// Classifies, in the order of SDD 3.11.2, why moving the piece on `from` to `to` is not
-    /// legal. Returns `Other` when none applies, which includes a move that is in fact legal
-    /// (a defect indicator, never shown as a rule).
+    /// legal. Returns `Other` only when none applies, which includes a move that is in fact legal
+    /// (a defect indicator, never shown as a rule); a promotion piece on a move that does not
+    /// promote, or a promotion to a king or pawn, is `CannotReach` (RF-06).
     pub fn explain_illegal(
         &self,
         from: Square,
@@ -263,10 +280,16 @@ impl Position {
         if promotes && promotion.is_none() {
             return IllegalReason::PromotionRequired;
         }
-        if (promotion.is_some() && !promotes)
-            || matches!(promotion, Some(PieceKind::Pawn | PieceKind::King))
-        {
-            return IllegalReason::Other;
+        // RF-06: a promotion piece on a move that does not promote, or a promotion to a king or
+        // pawn, is a wrong request, not a library defect: it gets a stable reason of its own
+        // and `Other` stays the defect indicator (SDD 3.11.2).
+        if let Some(chosen) = promotion {
+            if matches!(chosen, PieceKind::Pawn | PieceKind::King) {
+                return IllegalReason::CannotReach { piece: chosen };
+            }
+            if !promotes {
+                return IllegalReason::CannotReach { piece: piece.kind };
+            }
         }
         if self.is_legal(Move {
             from,
@@ -428,56 +451,17 @@ pub struct PositionKey {
 impl PositionKey {
     /// The first four FEN fields: placement, side, castling, legal en passant target.
     pub fn to_epd(&self) -> String {
-        let mut out = String::new();
-        for rank in (0..8u8).rev() {
-            let mut empty = 0u8;
-            for file in 0..8u8 {
-                let piece = Square::from_index(rank * 8 + file).ok().and_then(|s| {
-                    self.placement
-                        .get(usize::from(s.index()))
-                        .copied()
-                        .flatten()
-                });
-                match piece {
-                    None => empty += 1,
-                    Some(p) => {
-                        if empty > 0 {
-                            out.push_str(&empty.to_string());
-                            empty = 0;
-                        }
-                        let letter = p.kind.letter();
-                        out.push(if p.side == Side::White {
-                            letter.to_ascii_uppercase()
-                        } else {
-                            letter
-                        });
-                    }
-                }
-            }
-            if empty > 0 {
-                out.push_str(&empty.to_string());
-            }
-            if rank > 0 {
-                out.push('/');
-            }
-        }
-        out.push(' ');
-        out.push(if self.side == Side::White { 'w' } else { 'b' });
-        out.push(' ');
-        let letters = ['K', 'Q', 'k', 'q'];
-        let rights: String = self
-            .castling
-            .iter()
-            .zip(letters)
-            .filter(|(has, _)| **has)
-            .map(|(_, letter)| letter)
-            .collect();
-        out.push_str(if rights.is_empty() { "-" } else { &rights });
-        out.push(' ');
-        match self.en_passant {
-            Some(sq) => out.push_str(&sq.to_string()),
-            None => out.push('-'),
-        }
-        out
+        crate::key_derive::epd(
+            |i| {
+                self.placement
+                    .get(usize::from(i))
+                    .copied()
+                    .flatten()
+                    .map(|p| (p.side == Side::White, p.kind.letter()))
+            },
+            self.side == Side::White,
+            self.castling,
+            self.en_passant.map(Square::index),
+        )
     }
 }

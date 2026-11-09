@@ -1,0 +1,11 @@
+# SF-02 / D-64 drift-guard table (SDD-chess-domain UT-DOM-115, SDD-chess-rules UT-RUL-031 row 5).
+# Seven rows: the standard FEN and one variant per FEN field, each differing from the standard
+# FEN in exactly that field. Only the inputs are shared; the expected result is per crate.
+# Format: row_name|fen|chess-domain expected start kind
+standard|rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1|standard
+placement|rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKB1R w KQkq - 0 1|custom
+side_to_move|rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1|custom
+castling|rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w Kkq - 0 1|custom
+en_passant|rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq e3 0 1|parse_error
+halfmove_clock|rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 5 1|custom
+fullmove_number|rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 2|custom

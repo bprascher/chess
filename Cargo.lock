@@ -131,6 +131,10 @@ name = "chess-domain"
 version = "0.0.0"
 dependencies = [
  "chess-rules",
+ "proptest",
+ "serde",
+ "thiserror",
+ "uuid",
 ]
 
 [[package]]
@@ -419,6 +423,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha1_smol"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbfa15b3dddfee50a0fff136974b3e1bde555604ba463834a7eb7deb6417705d"
+
+[[package]]
 name = "shakmaty"
 version = "0.30.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -516,6 +526,16 @@ name = "unicode-ident"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2c754d6c33795a1c324727428e5a7dedb5b06195f9890bdbcba760d3e246563"
+
+[[package]]
+name = "uuid"
+version = "1.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a0e2d11620c50695fe12bbbfde96b3477fe606e7284c22d505c12ce51214514"
+dependencies = [
+ "serde_core",
+ "sha1_smol",
+]
 
 [[package]]
 name = "wait-timeout"

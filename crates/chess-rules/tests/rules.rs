@@ -507,20 +507,27 @@ fn ut_rul_015_nfr_9_black_castling_reasons_and_other_cases() {
         reason("r2qk2r/8/8/8/8/8/8/R3K2R b kq - 0 1", "e8c8"),
         R::CastlingBlocked
     );
-    // a promotion letter on a move that does not promote, or to a king or pawn
+    // a promotion letter on a move that does not promote, or to a king or pawn: a wrong
+    // request with its own reason, not `Other` (RF-06; was pinned to `Other` before rework)
     let p = Position::standard();
     assert_eq!(
         p.explain_illegal(sq("e2"), sq("e4"), Some(PieceKind::Queen)),
-        R::Other
+        R::CannotReach {
+            piece: PieceKind::Pawn
+        }
     );
     let q = pos("8/P6k/8/8/8/8/7K/8 w - - 0 1");
     assert_eq!(
         q.explain_illegal(sq("a7"), sq("a8"), Some(PieceKind::King)),
-        R::Other
+        R::CannotReach {
+            piece: PieceKind::King
+        }
     );
     assert_eq!(
         q.explain_illegal(sq("a7"), sq("a8"), Some(PieceKind::Pawn)),
-        R::Other
+        R::CannotReach {
+            piece: PieceKind::Pawn
+        }
     );
     // a legal castling asked of the explainer is Other as well
     let c = pos("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1");

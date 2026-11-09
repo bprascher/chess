@@ -17,6 +17,11 @@ test-support = []
 shakmaty = "=0.30.2"
 thiserror = "=2.0.21"
 
+[build-dependencies]
+# D-75: the ECO generator replays the snapshot with the same crate and version as the runtime
+# dependency (no workspace edge, no new crate).
+shakmaty = "=0.30.2"
+
 [dev-dependencies]
 proptest = "=1.12.0"
 

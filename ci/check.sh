@@ -26,6 +26,8 @@ step "cargo test"
 cargo test --workspace --locked
 step "crate-edge check (architecture 3.2)"
 node ci/check-crate-edges.mjs
+step "ECO snapshot checksums (CI-RUL-001)"
+node ci/check-eco.mjs
 step "cargo deny check"
 cargo deny "${deny_args[@]}" check
 if [[ "${CHESS_CI_OFFLINE:-0}" == "1" ]]; then

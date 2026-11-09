@@ -41,3 +41,22 @@ pub fn play_all(p: &Position, line: &[&str]) -> Position {
     }
     cur
 }
+
+/// The move list of `ucis` played from `start`, as plain nodes (no NAGs, comments or variations).
+pub fn nodes(start: &Position, ucis: &[&str]) -> Vec<chess_rules::PgnNode> {
+    let mut cur = start.clone();
+    let mut out = Vec::new();
+    for u in ucis {
+        let m = mv(u);
+        out.push(chess_rules::PgnNode::new(m));
+        cur = cur.play(m).unwrap();
+    }
+    out
+}
+
+/// A game from the standard start (default tags) with the given UCI moves and result.
+pub fn game(ucis: &[&str], result: chess_rules::PgnResult) -> chess_rules::PgnGame {
+    let start = Position::standard();
+    let moves = nodes(&start, ucis);
+    chess_rules::PgnGame::new(start, moves, result)
+}
