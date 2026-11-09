@@ -1,0 +1,127 @@
+# Independent policy table (C-D4, DF-08, desk review D3). 2026-11-09, software-engineer.
+#
+# Derived from the TEXT of SDD-chess-domain 3.11.5 (decision table), 3.11.4 (in-play rules, draw
+# offer order of checks) and architecture 4.4 / 4.5 (mode policy table, engine purposes). It was
+# NOT derived from src/policy.rs or from the oracle in tests/policy.rs. Disclosed limit: the
+# author had read the F-D6 list (step1-domain-A-evidence.md) and the first lines of the old
+# oracle (Takeback, LiveAnalysis, WhatIf) before writing; the rows below are the author's own
+# reading of the SDD/architecture text, and every F-D6 reading is an explicit FD6 row.
+#
+# Row syntax: ID | ACTIONS CONDITIONS => VERDICT      (first matching row wins; # starts a comment)
+#   ACTIONS      comma list of action names, or !list for "all except"
+#   CONDITIONS   key=v1,v2  (key=!v1,v2 means "not any of"); all keys must match
+#     mode      T Training | S Strict
+#     matchup   HH | HC | CC
+#     state     A AwaitingMove, ET EngineThinking, EE EngineError, DO DrawOffered, P Paused,
+#               SU Suspended, CO Completed, FI Finalized, AB Aborted, VO Voided
+#     tomove    H | C  kind of the side to move
+#     by        turn | other   the action's side (OfferDraw by, Resign side, RespondDraw by, MakeMove by)
+#     bykind    H | C  kind of that side
+#     actor     H | E  (RespondDraw, MakeMove)
+#     byofferee yes | no   (RespondDraw) the answering side is not the side that made the offer
+#     blocked   by | no    (OfferDraw) offer_blocked_for is the offering side
+#   VERDICT      ok | <denied reason, snake_case> | deny (denied, reason not fixed by the text) |
+#                ? (the text does not decide; reported, not compared)
+#
+# Contexts compared: every real combination. Excluded as unreachable (a context no Game can be
+# in): Training with a matchup other than HC (check_setup refuses it); DrawOffered without a
+# pending offer; a pending offer outside DrawOffered/Suspended; a pending offer made by a
+# computer seat (a computer never offers, Q42); DrawOffered in a c-c game.
+#
+# ---- F-D6 readings as explicit rows (desk review D3 accepted a-f; SE must still confirm a-e) ----
+FD6a-1 | LiveAnalysis state=CO,FI,AB => game_over
+FD6a-2 | LiveAnalysis state=VO => voided
+FD6a-3 | PostGameAnalysis,WhatIf state=CO,FI,AB,VO => ok
+FD6b-1 | Rewind state=SU => state_not_allowed
+FD6b-2 | WhatIf mode=T state=SU => state_not_allowed
+FD6b-3 | LiveAnalysis mode=S state=SU => strict_mode
+FD6b-4 | WhatIf mode=S state=SU => strict_mode
+FD6c-1 | MakeMove actor=H by=other state=ET,EE,DO,P,SU => not_human_turn
+FD6c-2 | MakeMove actor=H by=turn bykind=H state=ET,EE,DO,P,SU => state_not_allowed
+# FD6d (SelectClock) is superseded by R-1 (Brian Prascher, 2026-11-09): clocks cannot change once the
+# game has started; see A-SC1. There is no pre-start GameState, so every unfinished state is started.
+FD6e-1 | SetMoveDelay matchup=CC state=A,ET,EE,DO,P,SU => ok
+# FD6f (EngineFailed accepted in DrawOffered when the offer is to a computer) is a Game
+# transition, not a Policy::check row: tests/policy_independent.rs, scenario test.
+#
+# ---- Global rows (3.11.5 last rows: "Any action on a Voided game", "... Completed, Finalized or Aborted game") ----
+G-01 | !PostGameAnalysis,WhatIf state=VO => voided
+G-02 | !PostGameAnalysis,WhatIf state=CO,FI,AB => game_over
+#
+# ---- Per action ----
+# Generic restatements already decided by an earlier FD6 or global row (PostGameAnalysis ok on a
+# finished game, SelectClock in S, WhatIf on a finished game, SetMoveDelay in c-c, Resign in a
+# finished game, human MakeMove outside AwaitingMove) are not repeated: a row that decides no
+# case fails df_08_the_independent_table_is_complete_and_has_no_shadowed_rows.
+A-PGA2 | PostGameAnalysis => state_not_allowed
+#
+A-TB1 | Takeback mode=S => strict_mode
+A-TB2 | Takeback mode=T matchup=HC state=A,ET,EE => ok
+A-TB3 | Takeback => state_not_allowed
+#
+A-LA1 | LiveAnalysis mode=S => strict_mode
+A-LA2 | LiveAnalysis mode=T state=A tomove=H => ok
+A-LA3 | LiveAnalysis => state_not_allowed
+#
+A-WI2 | WhatIf mode=S => strict_mode
+# R-2 (Brian Prascher, 2026-11-09): on an unfinished game Training what-if only in AwaitingMove with
+# a human to move; DrawOffered, EngineThinking, EngineError, Paused, Suspended are state_not_allowed.
+A-WI3 | WhatIf mode=T state=A tomove=H => ok
+A-WI4 | WhatIf => state_not_allowed
+#
+A-RW1 | Rewind matchup=HH,HC state=A,ET,EE,DO,P => ok
+A-RW2 | Rewind => state_not_allowed
+#
+# R-1: SelectClock on any started game, either mode, is state_not_allowed (finished: G-01/G-02).
+# The setup-time clock rules (Strict/untimed, training_untimed) live in check_setup, not here.
+A-SC1 | SelectClock => state_not_allowed
+#
+# Draw offer: 3.11.4 order of checks (1) c-c or computer offerer, (2) pending, (3) engine busy,
+# (4) any state but AwaitingMove, (5) not the offerer's turn, (6) repeat blocked.
+A-OD1 | OfferDraw matchup=CC => draw_not_available
+A-OD2 | OfferDraw bykind=C => draw_not_available
+A-OD3 | OfferDraw state=DO => draw_offer_pending
+A-OD4 | OfferDraw state=ET,EE => draw_engine_busy
+A-OD5 | OfferDraw state=!A => state_not_allowed
+A-OD6 | OfferDraw by=other => draw_not_own_turn
+A-OD7 | OfferDraw blocked=by => draw_repeat_blocked
+A-OD8 | OfferDraw => ok
+#
+# RespondDraw: state DrawOffered; the offeree answers; a human by command, a computer by the
+# engine path. The row lists only state_not_allowed as its reason (reading, see evidence).
+A-RD1 | RespondDraw state=!DO => state_not_allowed
+A-RD2 | RespondDraw byofferee=no => state_not_allowed
+A-RD3 | RespondDraw actor=H bykind=C => state_not_allowed
+A-RD4 | RespondDraw actor=E bykind=H => state_not_allowed
+A-RD5 | RespondDraw => ok
+#
+# c-c only: Pause in AwaitingMove or EngineThinking; PlayResume and Step in Paused; SetMoveDelay any
+A-PA1 | Pause matchup=CC state=A,ET => ok
+A-PA2 | Pause => state_not_allowed
+A-PR1 | PlayResume matchup=CC state=P => ok
+A-PR2 | PlayResume => state_not_allowed
+A-ST1 | Step matchup=CC state=P => ok
+A-ST2 | Step => state_not_allowed
+A-MD2 | SetMoveDelay => state_not_allowed
+#
+A-RS1 | Resign matchup=CC => state_not_allowed
+A-RS2 | Resign bykind=C => state_not_allowed
+A-RS3 | Resign state=A,ET,EE,DO,P,SU => ok
+#
+A-AB1 | Abort matchup=CC state=A,ET,EE,DO,P,SU => ok
+A-AB2 | Abort => state_not_allowed
+#
+A-CE1 | CancelEngine matchup=HC state=ET => ok
+A-CE2 | CancelEngine => state_not_allowed
+A-RE1 | RetryEngine state=EE => ok
+A-RE2 | RetryEngine => state_not_allowed
+#
+# MakeMove: Human = AwaitingMove and `by` is the human side to move; Engine = EngineThinking and
+# the side to move is a computer. Reasons listed in the cell: not_human_turn, state_not_allowed.
+A-MM1 | MakeMove actor=H by=other => not_human_turn
+A-MM2 | MakeMove actor=H bykind=C => not_human_turn
+A-MM4 | MakeMove actor=H => ok
+A-MM5 | MakeMove actor=E by=turn tomove=C state=ET => ok
+A-MM6 | MakeMove actor=E by=turn tomove=C => state_not_allowed
+A-MM7 | MakeMove actor=E by=turn tomove=H => deny
+A-MM8 | MakeMove actor=E by=other => ?

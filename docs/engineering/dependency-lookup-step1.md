@@ -2,7 +2,15 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/engineering/dependency-lookup-step1.md | 0.2 | 2026-11-05 (0.1: 2026-11-04) | **Accepted by Brian Prascher (G2), 2026-11-06 (CR-15; tracker chess-out); no content change; version stays 0.2.** *Status before 2026-11-06: Draft proposal, reissued (0.2) for Brian Prascher's G2 acceptance. Not accepted.* Task chess-a0r.1.6, baseline B1; reissued under CR-4 task T-A (chess-a0r.1.54.1) after Brian's ruling of 2026-11-05 (chess-a0r.1.49, chess-a0r.1.53) that 0.1 was not accepted as a whole. Written by the system-architect agent (Architect stance). It proposes; it approves nothing | System-architect agent, for Brian Prascher | None claimed. Any crate not already admitted in architecture §3.4 is a **G2** proposal and needs **Brian Prascher** |
+| docs/engineering/dependency-lookup-step1.md | 0.3 | 2026-11-06 (0.2: 2026-11-05; 0.1: 2026-11-04) | **Accepted by Brian Prascher (G2), 2026-11-06 (CR-15; tracker chess-out); no content change; version stays 0.2.** *Status before 2026-11-06: Draft proposal, reissued (0.2) for Brian Prascher's G2 acceptance. Not accepted.* Task chess-a0r.1.6, baseline B1; reissued under CR-4 task T-A (chess-a0r.1.54.1) after Brian's ruling of 2026-11-05 (chess-a0r.1.49, chess-a0r.1.53) that 0.1 was not accepted as a whole. Written by the system-architect agent (Architect stance). It proposes; it approves nothing | System-architect agent, for Brian Prascher | None claimed. Any crate not already admitted in architecture §3.4 is a **G2** proposal and needs **Brian Prascher** |
+
+**Change log.**
+
+| Version | Date | Change | Acceptance |
+|---|---|---|---|
+| 0.3 | 2026-11-06 | Itemisation only: section 9 lists the transitive crates of `shakmaty` 0.30.2 that sections 2 and 4 did not name. No vetting conclusion changed. No other section edited, apart from this change log and the header version and date | Brian Prascher accepted the itemisation on 2026-11-06 (task chess-pe1, F-A3). He has not accepted the 0.3 text beyond that |
+| 0.2 | 2026-11-05 | See the change note below | Accepted by Brian Prascher (G2), 2026-11-06 (CR-15; chess-out), no content change |
+| 0.1 | 2026-11-04 | First issue | Not accepted as a whole (ruling of 2026-11-05) |
 
 **Change note, 0.2 (2026-11-05).** Brian Prascher ruled on 2026-11-05 (OQ-17 part 1, chess-a0r.1.49) that 0.1 is not accepted as a whole, and asked for two changes. Everything else in part 1 is unchanged from 0.1 (same runs, same results, same pins).
 1. **Spike item added, not a lookup result.** Whether the bundled SQLite build supports `json_valid` (the store DDL uses it in a `CHECK`) is added as spike item S1 in section 6A and is folded into the OQ-14 spike scope (tracker chess-a0r.3.1). No lookup in this document tested it; it is `[UNV]`.
@@ -165,3 +173,34 @@ Other store primitives named in readiness FIND-R23-003 and FIND-R23-004 (`WITHOU
 - ASM-DL2: The pin rule is "highest stable on or before 2026-10-28" for all rows, as in §3.4. Under it, every runtime and dev pin equals the newest release today, except `cargo-nextest` (0.9.150 against 0.9.151).
 - ASM-DL3: A scratch crate in the session scratchpad, with exact `=` pins, is an adequate stand-in for the future `Cargo.lock`. The real lock must be re-scanned when the skeleton exists. No project file was changed, no dependency was added to any project, and no software was installed.
 - ASM-DL4: `cargo-deny` and `cargo-audit` read the same RustSec database, so E7 and E8 are one evidence source for advisories, not two.
+
+## 9. Amendment 0.3 (2026-11-06): transitive crates of `shakmaty` 0.30.2
+
+**Scope.** Itemisation only. Part A of `chess-rules` (task F-A3, chess-pe1) found that sections 2.1 and 4 name `shakmaty` and `pgn-reader` but not the crates `shakmaty` pulls in. Brian Prascher accepted on 2026-11-06 that they be listed. No pin, licence conclusion, finding or proposal above changes. Sections 1 to 8 are as in 0.2.
+
+**Method.** Run on 2026-11-06 in the repository workspace (commit 0087962 plus the working tree), offline, against the committed `Cargo.lock`.
+
+| # | Command | Result | Tag |
+|---|---|---|---|
+| E12 | `cargo tree --offline -e features -p shakmaty` and `cargo tree --offline -p shakmaty -e normal,build --prefix none` | `shakmaty` v0.30.2 with 5 crates below it: `arrayvec` 0.7.8, `bitflags` 2.13.2, `btoi` 0.5.0, `num-traits` 0.2.19, `autocfg` 1.5.1 (build dependency of `num-traits`, reached through `btoi`) | `[RAN]` |
+| E13 | `cargo metadata --offline --format-version 1 --locked`, then versions, `license` and `rust_version` read from the packages under `shakmaty` in the resolve graph | Table below | `[RAN]` |
+| E14 | `grep -n -A12 'name = "shakmaty"' Cargo.lock`, and `cargo tree --offline -i nohash-hasher`, `cargo tree --offline -i serde` | The lock entry for `shakmaty` 0.30.2 lists `arrayvec`, `bitflags`, `btoi`, `nohash-hasher`, `serde`. The last two are not in the build graph (both `cargo tree -i` runs print "nothing to print") | `[RAN]` |
+| E15 | `cargo deny --offline check` (the repository `deny.toml`) | `advisories ok, bans ok, licenses ok, sources ok`, exit 0. Warnings: `license-not-encountered` for the `BSD-3-Clause` and `Unlicense` allow entries | `[RAN]` |
+
+**Crates built for `shakmaty` 0.30.2 (default features `std`, `magics`; `alloc` follows from `std`).** Licence is the registry SPDX field from `cargo metadata`. MSRV is the registry `rust_version`. All are at or below the workspace 1.99.
+
+| Crate | Version | Licence | MSRV | Role | Tag |
+|---|---|---|---|---|---|
+| `arrayvec` | 0.7.8 | MIT OR Apache-2.0 | 1.51 | Direct dependency of `shakmaty` | `[RAN E12, E13]` |
+| `bitflags` | 2.13.2 | MIT OR Apache-2.0 | 1.56.0 | Direct dependency | `[RAN E12, E13]` |
+| `btoi` | 0.5.0 | MIT OR Apache-2.0 | 1.60 | Direct dependency | `[RAN E12, E13]` |
+| `num-traits` | 0.2.19 | MIT OR Apache-2.0 | 1.60 | Dependency of `btoi` | `[RAN E12, E13]` |
+| `autocfg` | 1.5.1 | Apache-2.0 OR MIT | 1.0 | Build dependency of `num-traits` | `[RAN E12, E13]` |
+
+**Locked but not built (optional dependencies of `shakmaty`, features not enabled in this workspace).** They are in `Cargo.lock` because Cargo locks optional dependencies. `nohash-hasher` 0.2.0, Apache-2.0 OR MIT, no `rust_version` in the registry data; `serde` 1.0.229, MIT OR Apache-2.0. `serde` brings `serde_core`, `serde_derive`, `syn` 3.0.9, `quote`, `proc-macro2` and `unicode-ident` into the lock, all of which section 2.1 already names for `serde`. `[RAN E13, E14]`. They enter a build only if the `shakmaty` `serde` or `nohash-hasher` feature is enabled; the 0.3 run did not look at which `shakmaty` feature names enable them `[UNV]`.
+
+**Licence view.** All five built crates carry licences already in the allow list of section 4 (`MIT`, `Apache-2.0`, as `OR` choices), so section 4 needs no new entry. `[RAN E15]` for the check, `[INF]` for the reading of the `OR` expressions. The "about 30 unique packages" figure in E5 is not recomputed.
+
+**Advisories.** `cargo deny --offline check` passed (E15). It reads the advisory database already on the machine; the database date and commit were not re-checked in this run and may differ from E7 `[UNV]`. Per-crate advisory file history (as in E9) was not re-run for the five crates `[UNV]`. Yanked status was not checked `[UNV]`. Each crate's publication date against the 2026-10-28 pin rule was not checked; the versions are those the committed lock holds `[UNV]`.
+
+**Not done in this amendment.** No crate was added, removed or re-pinned. No edit to `docs/architecture.md`, the SDDs or `deny.toml`.

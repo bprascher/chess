@@ -1,0 +1,29 @@
+[package]
+name = "chess-rules"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+# DD-RUL-015: perft and fixture helpers. Off by default; the crate's own unit tests enable it
+# through cfg(test) (a self dev-dependency would be a chess-rules -> chess-rules edge that
+# ci/check-crate-edges.mjs rejects).
+test-support = []
+
+[dependencies]
+# Versions per docs/engineering/dependency-lookup-step1.md (looked up 2026-11-04).
+shakmaty = "=0.30.2"
+thiserror = "=2.0.21"
+
+[build-dependencies]
+# D-75: the ECO generator replays the snapshot with the same crate and version as the runtime
+# dependency (no workspace edge, no new crate).
+shakmaty = "=0.30.2"
+
+[dev-dependencies]
+proptest = "=1.12.0"
+
+[lints]
+workspace = true

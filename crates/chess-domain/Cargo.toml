@@ -1,0 +1,29 @@
+[package]
+name = "chess-domain"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+# DD-DOM-002: FakeTimeSource and ScriptedRng. Off by default. Consumers enable it from their
+# own dev-dependencies; this crate's own tests get the same code through cfg(test) and
+# `#[cfg(any(test, feature = "test-support"))]` (no self dev-dependency: it would be a
+# chess-domain -> chess-domain edge that ci/check-crate-edges.mjs rejects, see GATE-102 F-A1).
+test-support = []
+
+[dependencies]
+chess-rules.workspace = true
+# Versions per docs/engineering/dependency-lookup-step1.md (looked up 2026-11-04).
+serde = { version = "=1.0.229", features = ["derive"] }
+thiserror = "=2.0.21"
+# D-47: identity newtypes. `v5` is for the roster identity (part B, chess-a0r.2.7) and is
+# declared now so part B does not edit this manifest. No `v4` (no random source in a pure crate).
+uuid = { version = "=1.29.0", default-features = false, features = ["v5", "serde"] }
+
+[dev-dependencies]
+proptest = "=1.12.0"
+
+[lints]
+workspace = true

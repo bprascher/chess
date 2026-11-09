@@ -1,0 +1,24 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    # macOS only: the product is a macOS app (PLAT-1). Intel is built, not run (test-strategy).
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      # rustup reads rust-toolchain.toml (1.99.1, stable only, D-76) and installs it.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "26.13.0"
+      # Fresh resolve, no --locked: the published locks of cargo-deny carry known
+      # vulnerabilities (dependency-lookup-step1.md F5).
+      - run: cargo install cargo-deny --version 0.20.2
+      - run: ci/check.sh

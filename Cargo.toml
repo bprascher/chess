@@ -1,0 +1,48 @@
+# Workspace per docs/architecture.md section 3.1 and 3.2.
+# Workspace crates only; no third-party dependency is declared yet
+# (docs/engineering/step1-scaffolding-evidence.md).
+[workspace]
+resolver = "3"
+members = [
+    "crates/chess-rules",
+    "crates/chess-domain",
+    "crates/chess-engine",
+    "crates/chess-store",
+    "crates/chess-app",
+    "crates/chess-server",
+    "crates/chess-cli",
+    "desktop/src-tauri",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.99"
+# D-10 and dependency-lookup-step1.md F2: GPL-3.0-or-later (shakmaty, pgn-reader).
+license = "GPL-3.0-or-later"
+publish = false
+
+# Allowed edges only (architecture section 3.2, D-38). Enforced by
+# ci/check-crate-edges.mjs and by [bans] in deny.toml.
+[workspace.dependencies]
+chess-rules = { path = "crates/chess-rules" }
+chess-domain = { path = "crates/chess-domain" }
+chess-engine = { path = "crates/chess-engine" }
+chess-store = { path = "crates/chess-store" }
+chess-app = { path = "crates/chess-app" }
+chess-server = { path = "crates/chess-server" }
+
+[workspace.lints.rust]
+# Warnings are errors (SWE-001 ASM-S2). A suppression needs a written reason.
+warnings = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+# CERT-informed denials named in SDD-chess-rules and SDD-chess-domain (outside tests,
+# see clippy.toml).
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+cast_possible_truncation = "deny"
+cast_sign_loss = "deny"

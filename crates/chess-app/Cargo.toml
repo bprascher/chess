@@ -1,0 +1,16 @@
+[package]
+name = "chess-app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+chess-engine.workspace = true
+chess-store.workspace = true
+chess-domain.workspace = true
+chess-rules.workspace = true
+
+[lints]
+workspace = true

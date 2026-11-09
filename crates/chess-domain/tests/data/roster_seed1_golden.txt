@@ -1,0 +1,28 @@
+# Golden roster for seed 1, UciEloRange 0..=4000, class bounds ESTIMATE v1 (UT-DOM-060).
+# Characterisation of the first implementation, not an independent oracle. The UUID column is
+# cross-checked in roster.rs against Python uuid5. Format: index|uuid|category|name|skill|depth|movetime|uci_elo|permille|multipv|strict|training
+0|e150175c-fc0c-5fb5-8ee4-cab604e95634|Beginner|Josephine Thornbury|2|2|114|723|222|5|400|400
+1|8b079dbb-b9e5-54f0-a0cb-642ca447f90e|Novice|Walter Underhill|4|3|382|898|122|3|600|600
+2|43b1ab70-7e53-502a-b748-1605c90ee974|Intermediate|Dmitri Stanhope|12|6|204|1299|97|2|1200|1200
+3|8034ab8e-b8b8-50cb-8582-b8414a1efa2a|Master|Fenella Oakhurst|17|12|1443|2241|15|2|2200|2200
+4|7f9aab4f-7af6-5e46-b58e-9e49e23dfb44|Grand Master|Konrad Underhill|19|19|2624|2607|0|1|2500|2500
+5|c84138ad-63ce-5951-9d28-0113949d69d5|Beginner|Octavia Thornbury|0|2|92|554|323|3|400|400
+6|d3a24f17-c54d-5909-956d-baf7353b85c1|Novice|Theodora Lockhart|3|3|314|983|183|3|600|600
+7|6e830c21-da57-54f8-a34b-b97befe665e7|Intermediate|Nadia Ironside|12|8|672|1687|66|3|1200|1200
+8|ede0c783-4f0c-5b82-a384-364b71b6cee0|Master|Clara Blackwood|15|11|1160|2217|15|2|2200|2200
+9|14e8f9d5-4345-5887-bac7-ba433cff30bd|Grand Master|Matthias Eastley|19|17|1659|2549|0|1|2500|2500
+10|5fce5b68-7d97-5e2d-a74f-287f5fb2fd60|Beginner|Walter Redfern|1|1|107|610|213|5|400|400
+11|4e4a00bf-74d7-5962-8fa6-5cf5a9560b01|Novice|Fenella Zimmerman|3|3|124|826|131|3|600|600
+12|f2a5f94a-a2e6-50c2-b484-7d57dadf67f4|Intermediate|Rosalind Blackwood|10|6|449|1660|46|2|1200|1200
+13|5eae5068-de6b-5cb2-9d6c-20320fee58f5|Master|Gideon Ironside|15|14|522|2239|22|2|2200|2200
+14|20d675dd-1573-5ce3-85fa-ee6399f06587|Grand Master|Ulrich Yarrow|18|19|2372|2551|0|1|2500|2500
+15|9bae7c25-68ef-50c7-8f21-97ca089a685e|Beginner|Percival Everhart|0|2|163|432|229|5|400|400
+16|9611d8c7-9963-57a1-be9a-7d877e7834e4|Novice|Walter Ashworth|6|3|151|714|155|4|600|600
+17|5416e428-e738-5ca1-94f9-42c82c71e3e4|Intermediate|Delphine Fairbanks|7|7|707|1385|22|3|1200|1200
+18|b7eb2af7-0e82-588c-81cc-78fd6bd211fe|Master|Theodora Quillfeather|15|11|795|2240|11|2|2200|2200
+19|8586e2bc-15ff-5de5-9f2f-d9db0e398d44|Grand Master|Ignatius Redfern|19|19|1395|2788|0|1|2500|2500
+20|353549c5-aa0f-5e0f-83c4-eece4e9d6c9e|Beginner|Yannick Blackwood|0|2|86|489|222|3|400|400
+21|3c934bd1-2a34-55e9-b86b-1e613a07acc0|Novice|Helena Ironside|4|4|345|738|194|4|600|600
+22|975b957b-66f5-5e23-86c6-046217d54d99|Intermediate|Bruno Hawthorne|11|6|431|1797|43|3|1200|1200
+23|c15fb605-3246-5a4b-b8f5-5d37c7f61359|Master|Yannick Yarrow|15|14|1120|2352|22|2|2200|2200
+24|a2fed9cb-e8d4-5902-9f96-b93ca8605556|Grand Master|Walter Abernathy|18|16|1414|2557|0|1|2500|2500
