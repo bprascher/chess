@@ -15,6 +15,83 @@ use crate::types::{Move, Side};
 
 pub use reader::{PgnReader, parse_line};
 
+/// A case where the reader dropped or changed information from the file and said nothing in
+/// the data (RF-04, desk review R7, B6). The list is `PgnGame::warnings`; it never affects
+/// `canonical_form` or the writer. A comment that has text and sits between two games (before
+/// the tag section, or before the movetext of a game without tags) belongs to no move; it is
+/// reported as `CommentDropped` on the game that follows it, and not reported at all when no
+/// game follows.
+///
+/// The list of one game holds at most [`MAX_IMPORT_WARNINGS_PER_GAME`] warnings of the kinds
+/// below (RC-03); any further warning is counted and the list ends with one
+/// [`ImportWarning::WarningsTruncated`] entry, so the list has at most cap + 1 entries.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ImportWarning {
+    /// A comment before the first move of a sequence (at the start of the movetext or right
+    /// after `(`) has no move to attach to and was dropped. 1-based line and byte column of
+    /// its first character.
+    CommentDropped { line: usize, col: usize },
+    /// The `Date` tag was not `YYYY.MM.DD`, or a part was out of range; the unreadable part
+    /// (or the whole date) is unknown. `value` is the tag text.
+    DateIgnored { value: String },
+    /// A `TimeControl` not of the form `seconds[+increment]` was dropped (`-` and `?` are
+    /// not reported: they say "none" and "unknown").
+    TimeControlIgnored { value: String },
+    /// A `Termination` outside the three written values was dropped.
+    TerminationIgnored { value: String },
+    /// A payload of the game was not UTF-8, so all text of the game was decoded as Latin-1
+    /// (IF-2). Valid UTF-8 text with non-ASCII characters in the same game may be garbled.
+    Latin1Fallback,
+    /// The last entry of a list that hit the cap: `dropped` further warnings of this game were
+    /// counted and not kept (RC-03). Always the final entry, and never present with fewer
+    /// than [`MAX_IMPORT_WARNINGS_PER_GAME`] entries before it.
+    WarningsTruncated { dropped: usize },
+}
+
+/// The most warnings kept for one game (RC-03); a bound on memory for hostile input such as a
+/// file of millions of `{a}` comments. Further warnings are summarized by
+/// [`ImportWarning::WarningsTruncated`]. ESTIMATE: far above what a real game produces (a
+/// handful), small enough that a game costs a few tens of kilobytes at most.
+pub const MAX_IMPORT_WARNINGS_PER_GAME: usize = 256;
+
+impl fmt::Display for ImportWarning {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ImportWarning::CommentDropped { line, col } => write!(
+                f,
+                "the comment at line {line}, column {col} comes before the first move of its line and was dropped"
+            ),
+            ImportWarning::DateIgnored { value } => {
+                write!(
+                    f,
+                    "the date {value:?} is not fully readable; the unreadable parts are unknown"
+                )
+            }
+            ImportWarning::TimeControlIgnored { value } => {
+                write!(
+                    f,
+                    "the time control {value:?} is not seconds or seconds+increment and was dropped"
+                )
+            }
+            ImportWarning::TerminationIgnored { value } => {
+                write!(
+                    f,
+                    "the termination {value:?} is not one this application writes and was dropped"
+                )
+            }
+            ImportWarning::Latin1Fallback => {
+                f.write_str("the game text is not valid UTF-8, so all of it was read as Latin-1")
+            }
+            ImportWarning::WarningsTruncated { dropped } => {
+                write!(
+                    f,
+                    "{dropped} further import warnings for this game were not kept"
+                )
+            }
+        }
+    }
+}
+
 /// Default and writer limit of variation nesting (SDD 3.12, ESTIMATE).
 pub const DEFAULT_MAX_VARIATION_DEPTH: usize = 64;
 
@@ -283,6 +360,9 @@ pub struct PgnGame {
     pub start: Position,
     pub moves: Vec<PgnNode>,
     pub result: PgnResult,
+    /// What the reader dropped or changed (empty for a game built in code). Not part of
+    /// `canonical_form` and not written by `write_pgn`.
+    pub warnings: Vec<ImportWarning>,
 }
 
 impl PgnGame {
@@ -293,6 +373,7 @@ impl PgnGame {
             start,
             moves,
             result,
+            warnings: Vec::new(),
         }
     }
 }
@@ -522,8 +603,23 @@ pub const CANONICAL_FORM_VERSION: u32 = 1;
 /// The bytes `chess-app` hashes for `content_hash` (SDD 3.11.10, `v1`): the Seven Tag Roster,
 /// `FEN`, `SetUp` and `TimeControl` where present (`SetUp` and `FEN` are left out for the
 /// standard start, all six fields, OQ-27), then the mainline SAN with the result. No comments,
-/// NAGs or variations, no wrapping. A mainline move that is illegal in the replay ends the
-/// movetext there: a `PgnGame` from the reader or built from legal moves never has one.
+/// NAGs or variations, no wrapping.
+///
+/// **Illegal tail (RF-05 a).** A `PgnGame` from the reader or built from legal moves never has
+/// an illegal mainline move. If one is present anyway, the movetext does not end silently
+/// there: the legal prefix is followed by the token `{illegal <ply> <uci> <uci> ...}` (the
+/// 0-based index of the first illegal move, then that move and every move after it in UCI
+/// text, separated by single spaces) and then the result. The movetext line of a legal game
+/// (the line after the blank line) never contains `{`: it holds only move numbers, SAN and the
+/// result. Tag values are not covered by this claim: a tag value may contain `{`, and
+/// `canonical_form` writes it unchanged on a tag line (a tag value cannot contain a newline, so
+/// it cannot reach the movetext line). So the marker changes no byte of any legal game's
+/// output, and two games that differ only in an illegal tail have different bytes.
+///
+/// **Accepted collision (control characters).** A control character in a tag value is written
+/// as a space (ASM-RUL-004), so a tab and a space in a tag value give the same bytes. This is
+/// accepted and documented, not a defect to fix: changing it would change the bytes of `v1`
+/// (a G3 stored-format matter; decided by Brian Prascher, 2026-11-09).
 pub fn canonical_form(game: &PgnGame) -> Vec<u8> {
     let mut out = String::new();
     for (name, value) in roster(game) {
@@ -540,18 +636,31 @@ pub fn canonical_form(game: &PgnGame) -> Vec<u8> {
     let mut tokens: Vec<String> = Vec::new();
     let mut cur = game.start.clone();
     for (i, node) in game.moves.iter().enumerate() {
-        let Ok(san) = cur.san(node.mv) else { break };
+        let (Ok(san), Ok(next)) = (cur.san(node.mv), cur.play(node.mv)) else {
+            tokens.push(illegal_tail_marker(i, &game.moves));
+            break;
+        };
         match cur.turn() {
             Side::White => tokens.push(format!("{}.", cur.fullmove_number())),
             Side::Black if i == 0 => tokens.push(format!("{}...", cur.fullmove_number())),
             Side::Black => {}
         }
         tokens.push(san.to_string());
-        let Ok(next) = cur.play(node.mv) else { break };
         cur = next;
     }
     tokens.push(game.result.as_str().to_string());
     out.push_str(&tokens.join(" "));
     out.push('\n');
     out.into_bytes()
+}
+
+/// `{illegal <ply> <uci> ...}`: the first illegal mainline move and everything after it.
+fn illegal_tail_marker(ply: usize, moves: &[PgnNode]) -> String {
+    let mut marker = format!("{{illegal {ply}");
+    for node in moves.iter().skip(ply) {
+        marker.push(' ');
+        marker.push_str(&node.mv.to_uci());
+    }
+    marker.push('}');
+    marker
 }

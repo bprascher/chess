@@ -1109,3 +1109,299 @@ fn ut_dom_044_abort_replays_from_suspended_and_from_a_live_state() {
     assert_eq!(out.error, None);
     assert_eq!(out.game.unwrap().state(), S::Aborted);
 }
+
+// ------------------------------------------------------------------ B5 / D1(b): final clocks
+//
+// Ruling B5 (Brian Prascher, 2026-11-09): the final clocks of a finished game are NOT
+// journaled by the writer (it writes no `Clock` fact before `Ended`). `Game::journal_eq`
+// therefore does not compare the remaining times of a finished game, and (RC-02) it does not
+// compare them even when a journal does hold a `Clock` checkpoint before `Ended`. These tests
+// assert the documented difference instead of hiding it (DF-01), show that think time,
+// outcome, plies and the clock spec are still compared, and pin exactly what is not compared.
+
+fn remaining_ms(game: &Game, side: Side, now: u64) -> Option<u64> {
+    game.clock().remaining(side, at(now).mono)
+}
+
+#[test]
+fn ut_dom_042_b5_flag_final_clock_live_is_zero_replay_is_the_full_base_and_journal_eq_is_true() {
+    // DF-01 reproduction 1: strict h-h, 10 s base, Flag decided at 11 s.
+    let mut setup = strict_hh();
+    setup.clock = Some(chess_domain::ClockSpec::from_seconds(10, 0).unwrap());
+    let mut r = Run::new(setup);
+    r.tick(11_000);
+    r.cmd(C::Flag);
+    assert_eq!(r.game.state(), S::Completed);
+    let out = r.replay();
+    assert_eq!(out.error, None);
+    let replayed = out.game.unwrap();
+    assert_eq!(remaining_ms(&r.game, Side::White, 11_000), Some(0), "live");
+    assert_eq!(
+        remaining_ms(&replayed, Side::White, 11_000),
+        Some(10_000),
+        "replay: the final clock is not journaled"
+    );
+    assert!(
+        replayed.journal_eq(&r.game),
+        "journal_eq documents that finished-game clocks are not compared"
+    );
+}
+
+#[test]
+fn ut_dom_042_b5_resign_final_clock_live_100000_replay_300000_and_journal_eq_is_true() {
+    // DF-01 reproduction 2: 5+0, White moves at 1 s, Black resigns at 201 s.
+    let mut r = Run::new(strict_hh());
+    r.tick(1_000);
+    r.mv("e2e4");
+    r.tick(200_000);
+    r.cmd(C::Resign { side: Side::Black });
+    assert_eq!(r.game.state(), S::Completed);
+    let replayed = r.replay().game.unwrap();
+    assert_eq!(
+        remaining_ms(&r.game, Side::Black, 201_000),
+        Some(100_000),
+        "live"
+    );
+    assert_eq!(
+        remaining_ms(&replayed, Side::Black, 201_000),
+        Some(300_000),
+        "replay"
+    );
+    assert!(replayed.journal_eq(&r.game));
+}
+
+#[test]
+fn ut_dom_042_b5_no_clock_fact_is_written_before_ended() {
+    let mut r = Run::new(strict_hh());
+    r.tick(1_000);
+    r.mv("e2e4");
+    r.tick(200_000);
+    let step = r.cmd(C::Resign { side: Side::Black });
+    assert_eq!(
+        step.facts
+            .iter()
+            .map(chess_domain::Fact::journal_kind)
+            .collect::<Vec<_>>(),
+        vec!["GameEnd"],
+        "the ending step carries only the Ended fact (no journal contract change)"
+    );
+}
+
+#[test]
+fn ut_dom_042_b5_journal_eq_still_compares_think_time_outcome_and_plies_of_a_finished_game() {
+    // Only these three are mutated here. What is NOT compared for a finished game (remaining
+    // times, including those restored from a journaled `Clock` fact) is pinned by
+    // `ut_dom_042_rc_02_*` below.
+    let mut r = Run::new(strict_hh());
+    r.tick(1_000);
+    r.mv("e2e4");
+    r.tick(2_000);
+    r.mv("e7e5");
+    r.tick(3_000);
+    r.cmd(C::Resign { side: Side::White });
+    let good = r.replay().game.unwrap();
+    assert!(good.journal_eq(&r.game), "control: equal");
+
+    // a different recorded think time
+    let mut facts = r.facts.clone();
+    for f in &mut facts {
+        if let Fact::Move {
+            think_ms, ply: 0, ..
+        } = f
+        {
+            *think_ms = Some(1);
+        }
+    }
+    let g = Game::replay(items(&facts)).game.unwrap();
+    assert!(!g.journal_eq(&r.game), "think_ms differs");
+
+    // a different outcome
+    let mut facts = r.facts.clone();
+    for f in &mut facts {
+        if let Fact::Ended { outcome } = f {
+            outcome.result = GameResult::Draw;
+        }
+    }
+    let g = Game::replay(items(&facts)).game.unwrap();
+    assert!(!g.journal_eq(&r.game), "outcome differs");
+
+    // one move fewer, ended the same way
+    let mut facts = r.facts.clone();
+    let end = facts.pop().unwrap();
+    facts.pop();
+    facts.push(end);
+    let g = Game::replay(items(&facts)).game.unwrap();
+    assert!(!g.journal_eq(&r.game), "plies differ");
+}
+
+#[test]
+fn ut_dom_042_rc_02_a_finished_game_compares_the_clock_spec_but_no_remaining_time() {
+    // RC-02 (re-check): documents exactly what `journal_eq` does and does not compare once a
+    // game is finished (ruling B5 stands, behavior unchanged). A journaled `Clock` fact before
+    // `Ended` is applied on replay, then its content is not compared.
+    let mut r = Run::new(strict_hh());
+    r.tick(1_000);
+    r.mv("e2e4");
+    r.tick(2_000);
+    r.mv("e7e5");
+    r.tick(3_000);
+    r.cmd(C::Resign { side: Side::White });
+    let ended_at = r.facts.len() - 1;
+    let checkpoint = |white_ms: u64, running: Option<Side>| Fact::Clock {
+        clocks: Some(chess_domain::ClockValues {
+            white_ms,
+            black_ms: 260_000,
+        }),
+        running,
+    };
+    let with = |fact: Option<Fact>| {
+        let mut facts = r.facts.clone();
+        if let Some(f) = fact {
+            facts.insert(ended_at, f);
+        }
+        let out = Game::replay(items(&facts));
+        assert_eq!(out.error, None);
+        out.game.unwrap()
+    };
+
+    // NOT compared: the content of a journaled Clock fact, its running side, or its absence.
+    let base = with(Some(checkpoint(250_000, Some(Side::White))));
+    assert!(base.journal_eq(&r.game), "control");
+    let tiny = with(Some(checkpoint(1, Some(Side::White))));
+    assert_eq!(remaining_ms(&tiny, Side::White, 0), Some(1), "applied");
+    assert!(tiny.journal_eq(&r.game), "remaining time not compared");
+    assert!(tiny.journal_eq(&base));
+    assert!(with(Some(checkpoint(250_000, Some(Side::Black)))).journal_eq(&r.game));
+    assert!(with(None).journal_eq(&r.game), "a dropped Clock fact");
+    assert_ne!(
+        remaining_ms(&tiny, Side::White, 0),
+        remaining_ms(&r.game, Side::White, 0),
+        "the games do differ in remaining time; journal_eq says equal by ruling B5"
+    );
+
+    // Compared: the clock spec (same moves, a 6+0 clock instead of 5+0). Think time, outcome
+    // and ply count are compared too, see the test above.
+    let mut setup = strict_hh();
+    setup.clock = Some(spec(6, 0));
+    let mut o = Run::new(setup);
+    o.tick(1_000);
+    o.mv("e2e4");
+    o.tick(2_000);
+    o.mv("e7e5");
+    o.tick(3_000);
+    o.cmd(C::Resign { side: Side::White });
+    assert!(!o.game.journal_eq(&r.game), "clock spec differs");
+}
+
+#[test]
+fn ut_dom_042_b5_journal_eq_still_compares_the_clock_while_the_game_is_running() {
+    // The clock is skipped only once the game is finished.
+    let mut r = Run::new(strict_hh());
+    r.tick(1_000);
+    r.mv("e2e4");
+    let mut facts = r.facts.clone();
+    for f in &mut facts {
+        if let Fact::Move { clocks_after, .. } = f {
+            *clocks_after = Some(chess_domain::ClockValues {
+                white_ms: 1,
+                black_ms: 300_000,
+            });
+        }
+    }
+    let g = Game::replay(items(&facts)).game.unwrap();
+    assert!(!g.journal_eq(&r.game), "journaled clock differs while live");
+}
+
+// ------------------------------------------------------------------ D2 / DF-05
+
+fn late_clock() -> Fact {
+    Fact::Clock {
+        clocks: Some(chess_domain::ClockValues {
+            white_ms: 7,
+            black_ms: 8,
+        }),
+        running: Some(Side::White),
+    }
+}
+
+#[test]
+fn ut_dom_044_d2_a_clock_fact_after_a_finished_state_is_ignored_not_refused() {
+    // Desk review D2(ii): refusing a harmless record would turn it into JournalUnreadable.
+    let finished: Vec<(&str, Run)> = {
+        let mut done = Run::new(strict_hh());
+        done.tick(1_000);
+        done.cmd(C::Resign { side: Side::White });
+        let mut aborted = Run::new(strict_cc());
+        aborted.cmd(C::Abort);
+        let mut voided = Run::new(strict_hh());
+        voided.cmd(C::Void {
+            reason: VoidReason::Reset,
+            reset_player: Some(pid(1)),
+        });
+        let mut finalized = Run::new(strict_hh());
+        finalized.cmd(C::Resign { side: Side::White });
+        finalized.cmd(C::MarkFinalized);
+        vec![
+            ("Completed", done),
+            ("Aborted", aborted),
+            ("Voided", voided),
+            ("Finalized", finalized),
+        ]
+    };
+    for (label, run) in finished {
+        assert!(run.game.state().is_finished(), "{label}");
+        let after = run
+            .game
+            .evolve(late_clock())
+            .unwrap_or_else(|e| panic!("{label}: refused with {e:?}"));
+        assert_eq!(after.state(), run.game.state(), "{label}");
+        assert_eq!(after.outcome(), run.game.outcome(), "{label}");
+        assert!(after.journal_eq(&run.game), "{label}: no field changed");
+        assert_eq!(
+            remaining_ms(&after, Side::White, 0),
+            remaining_ms(&run.game, Side::White, 0),
+            "{label}: the clock was not restored from the late fact"
+        );
+        assert_eq!(
+            remaining_ms(&after, Side::Black, 0),
+            remaining_ms(&run.game, Side::Black, 0),
+            "{label}"
+        );
+        // through replay: counted as applied, no error
+        let mut facts = run.facts.clone();
+        facts.push(late_clock());
+        let out = Game::replay(items(&facts));
+        assert_eq!(out.error, None, "{label}");
+        assert_eq!(out.applied, facts.len(), "{label}");
+    }
+}
+
+#[test]
+fn ut_dom_044_d2_a_clock_fact_in_a_live_state_still_restores_the_checkpoint() {
+    // The no-op is only for finished states.
+    let mut r = Run::new(strict_hh());
+    r.tick(1_000);
+    r.mv("e2e4");
+    let after = r.game.evolve(late_clock()).unwrap();
+    assert_eq!(remaining_ms(&after, Side::White, 0), Some(7));
+    assert_eq!(remaining_ms(&after, Side::Black, 0), Some(8));
+}
+
+#[test]
+fn ut_dom_044_d2_an_ended_outcome_is_trusted_as_recorded() {
+    // Desk review D2(i): `Ended` is not re-derived from the position. The journal's CRC and the
+    // store reconciliation are the integrity check. Pinned: a checkmate outcome on the start
+    // position replays as recorded.
+    let mut facts = Run::new(untimed_hh()).facts;
+    let recorded = Outcome {
+        result: GameResult::WhiteWins,
+        reason: EndReason::Checkmate,
+    };
+    facts.push(Fact::Ended { outcome: recorded });
+    let out = Game::replay(items(&facts));
+    assert_eq!(out.error, None);
+    let g = out.game.unwrap();
+    assert_eq!(g.state(), S::Completed);
+    assert_eq!(g.outcome(), Some(recorded));
+    assert!(!g.position().is_checkmate(), "the position contradicts it");
+}

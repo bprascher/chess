@@ -189,23 +189,28 @@ fn rf_06_a_promotion_letter_on_a_non_promoting_move_is_not_other() {
         to: sq("e4"),
         promotion: Some(PieceKind::Queen),
     });
+    // C-R5 (RF-06 note): its own reason, not `CannotReach { Pawn }`.
+    assert_eq!(play.unwrap_err().reason, IllegalReason::NotAPromotion);
+    match typed(&p, "e2e4q") {
+        Err(MoveParseError::NoMatch { reason }) => {
+            assert_eq!(reason, IllegalReason::NotAPromotion);
+        }
+        other => panic!("{other:?}"),
+    }
+    // A knight move and a promotion letter of any kind are the same wrong request.
+    for piece in [PieceKind::Queen, PieceKind::King, PieceKind::Pawn] {
+        assert_eq!(
+            p.explain_illegal(sq("g1"), sq("f3"), Some(piece)),
+            IllegalReason::NotAPromotion
+        );
+    }
+    // Impossible geometry is still reported as geometry, not as a promotion problem.
     assert_eq!(
-        play.unwrap_err().reason,
+        p.explain_illegal(sq("e2"), sq("e5"), Some(PieceKind::Queen)),
         IllegalReason::CannotReach {
             piece: PieceKind::Pawn
         }
     );
-    match typed(&p, "e2e4q") {
-        Err(MoveParseError::NoMatch { reason }) => {
-            assert_eq!(
-                reason,
-                IllegalReason::CannotReach {
-                    piece: PieceKind::Pawn
-                }
-            );
-        }
-        other => panic!("{other:?}"),
-    }
 }
 
 #[test]

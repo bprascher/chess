@@ -5,7 +5,7 @@
 use core::fmt;
 use core::hash::{Hash, Hasher};
 
-use shakmaty::fen::{Fen as ShakFen, ParseFenError};
+use shakmaty::fen::Fen as ShakFen;
 use shakmaty::{CastlingMode, Chess, EnPassantMode, PositionErrorKinds};
 
 use crate::error::{FenError, FenField, IllegalPosition};
@@ -78,17 +78,12 @@ impl Fen {
         check_counter(halfmove, 0).map_err(|d| bad(FenField::HalfmoveClock, d))?;
         check_counter(fullmove, 1).map_err(|d| bad(FenField::FullmoveNumber, d))?;
 
-        let parsed = ShakFen::from_ascii(text.as_bytes()).map_err(|e| {
-            let field = match e {
-                ParseFenError::InvalidTurn => FenField::SideToMove,
-                ParseFenError::InvalidCastling => FenField::Castling,
-                ParseFenError::InvalidEpSquare => FenField::EnPassant,
-                ParseFenError::InvalidHalfmoveClock => FenField::HalfmoveClock,
-                ParseFenError::InvalidFullmoves => FenField::FullmoveNumber,
-                _ => FenField::Placement,
-            };
-            bad(field, "not accepted")
-        })?;
+        // Every field was checked above, so the upstream FEN reader cannot fail on a text that
+        // got here (RF-07, C-R5: the per-field `ParseFenError` arms were unreachable and are
+        // gone; `taxonomy.rs` sweeps structurally valid texts). The one arm left is a defensive
+        // collapse that cannot be reached by any input known to us.
+        let parsed = ShakFen::from_ascii(text.as_bytes())
+            .map_err(|_| bad(FenField::Placement, "not accepted"))?;
         let chess: Chess = parsed
             .into_position(CastlingMode::Standard)
             .map_err(|e| FenError::Illegal(illegal_position(e.kinds())))?;

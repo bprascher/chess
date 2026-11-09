@@ -58,3 +58,13 @@ Rework of the adversarial review `review-chess-rules-code.md` (PASS WITH CONDITI
 ## Desk review result (chess-a0r.2.9, 2026-11-09, System Architect desk review, G1)
 
 G1 desk review recorded in `docs/engineering/desk-review-G1-step1.md`: **PASS WITH CONDITIONS** (design conformance confirmed; conditions C-R1 to C-R6). Commit blocked until C-R1 (git-ignored `build/eco_gen.rs`). This is a desk review, **not** a Brian Prascher approval; G2/G3 items B1, B3, B4 are for Brian and are not decided.
+
+## Conditions note (C-R3 to C-R6, 2026-11-09, software-engineer, Engineer stance)
+
+Work for the conditions of the desk review, after Brian Prascher's G-3 decisions of 2026-11-09 (B1 freeze `canonical_form` v1, B6 warnings list). Evidence: `step1-rules-conditions-evidence.md`. Status of this gate is unchanged: **not approved by this note**; nothing here is an approval, a desk review or a Reviewer re-check.
+
+- **C-R3:** custom-start golden test added; RF-05 (a) fixed with an illegal-tail marker that changes no byte of any legal game (digest of a 400-game corpus taken before the change equals the digest after; the existing two goldens untouched); the control-character collapse is documented as accepted and pinned by a test. `CANONICAL_FORM_VERSION` stays 1.
+- **C-R4:** the UT-RUL-031 (5) table moved to `crates/chess-rules/tests/data/fen_drift_guard.txt`; both crates read it; the grep of the rules test source is gone.
+- **C-R5:** error taxonomy (`SyntaxReason`, `TagReason`, `IllegalReason::NotAPromotion`), dead `Fen::parse` arms removed, `PgnGame::warnings` (`ImportWarning`). Public type changes are listed in the evidence file (they fall inside what the desk review R1/R6/R7 allowed as G1; no consumer exists). **Not done:** per-payload Latin-1 decoding (it would change the bytes, and so the v1 hash, of mixed-encoding files; a decision for Brian, finding C-R5-F1).
+- **C-R6:** `ParseMode::Pgn` doc comment corrected; `e.p.` after a capture accepted by the PGN reader.
+- Footprint: `crates/chess-rules` plus the one shared test file `crates/chess-domain/tests/drift_guard.rs` (test-only, no Cargo edge) and the moved data file.

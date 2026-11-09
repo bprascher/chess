@@ -86,3 +86,7 @@ Minor findings DF-02, DF-03 and DF-06 of `review-chess-domain-code.md` were work
 ## Desk review result (chess-a0r.2.9, 2026-11-09, System Architect desk review, G1)
 
 G1 desk review recorded in `docs/engineering/desk-review-G1-step1.md`: **PASS WITH CONDITIONS** (design conformance confirmed, class G1 ruled; conditions C-D1 to C-D6). This is a desk review, **not** a Brian Prascher approval; G2/G3 items B2, B3 (and B5 if wanted) are for Brian and are not decided.
+
+## Conditions note (chess-gx6, chess-oa9, chess-1vm, 2026-11-09, Engineer stance)
+
+Conditions C-D2, C-D3 and C-D4 of the desk review were worked after Brian Prascher's decisions of 2026-11-09 (B5; D1(b), D2, D3, D7, D10): `journal_eq` made explicit and narrow about finished-game clocks (no `Clock` fact before `Ended`), a late `Clock` fact is ignored, `TreeError::TooDeep` (additive) with a depth limit of 64 in `VariationTree::play`, the same-Player-different-kind setup check, and an independent policy table compared with `Policy` (no difference found against the author's reading; spec gaps PD-1 to PD-4 and the open SE confirmation of F-D6 (a) to (e) are listed). Gate class stays G1: one crate, one additive enum variant, no journal contract, stored format or architecture 5.7 change. Evidence: `docs/engineering/step1-domain-conditions-evidence.md`. Reviewer pass and SA desk review of this work: NOT DONE. Approved by: nobody.

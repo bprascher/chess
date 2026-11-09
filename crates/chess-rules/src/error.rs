@@ -71,6 +71,8 @@ pub enum IllegalReason {
     CastlingThroughCheck,
     #[error("a pawn reaching the last rank must promote (q, r, b or n)")]
     PromotionRequired,
+    #[error("that move does not promote a pawn, so it takes no piece letter")]
+    NotAPromotion,
     #[error("the move would leave your king in check")]
     LeavesKingInCheck,
     #[error("your king is in check and this move does not resolve it")]
@@ -141,18 +143,61 @@ pub enum PgnErrorKind {
     IllegalSan { reason: IllegalReason },
     #[error("more than one move fits: {}", join_san(.candidates))]
     AmbiguousSan { candidates: Vec<San> },
-    #[error("bad syntax: {detail}")]
-    BadSyntax { detail: &'static str },
+    #[error("bad syntax: {reason}")]
+    BadSyntax { reason: SyntaxReason },
     #[error("a comment is not closed before the end of the input")]
     UnterminatedComment,
     #[error("the parentheses of a variation do not match")]
     UnbalancedVariation,
     #[error("variations are nested deeper than the limit of {limit}")]
     VariationTooDeep { limit: usize },
-    #[error("bad tag: {detail}")]
-    BadTag { detail: &'static str },
+    #[error("bad tag: {reason}")]
+    BadTag { reason: TagReason },
     #[error("bad FEN tag: {0}")]
     BadFen(FenError),
+}
+
+/// Why movetext is `PgnErrorKind::BadSyntax` (C-R5, RF-07). The variant is the stable part; the
+/// `Display` text is for display only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum SyntaxReason {
+    /// The word is not a move: empty, too long, not SAN, or a bad UCI form.
+    #[error("not a move")]
+    NotAMove,
+    /// The word holds bytes that are not UTF-8.
+    #[error("not text")]
+    NotText,
+    /// A piece letter in lower case (`nf3`).
+    #[error("piece letters are upper case")]
+    LowercasePieceLetter,
+    #[error("a closing brace without an opening one")]
+    StrayClosingBrace,
+    #[error("a variation must follow a move")]
+    VariationWithoutMove,
+    /// `$` not followed by a number from 0 to 255.
+    #[error("a NAG is $ and a number from 0 to 255")]
+    BadNag,
+    #[error("a NAG must follow a move")]
+    NagWithoutMove,
+    /// A tag section, a blank line and then another tag section (RF-03).
+    #[error("a tag section needs movetext before the next tag section")]
+    TagSectionWithoutMovetext,
+    /// The reader's own bookkeeping failed; a defect indicator, never produced by input.
+    #[error("internal: no open variation frame")]
+    Internal,
+}
+
+/// Why a tag line is `PgnErrorKind::BadTag` (C-R5, RF-07).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum TagReason {
+    #[error("a tag name starts with an upper-case letter")]
+    NameStart,
+    #[error("a tag value is in double quotes")]
+    ValueNotQuoted,
+    #[error("a tag value is not closed on its line")]
+    ValueNotClosed,
+    #[error("a tag ends with a closing bracket")]
+    MissingClosingBracket,
 }
 
 /// A PGN game that could not be read. `game_index` is 1-based, `line` is 1-based and counts

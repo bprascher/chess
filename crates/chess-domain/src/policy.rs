@@ -410,7 +410,11 @@ impl Policy {
                 setup.white.kind == PlayerKind::Computer && setup.black.kind == PlayerKind::Computer
             }
         };
-        if !kinds_ok {
+        // A Player is human or computer, never both: the same Player on both seats must have
+        // the same kind (desk review D10).
+        let one_player_two_kinds =
+            setup.white.player == setup.black.player && setup.white.kind != setup.black.kind;
+        if !kinds_ok || one_player_two_kinds {
             return fail(SetupField::Players, SetupReason::PlayersWrongKind);
         }
         let position = setup.start.position();

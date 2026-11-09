@@ -34,8 +34,21 @@ impl fmt::Display for San {
 }
 
 /// The two policies of the one matcher (DD-RUL-006). `Typed` is lenient (CLI-3, GUI-2 (c)):
-/// coordinate moves and the upper-case `B` fallback. `Pgn` is strict (RULE-7): `B` is always a
-/// bishop, so an import cannot silently read an illegal SAN as a pawn move.
+/// coordinate moves (`e2e4`) and the upper-case `B` fallback.
+///
+/// `Pgn` (RULE-7) is the import policy. What it guarantees: a text yields a move only if that
+/// move is in `legal_moves()` (a differential run found no exception, RF-08), and `B` is always
+/// a bishop, so an import cannot silently read an illegal SAN as a pawn move. What it does
+/// **not** guarantee is the PGN Standard's strict export grammar: it is a lenient reader of
+/// SAN. It accepts: an upper-case file letter (`E4`); a from-file or from-rank on any move,
+/// including over-disambiguation (`Ng1f3`, `e2e4` read as a SAN pawn move with origin
+/// square); `0-0` and `0-0-0` for castling; a promotion with or without `=` and in either
+/// case (`a8=Q`, `a8Q`, `a8q`); any run of `+ # ! ?` after the move (a trailing `!`, `?`, `!!`,
+/// `??`, `!?` or `?!` becomes a NAG, any other run is dropped, `e4+++` is accepted). It
+/// rejects a wrong capture sign (`Nxf3` for a non-capture), a coordinate move that is not valid
+/// SAN (`g1f3`), lower-case piece letters (`nf3`) and any unparsable word; in the PGN reader
+/// each of these fails the whole game. The reader (not this matcher) also skips a move number,
+/// and accepts `e.p.` after a capture as an annotation (C-R6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ParseMode {
     Typed,

@@ -60,3 +60,8 @@ pub fn game(ucis: &[&str], result: chess_rules::PgnResult) -> chess_rules::PgnGa
     let moves = nodes(&start, ucis);
     chess_rules::PgnGame::new(start, moves, result)
 }
+
+/// UCI text of the mainline of a game.
+pub fn ucis_of_game(g: &chess_rules::PgnGame) -> Vec<String> {
+    g.moves.iter().map(|n| n.mv.to_uci()).collect()
+}

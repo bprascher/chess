@@ -2,7 +2,7 @@
 
 An offline, single-machine chess application for macOS with three front-ends (terminal UI, local web UI, desktop app) on top of one shared Rust core, using Stockfish as the engine.
 
-> **Status: requirements and architecture baselined v1.0 (2026-10-26) with Amendment 8 and its addenda; eight of the nine SDDs (domain, store, engine, app, cli, server, ui, desktop-tauri) baselined v1.0 on 2026-11-05 (the rules SDD is still DRAFT 0.3.5); Phase 1 (design closure) is closed (2026-11-06); no code yet.** The delivery plan is tracked in beads (see [Project management](#project-management)). Open items need measurement or a check during implementation (TBD register in [docs/requirements.md](docs/requirements.md), §14 of [docs/architecture.md](docs/architecture.md)). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced.
+> **Status: requirements and architecture baselined v1.0 (2026-10-26) with Amendment 8 and its addenda; all nine SDDs baselined v1.0 (eight on 2026-11-05; the rules SDD on 2026-11-09, per Brian Prascher's decision B4); Phase 1 (design closure) closed 2026-11-06; Phase 2 (foundation: Cargo workspace, `chess-rules`, `chess-domain`) is complete and gate G-3 passed with conditions on 2026-11-09. Phase 3 has not started.** The delivery plan is tracked in beads (see [Project management](#project-management)). Open items need measurement or a check during implementation (TBD register in [docs/requirements.md](docs/requirements.md), §14 of [docs/architecture.md](docs/architecture.md)). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced.
 
 ## Planned features
 
@@ -68,4 +68,4 @@ Work is tracked with [beads](https://github.com/gastownhall/beads) (`bd`). The a
 
 ## Next steps
 
-Phase 1 (design closure) is closed. Eight SDDs are baselined at v1.0 (2026-11-05, Brian Prascher, G2) with open conditions tracked in beads (see RELEASE_NOTES.md); the rules SDD baselines with the first step-1 code. The dependency lookup for step 1 is accepted, and the toolchain is at the baseline versions. Phase 2 starts with `chess-a0r.2.2` (Cargo workspace, CI and quality-gate scaffolding), then `chess-rules` and `chess-domain`; it needs Brian's go-ahead. `chess-store` code waits on the `flock`/`F_FULLFSYNC` spike and the remaining crate lookups. See section 13 of [docs/architecture.md](docs/architecture.md) and `bd ready`.
+Phase 1 (design closure) and Phase 2 (foundation) are closed. The Cargo workspace, CI and quality-gate scaffolding, `chess-rules` (types, FEN, move generation, SAN, PGN, ECO table) and `chess-domain` are built and reviewed; gate G-3 passed with conditions on 2026-11-09 (Brian Prascher), and open conditions are tracked in beads (see RELEASE_NOTES.md). `chess-store` code waits on the `flock`/`F_FULLFSYNC` spike and the remaining crate lookups. Phase 3 starts when Brian says so. See section 13 of [docs/architecture.md](docs/architecture.md) and `bd ready`.

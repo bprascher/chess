@@ -512,9 +512,7 @@ fn ut_rul_015_nfr_9_black_castling_reasons_and_other_cases() {
     let p = Position::standard();
     assert_eq!(
         p.explain_illegal(sq("e2"), sq("e4"), Some(PieceKind::Queen)),
-        R::CannotReach {
-            piece: PieceKind::Pawn
-        }
+        R::NotAPromotion
     );
     let q = pos("8/P6k/8/8/8/8/7K/8 w - - 0 1");
     assert_eq!(
@@ -704,6 +702,7 @@ fn ut_rul_024_nfr_9_error_values_render_non_empty_messages_without_paths() {
         IllegalReason::CastlingOutOfCheck,
         IllegalReason::CastlingThroughCheck,
         IllegalReason::PromotionRequired,
+        IllegalReason::NotAPromotion,
         IllegalReason::LeavesKingInCheck,
         IllegalReason::KingInCheck,
         IllegalReason::Other,

@@ -5,12 +5,15 @@
 
 use core::fmt;
 
-use crate::error::{MoveParseError, PgnErrorKind, PgnParseError};
+use crate::error::{MoveParseError, PgnErrorKind, PgnParseError, SyntaxReason, TagReason};
 use crate::fen::Fen;
 use crate::notation::{ParseMode, match_move};
 use crate::position::Position;
 
-use super::{PgnDate, PgnGame, PgnLimits, PgnNode, PgnResult, PgnTags, Termination, TimeControl};
+use super::{
+    ImportWarning, MAX_IMPORT_WARNINGS_PER_GAME, PgnDate, PgnGame, PgnLimits, PgnNode, PgnResult,
+    PgnTags, Termination, TimeControl,
+};
 
 // ---------------------------------------------------------------- lexer
 
@@ -168,6 +171,39 @@ impl Fail {
 struct Decoder {
     latin1: bool,
     all_utf8: bool,
+    /// Import warnings of the game being read (B6). Dropped with the decoder when the first,
+    /// UTF-8 pass is repeated as Latin-1.
+    warnings: WarnLog,
+}
+
+/// The bounded warning list of one game (RC-03): at most [`MAX_IMPORT_WARNINGS_PER_GAME`]
+/// warnings are kept; later ones are only counted, and the count becomes one final
+/// `ImportWarning::WarningsTruncated` entry. Memory is therefore bounded by the cap, not by
+/// the input size.
+#[derive(Debug, Clone, Default)]
+struct WarnLog {
+    items: Vec<ImportWarning>,
+    dropped: usize,
+}
+
+impl WarnLog {
+    fn push(&mut self, w: ImportWarning) {
+        if self.items.len() < MAX_IMPORT_WARNINGS_PER_GAME {
+            self.items.push(w);
+        } else {
+            self.dropped = self.dropped.saturating_add(1);
+        }
+    }
+
+    fn into_vec(self) -> Vec<ImportWarning> {
+        let mut items = self.items;
+        if self.dropped > 0 {
+            items.push(ImportWarning::WarningsTruncated {
+                dropped: self.dropped,
+            });
+        }
+        items
+    }
 }
 
 impl Decoder {
@@ -205,8 +241,8 @@ fn is_delimiter(b: u8) -> bool {
     is_space(b) || matches!(b, b'{' | b'}' | b'(' | b')' | b';' | b'$')
 }
 
-fn syntax(detail: &'static str) -> PgnErrorKind {
-    PgnErrorKind::BadSyntax { detail }
+fn syntax(reason: SyntaxReason) -> PgnErrorKind {
+    PgnErrorKind::BadSyntax { reason }
 }
 
 fn kind_from(error: MoveParseError) -> PgnErrorKind {
@@ -216,28 +252,32 @@ fn kind_from(error: MoveParseError) -> PgnErrorKind {
             reason: crate::error::IllegalReason::PromotionRequired,
         },
         MoveParseError::Ambiguous { candidates } => PgnErrorKind::AmbiguousSan { candidates },
-        MoveParseError::LowercasePiece { .. } => syntax("piece letters are upper case"),
+        MoveParseError::LowercasePiece { .. } => syntax(SyntaxReason::LowercasePieceLetter),
         MoveParseError::Empty
         | MoveParseError::TooLong
         | MoveParseError::Syntax
-        | MoveParseError::BadUci => syntax("not a move"),
+        | MoveParseError::BadUci => syntax(SyntaxReason::NotAMove),
     }
 }
 
-fn attach_comment(frames: &mut [Frame], text: &str) {
+/// Attaches a comment to the last move of the current sequence. Returns `true` when the comment
+/// has text and no move to attach to (dropped; reported as a warning, B6).
+fn attach_comment(frames: &mut [Frame], text: &str) -> bool {
     let text = text.trim();
     if text.is_empty() {
-        return;
+        return false;
     }
-    if let Some(node) = frames.last_mut().and_then(|f| f.nodes.last_mut()) {
-        match &mut node.comment {
-            Some(existing) => {
-                existing.push(' ');
-                existing.push_str(text);
-            }
-            None => node.comment = Some(text.to_string()),
+    let Some(node) = frames.last_mut().and_then(|f| f.nodes.last_mut()) else {
+        return true;
+    };
+    match &mut node.comment {
+        Some(existing) => {
+            existing.push(' ');
+            existing.push_str(text);
         }
+        None => node.comment = Some(text.to_string()),
     }
+    false
 }
 
 fn is_result_word(word: &[u8]) -> bool {
@@ -258,6 +298,9 @@ fn movetext(
         prev: None,
         cur: start.clone(),
     }];
+    // `true` right after a capture move (comments and NAGs keep it): an `e.p.` annotation may
+    // follow (C-R6, desk review R8).
+    let mut after_capture = false;
     let end = loop {
         lex.skip_ws();
         let Some(b) = lex.peek() else {
@@ -285,12 +328,20 @@ fn movetext(
                     });
                 };
                 let text = decoder.decode(bytes);
-                attach_comment(&mut frames, &text);
+                if attach_comment(&mut frames, &text) {
+                    decoder
+                        .warnings
+                        .push(ImportWarning::CommentDropped { line, col });
+                }
             }
             b';' => {
                 lex.bump();
                 let text = decoder.decode(lex.read_line());
-                attach_comment(&mut frames, &text);
+                if attach_comment(&mut frames, &text) {
+                    decoder
+                        .warnings
+                        .push(ImportWarning::CommentDropped { line, col });
+                }
             }
             b'%' if lex.at_line_start() => lex.skip_line(),
             b'[' if allow_next_game && frames.len() == 1 && lex.at_line_start() => {
@@ -298,13 +349,11 @@ fn movetext(
             }
             b'}' => {
                 lex.bump();
-                return Err(fail(
-                    &frames,
-                    syntax("a closing brace without an opening one"),
-                ));
+                return Err(fail(&frames, syntax(SyntaxReason::StrayClosingBrace)));
             }
             b'(' => {
                 lex.bump();
+                after_capture = false;
                 let depth_limit = limits
                     .max_variation_depth
                     .min(super::MAX_VARIATION_DEPTH_CEILING);
@@ -319,7 +368,7 @@ fn movetext(
                     .filter(|f| !f.nodes.is_empty())
                     .and_then(|f| f.prev.clone())
                 else {
-                    return Err(fail(&frames, syntax("a variation must follow a move")));
+                    return Err(fail(&frames, syntax(SyntaxReason::VariationWithoutMove)));
                 };
                 frames.push(Frame {
                     nodes: Vec::new(),
@@ -329,6 +378,7 @@ fn movetext(
             }
             b')' => {
                 lex.bump();
+                after_capture = false;
                 if frames.len() == 1 {
                     return Err(fail(&frames, PgnErrorKind::UnbalancedVariation));
                 }
@@ -351,14 +401,11 @@ fn movetext(
                     .filter(|d| d.len() <= 3)
                     .and_then(|d| d.parse::<u8>().ok());
                 let Some(nag) = nag else {
-                    return Err(fail(
-                        &frames,
-                        syntax("a NAG is $ and a number from 0 to 255"),
-                    ));
+                    return Err(fail(&frames, syntax(SyntaxReason::BadNag)));
                 };
                 match frames.last_mut().and_then(|f| f.nodes.last_mut()) {
                     Some(node) => node.nags.push(nag),
-                    None => return Err(fail(&frames, syntax("a NAG must follow a move"))),
+                    None => return Err(fail(&frames, syntax(SyntaxReason::NagWithoutMove))),
                 }
             }
             _ => {
@@ -376,28 +423,38 @@ fn movetext(
                     }
                     continue;
                 }
-                let san_bytes = match move_number_rest(&word) {
+                if is_en_passant_note(&word) && core::mem::take(&mut after_capture) {
+                    continue;
+                }
+                after_capture = false;
+                let (word_core, glued_ep) = strip_glued_en_passant(&word);
+                let san_bytes = match move_number_rest(word_core) {
                     Some([]) => continue,
                     Some(rest) => rest,
-                    None => &word,
+                    None => word_core,
                 };
                 let Ok(text) = std::str::from_utf8(san_bytes) else {
-                    return Err(fail(&frames, syntax("not text")));
+                    return Err(fail(&frames, syntax(SyntaxReason::NotText)));
                 };
                 let Some(top) = frames.last_mut() else {
-                    return Err(fail(&frames, syntax("internal: no frame")));
+                    return Err(fail(&frames, syntax(SyntaxReason::Internal)));
                 };
                 let (matched, nag) = match_move(&top.cur, text, ParseMode::Pgn)
                     .map_err(|e| fail(&frames, kind_from(e)))?;
                 let Some(top) = frames.last_mut() else {
-                    return Err(fail(&frames, syntax("internal: no frame")));
+                    return Err(fail(&frames, syntax(SyntaxReason::Internal)));
                 };
                 let next = top
                     .cur
                     .play(matched.mv)
                     .map_err(|e| fail(&frames, PgnErrorKind::IllegalSan { reason: e.reason }))?;
+                let is_capture = matched.san.as_str().contains('x');
+                if glued_ep && !is_capture {
+                    return Err(fail(&frames, syntax(SyntaxReason::NotAMove)));
+                }
+                after_capture = is_capture;
                 let Some(top) = frames.last_mut() else {
-                    return Err(fail(&frames, syntax("internal: no frame")));
+                    return Err(fail(&frames, syntax(SyntaxReason::Internal)));
                 };
                 top.prev = Some(core::mem::replace(&mut top.cur, next));
                 let mut node = PgnNode::new(matched.mv);
@@ -422,6 +479,26 @@ fn movetext(
         .map(|f| f.nodes)
         .unwrap_or_default();
     Ok((nodes, end))
+}
+
+/// `e.p.` or `e.p` (any ASCII case) as a word of its own: the en passant annotation.
+fn is_en_passant_note(word: &[u8]) -> bool {
+    word.eq_ignore_ascii_case(b"e.p.") || word.eq_ignore_ascii_case(b"e.p")
+}
+
+/// A word such as `exd6e.p.` split into the move and a flag for the glued annotation. The flag
+/// is checked against the move once it is matched (the move must be a capture).
+fn strip_glued_en_passant(word: &[u8]) -> (&[u8], bool) {
+    for suffix in [&b"e.p."[..], &b"e.p"[..]] {
+        if word.len() > suffix.len()
+            && let Some(split) = word.len().checked_sub(suffix.len())
+            && let (Some(head), Some(tail)) = (word.get(..split), word.get(split..))
+            && tail.eq_ignore_ascii_case(suffix)
+        {
+            return (head, true);
+        }
+    }
+    (word, false)
 }
 
 /// `Some(rest)` when the word is a move number (digits then dots, or digits alone, or only
@@ -452,6 +529,7 @@ pub fn parse_line(start: &Position, text: &str) -> Result<Vec<PgnNode>, PgnParse
     let mut decoder = Decoder {
         latin1: false,
         all_utf8: true,
+        warnings: WarnLog::default(),
     };
     let (nodes, _end) = movetext(&mut lex, start, &PgnLimits::default(), &mut decoder, false)
         .map_err(|f| PgnParseError {
@@ -532,6 +610,10 @@ pub struct PgnReader<'a> {
     limits: PgnLimits,
     game_index: usize,
     done: bool,
+    /// Comments with text found between games (before the tag section, or before the movetext
+    /// of a game without tags). They belong to no move; they are reported on the game that
+    /// follows (B6) and dropped if no game follows.
+    pending: WarnLog,
 }
 
 impl fmt::Debug for PgnReader<'_> {
@@ -557,6 +639,7 @@ impl<'a> PgnReader<'a> {
             limits,
             game_index: 0,
             done: false,
+            pending: WarnLog::default(),
         }
     }
 
@@ -567,21 +650,35 @@ impl<'a> PgnReader<'a> {
             match self.lex.peek() {
                 None => return Ok(false),
                 Some(b'%') if self.lex.at_line_start() => self.lex.skip_line(),
-                Some(b';') => self.lex.skip_line(),
+                Some(b';') => {
+                    let (line, col) = (self.lex.line(), self.lex.col());
+                    self.lex.bump();
+                    let bytes = self.lex.read_line();
+                    self.note_comment(&bytes, line, col);
+                }
                 Some(b'{') => {
                     let (line, col) = (self.lex.line(), self.lex.col());
                     self.lex.bump();
-                    if self.lex.read_brace_comment().is_none() {
+                    let Some(bytes) = self.lex.read_brace_comment() else {
                         return Err(Fail {
                             fatal: true,
                             ..Fail::pos(line, col, PgnErrorKind::UnterminatedComment)
                         });
-                    }
+                    };
+                    self.note_comment(&bytes, line, col);
                 }
                 Some(_) if self.lex.at_eof_mark() => return Ok(false),
                 Some(b) if b != b'[' && self.at_stray_result() => {}
                 Some(_) => return Ok(true),
             }
+        }
+    }
+
+    /// Remembers a comment that has text and belongs to no game (reported on the next game).
+    fn note_comment(&mut self, bytes: &[u8], line: usize, col: usize) {
+        if !String::from_utf8_lossy(bytes).trim().is_empty() {
+            self.pending
+                .push(ImportWarning::CommentDropped { line, col });
         }
     }
 
@@ -621,7 +718,7 @@ impl<'a> PgnReader<'a> {
             }
         };
         skip_blanks(lex);
-        let bad = |lex: &Lexer<'_>, detail| Fail::at(lex, PgnErrorKind::BadTag { detail });
+        let bad = |lex: &Lexer<'_>, reason| Fail::at(lex, PgnErrorKind::BadTag { reason });
         let (nline, ncol) = (lex.line(), lex.col());
         let mut name = Vec::new();
         while let Some(b) = lex
@@ -636,14 +733,14 @@ impl<'a> PgnReader<'a> {
                 nline,
                 ncol,
                 PgnErrorKind::BadTag {
-                    detail: "a tag name starts with an upper-case letter",
+                    reason: TagReason::NameStart,
                 },
             ));
         }
         let name = String::from_utf8_lossy(&name).into_owned();
         skip_blanks(lex);
         if lex.peek() != Some(b'"') {
-            return Err(bad(lex, "a tag value is in double quotes"));
+            return Err(bad(lex, TagReason::ValueNotQuoted));
         }
         let (vline, vcol) = (lex.line(), lex.col());
         lex.bump();
@@ -655,7 +752,7 @@ impl<'a> PgnReader<'a> {
                         vline,
                         vcol,
                         PgnErrorKind::BadTag {
-                            detail: "a tag value is not closed on its line",
+                            reason: TagReason::ValueNotClosed,
                         },
                     ));
                 }
@@ -681,7 +778,7 @@ impl<'a> PgnReader<'a> {
         }
         skip_blanks(lex);
         if lex.peek() != Some(b']') {
-            return Err(bad(lex, "a tag ends with a closing bracket"));
+            return Err(bad(lex, TagReason::MissingClosingBracket));
         }
         lex.bump();
         let value = decoder.decode(value);
@@ -693,7 +790,13 @@ impl<'a> PgnReader<'a> {
         let mut decoder = Decoder {
             latin1,
             all_utf8: true,
+            // Between-game comments met before this game come first (B6); the Latin-1 pass
+            // starts from the same list because the first pass's list is dropped.
+            warnings: self.pending.clone(),
         };
+        if latin1 {
+            decoder.warnings.push(ImportWarning::Latin1Fallback);
+        }
         let mut raw = RawTags::default();
         let mut tags_read = false;
         loop {
@@ -709,7 +812,7 @@ impl<'a> PgnReader<'a> {
                         ..Fail::at(
                             &self.lex,
                             PgnErrorKind::BadSyntax {
-                                detail: "a tag section needs movetext before the next tag section",
+                                reason: SyntaxReason::TagSectionWithoutMovetext,
                             },
                         )
                     });
@@ -719,6 +822,10 @@ impl<'a> PgnReader<'a> {
             } else {
                 break;
             }
+        }
+        // RC-13: at most one warning per typed tag, describing the value that is used.
+        for w in raw.tag_warnings.drain(..) {
+            decoder.warnings.push(w);
         }
         let start = match raw.fen.take() {
             Some((text, line, col)) if raw.set_up.as_deref() != Some("0") => {
@@ -733,12 +840,14 @@ impl<'a> PgnReader<'a> {
             End::Result(r) => r,
             End::NextGame | End::Eof => raw.result.unwrap_or(PgnResult::Unknown),
         };
+        let warnings = decoder.warnings.into_vec();
         Ok((
             PgnGame {
                 tags: raw.tags,
                 start,
                 moves,
                 result,
+                warnings,
             },
             decoder.all_utf8,
         ))
@@ -752,6 +861,9 @@ struct RawTags {
     result: Option<PgnResult>,
     set_up: Option<String>,
     fen: Option<(String, usize, usize)>,
+    /// The warning of the current value of each typed tag (`Date`, `TimeControl`,
+    /// `Termination`); a later tag of the same name replaces the earlier warning (RC-13).
+    tag_warnings: Vec<ImportWarning>,
 }
 
 impl RawTags {
@@ -765,10 +877,33 @@ impl RawTags {
             "Round" => t.round = value,
             "White" => t.white = value,
             "Black" => t.black = value,
-            "Date" => t.date = PgnDate::parse(&value).unwrap_or_default(),
+            "Date" => {
+                t.date = PgnDate::parse(&value).unwrap_or_default();
+                self.tag_warnings
+                    .retain(|w| !matches!(w, ImportWarning::DateIgnored { .. }));
+                if t.date.to_string() != value {
+                    self.tag_warnings.push(ImportWarning::DateIgnored { value });
+                }
+            }
             "Result" => self.result = PgnResult::from_token(&value),
-            "TimeControl" => t.time_control = TimeControl::parse(&value),
-            "Termination" => t.termination = Termination::parse(&value),
+            "TimeControl" => {
+                t.time_control = TimeControl::parse(&value);
+                self.tag_warnings
+                    .retain(|w| !matches!(w, ImportWarning::TimeControlIgnored { .. }));
+                if t.time_control.is_none() && value != "-" && value != "?" {
+                    self.tag_warnings
+                        .push(ImportWarning::TimeControlIgnored { value });
+                }
+            }
+            "Termination" => {
+                t.termination = Termination::parse(&value);
+                self.tag_warnings
+                    .retain(|w| !matches!(w, ImportWarning::TerminationIgnored { .. }));
+                if t.termination.is_none() {
+                    self.tag_warnings
+                        .push(ImportWarning::TerminationIgnored { value });
+                }
+            }
             "SetUp" => self.set_up = Some(value),
             "FEN" => self.fen = Some((value, line, col)),
             _ => {
@@ -808,6 +943,8 @@ impl Iterator for PgnReader<'_> {
                 Err(fail)
             }
         };
+        // The game (if any) already carries the between-game warnings met before it.
+        self.pending = WarnLog::default();
         let item = match outcome {
             Ok(game) => Ok(game),
             Err(fail) => {

@@ -220,6 +220,7 @@ fn ut_dom_100_tree_errors_render_plain_messages() {
         TreeError::AtFinalPosition,
         TreeError::EmptyLine,
         TreeError::BadText,
+        TreeError::TooDeep,
     ] {
         let m = e.to_string();
         assert!(
@@ -245,22 +246,110 @@ fn nested_tree(levels: usize) -> VariationTree {
     t
 }
 
+/// Plays one more level of `nested_tree`: the leaf (first child) then the continuation (second
+/// child). Returns the result of the continuation.
+fn one_more_level(t: &mut VariationTree, at: NodeId) -> Result<NodeId, TreeError> {
+    let moves = t.position(at).unwrap().legal_moves();
+    t.play(at, *moves.first().unwrap()).unwrap();
+    t.play(at, *moves.get(1).unwrap())
+}
+
+fn deepest(t: &VariationTree) -> NodeId {
+    let mut at = t.root();
+    loop {
+        let kids = t.children(at).unwrap();
+        match kids.last() {
+            Some(&k) => at = k,
+            None => return at,
+        }
+    }
+}
+
 #[test]
-fn df_03_deep_tree_text_is_limited_by_the_rules_writer_depth() {
-    // GATE-103 rework DF-03: the writer in chess-rules refuses variations nested deeper than
-    // DEFAULT_MAX_VARIATION_DEPTH; `to_pgn_text` reports that as `BadText` (documented on the
-    // method). Cause pinned: the boundary is that constant, not MAX_NODES.
+fn df_03_d7_variation_depth_64_is_accepted_and_65_is_refused_with_too_deep() {
+    // Desk review D7 (approved 2026-11-09): `play` refuses a variation that would nest deeper
+    // than chess_rules::DEFAULT_MAX_VARIATION_DEPTH, so every tree that can exist can be exported.
     let limit = chess_rules::DEFAULT_MAX_VARIATION_DEPTH;
-    let at_limit = nested_tree(limit);
-    let text = at_limit.to_pgn_text().unwrap();
-    // it round-trips: the reader's default depth is the same constant
+    assert_eq!(limit, 64, "the SDD names 64");
+    let mut t = nested_tree(limit);
+    let at = deepest(&t);
+    let before = t.len();
+    assert_eq!(one_more_level(&mut t, at), Err(TreeError::TooDeep));
+    // the leaf (first child, not a variation) was added, the refused move was not
+    assert_eq!(t.len(), before + 1, "a refused play changes nothing");
+    let again = t.position(at).unwrap().legal_moves();
+    assert_eq!(
+        t.play(at, *again.get(1).unwrap()),
+        Err(TreeError::TooDeep),
+        "still refused"
+    );
+}
+
+#[test]
+fn df_03_d7_every_tree_built_at_the_maximum_exports_and_round_trips() {
+    let limit = chess_rules::DEFAULT_MAX_VARIATION_DEPTH;
+    let mut t = nested_tree(limit);
+    let at = deepest(&t);
+    // the main continuation of the deepest node is not a deeper variation
+    let moves = t.position(at).unwrap().legal_moves();
+    let cont = t.play(at, *moves.first().unwrap()).unwrap();
+    let moves2 = t.position(cont).unwrap().legal_moves();
+    t.play(cont, *moves2.first().unwrap()).unwrap();
+    // ...and so is a refused sibling: the tree stays exportable
+    assert_eq!(t.play(at, *moves.get(1).unwrap()), Err(TreeError::TooDeep));
+    let text = t.to_pgn_text().expect("exports");
     let back = VariationTree::from_pgn_text(Position::standard(), 0, &text).unwrap();
-    assert_eq!(back.len(), at_limit.len());
-    let over = nested_tree(limit + 1);
-    assert!(over.len() < MAX_NODES, "inside the node limit");
-    assert_eq!(over.to_pgn_text(), Err(TreeError::BadText));
-    // the tree itself and its single lines are not limited by that depth
-    let deep = nested_tree(limit * 4);
-    assert!(deep.len() < MAX_NODES);
-    assert_eq!(deep.to_pgn_nodes().len(), 1);
+    assert_eq!(back.len(), t.len());
+    assert_eq!(back.to_pgn_text().unwrap(), text, "round trip");
+    // nested_tree(limit * 4) can no longer be built through `play`
+    let mut deep = nested_tree(limit);
+    let mut at = deepest(&deep);
+    for _ in 0..3 * limit {
+        match one_more_level(&mut deep, at) {
+            Ok(next) => at = next,
+            Err(e) => {
+                assert_eq!(e, TreeError::TooDeep);
+                break;
+            }
+        }
+    }
+    assert!(deep.to_pgn_text().is_ok());
+}
+
+#[test]
+fn df_03_d7_deleting_the_first_child_makes_room_again() {
+    // Depth is the number of non-first edges on the path. Deleting a first child promotes the
+    // next sibling to the main line, one level shallower.
+    let limit = chess_rules::DEFAULT_MAX_VARIATION_DEPTH;
+    let mut t = nested_tree(limit - 1);
+    let at = deepest(&t);
+    let leaf = *t
+        .children(t.parent(at).unwrap().unwrap())
+        .unwrap()
+        .first()
+        .unwrap();
+    // at depth limit-1; one more level is fine (depth 64) ...
+    let top = one_more_level(&mut t, at).unwrap();
+    // ... and one more is refused
+    assert_eq!(one_more_level(&mut t, top), Err(TreeError::TooDeep));
+    // delete the first (leaf) child of the parent of `at`: `at` becomes the main line there
+    let parent = t.parent(at).unwrap().unwrap();
+    t.delete(leaf).unwrap();
+    assert_eq!(t.first_child(parent).unwrap(), Some(at));
+    // `top`'s line is now one level shallower: another level fits
+    assert!(one_more_level(&mut t, top).is_ok());
+    assert!(t.to_pgn_text().is_ok());
+}
+
+#[test]
+fn df_03_d7_reading_text_nested_deeper_than_the_limit_is_still_bad_text() {
+    // The reader and the tree share the limit: 64 reads, 65 does not.
+    let limit = chess_rules::DEFAULT_MAX_VARIATION_DEPTH;
+    let text = nested_tree(limit).to_pgn_text().unwrap();
+    assert!(VariationTree::from_pgn_text(Position::standard(), 0, &text).is_ok());
+    let over = format!("1. e4 {}1. d4 )", "(".repeat(limit + 1));
+    assert_eq!(
+        VariationTree::from_pgn_text(Position::standard(), 0, &over).err(),
+        Some(TreeError::BadText)
+    );
 }

@@ -21,14 +21,15 @@ mod types;
 
 pub use error::{
     FenError, FenField, IllegalMove, IllegalPosition, IllegalReason, MoveParseError, PgnErrorKind,
-    PgnParseError, PgnWriteError, SquareError,
+    PgnParseError, PgnWriteError, SquareError, SyntaxReason, TagReason,
 };
 pub use fen::{Fen, MAX_FEN_LEN};
 pub use notation::{MAX_MOVE_TEXT, MatchedMove, ParseMode, San};
 pub use pgn::{
-    CANONICAL_FORM_VERSION, DEFAULT_MAX_VARIATION_DEPTH, PgnDate, PgnGame, PgnLimits, PgnNode,
-    PgnReader, PgnResult, PgnTags, Termination, TimeControl, canonical_form, format_line,
-    parse_line, write_pgn, write_pgn_many,
+    CANONICAL_FORM_VERSION, DEFAULT_MAX_VARIATION_DEPTH, ImportWarning,
+    MAX_IMPORT_WARNINGS_PER_GAME, PgnDate, PgnGame, PgnLimits, PgnNode, PgnReader, PgnResult,
+    PgnTags, Termination, TimeControl, canonical_form, format_line, parse_line, write_pgn,
+    write_pgn_many,
 };
 pub use position::{Position, PositionKey};
 pub use types::{File, Move, Piece, PieceKind, Rank, Side, Square};

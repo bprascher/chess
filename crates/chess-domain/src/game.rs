@@ -460,11 +460,32 @@ impl Game {
     }
 
     /// Whether two games are equal in everything a journal records (the "field by field"
-    /// equality of SDD 3.11.1). Runtime clock state (which side runs since when) is not
-    /// journaled; once the game is finished the clock is live-only and is not compared.
+    /// equality of SDD 3.11.1).
+    ///
+    /// Compared: setup, persistent state, resume target, every ply record, repetition keys,
+    /// the position, pending and blocked draw offers, outcome, ECO match, and the clock
+    /// (spec and remaining times) while the game is not finished.
+    ///
+    /// **Not compared** (not journaled, ruling B5, Brian Prascher 2026-11-09, desk review D1(b)):
+    /// - the remaining times of a **finished** game, whether or not a journaled `Clock`
+    ///   checkpoint preceded `Ended` (RC-02). The writer does not journal the final clocks, so
+    ///   a replay shows the clocks of the last journaled `Move` or `Clock` fact, not the final
+    ///   ones (flag at 11 s on a 10 s clock: live 0 ms, replay 10 000 ms). A `Clock` fact
+    ///   before `Ended` is applied on replay and its content (remaining times, running side)
+    ///   is then not compared; altering or dropping it does not change this result. The clock
+    ///   *spec* is still compared, and so are all other fields listed above. The time totals
+    ///   of a finished game come from `GameEnd`; no consumer may read the clock of a finished
+    ///   game from a replay.
+    /// - the transient states `EngineThinking` and `EngineError` and a step in progress
+    ///   (`stepping`); they compare as their journaled state (`AwaitingMove` or `Paused`).
+    /// - `Finalized`, a store event; it compares as `Completed`.
+    /// - the running interval of a clock (which side runs since when).
     pub fn journal_eq(&self, other: &Game) -> bool {
-        let same_clock =
-            self.persistent_state().is_finished() || self.clock.journaled_eq(&other.clock);
+        let same_clock = if self.persistent_state().is_finished() {
+            self.clock.spec() == other.clock.spec()
+        } else {
+            self.clock.journaled_eq(&other.clock)
+        };
         self.setup == other.setup
             && self.persistent_state() == other.persistent_state()
             && self.resume_target == other.resume_target
@@ -617,8 +638,10 @@ impl Game {
                 Ok(())
             }
             Fact::Clock { clocks, .. } => {
+                // A `Clock` after the end is a harmless record: it is ignored, not refused
+                // (desk review D2(ii)); refusing it would make the journal unreadable.
                 if self.state.is_finished() {
-                    return Err(ReplayError::WrongState { state: self.state });
+                    return Ok(());
                 }
                 if let Some(values) = clocks {
                     self.clock.restore(*values);
@@ -678,6 +701,9 @@ impl Game {
                 Ok(())
             }
             Fact::Ended { outcome } => {
+                // The outcome is stored as recorded and is not re-derived from the position
+                // (desk review D2(i)); the journal CRC and the store reconciliation are the
+                // integrity check (architecture 7.6).
                 if self.state != S::Suspended {
                     self.gate(&BEFORE_END)?;
                 }
@@ -1229,9 +1255,28 @@ mod tests {
         let mut fin = done.clone();
         fin.state = GameState::Finalized;
         assert!(done.journal_eq(&fin), "Finalized is a store event");
-        // the clock of a finished game is live-only
+        // the remaining times of a finished game are live-only (ruling B5)
         fin.clock.stop(MonoMs(50_000));
         assert!(done.journal_eq(&fin));
+    }
+
+    #[test]
+    fn ut_dom_042_b5_finished_games_still_compare_the_clock_spec() {
+        // Narrow skip: only the remaining times of a finished game are not compared. The spec
+        // (timed or untimed, base, increment) is not a runtime value and stays compared.
+        let mut done = base();
+        done.state = GameState::Completed;
+        done.outcome = Some(Outcome {
+            result: GameResult::Draw,
+            reason: EndReason::DrawAgreed,
+        });
+        let mut other = done.clone();
+        other.clock = Clock::new(None);
+        assert!(!done.journal_eq(&other), "spec differs");
+        assert!(!other.journal_eq(&done), "spec differs (symmetric)");
+        let mut shorter = done.clone();
+        shorter.clock = Clock::new(crate::ClockSpec::from_seconds(61, 0).ok());
+        assert!(!done.journal_eq(&shorter), "base differs");
     }
 
     fn broken(label: &str, want: &str, edit: impl FnOnce(&mut Game)) {

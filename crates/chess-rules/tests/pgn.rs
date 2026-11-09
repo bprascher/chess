@@ -715,6 +715,56 @@ fn ut_rul_026_d_42_canonical_form_includes_set_up_fen_for_a_custom_start_in_asci
 
 // ------------------------------------------------------------------ UT-RUL-031, CT-RUL-004
 
+/// UT-RUL-031 (5), SF-02, D-64: the seven-row drift-guard table. This file is the single source;
+/// `chess-domain/tests/drift_guard.rs` reads the same file by a relative `include_str!`
+/// (test-only, no Cargo edge). Format: `row_name|fen|chess-domain expected start kind`; only the
+/// first two columns are used here.
+const DRIFT_GUARD_TABLE: &str = include_str!("data/fen_drift_guard.txt");
+
+fn drift_rows() -> Vec<(&'static str, &'static str)> {
+    DRIFT_GUARD_TABLE
+        .lines()
+        .filter(|l| !l.starts_with('#') && !l.trim().is_empty())
+        .map(|l| {
+            let mut f = l.split('|');
+            (f.next().unwrap(), f.next().unwrap())
+        })
+        .collect()
+}
+
+#[test]
+fn ut_rul_031_5_drift_guard_table_has_the_standard_row_and_six_single_field_variants() {
+    let rows = drift_rows();
+    assert_eq!(rows.len(), 7);
+    assert_eq!(rows[0], ("standard", START_FEN));
+}
+
+#[test]
+fn ut_rul_031_5_every_drift_guard_row_keeps_or_drops_the_tags_by_its_fen() {
+    for (name, fen) in drift_rows() {
+        let input = format!("[SetUp \"1\"]\n[FEN \"{fen}\"]\n\n*\n");
+        let parsed = chess_rules::Fen::parse(fen);
+        let games = read_all(input.as_bytes());
+        assert_eq!(games.len(), 1, "{name}");
+        match (parsed, &games[0]) {
+            // A FEN that the FEN type rejects (the en passant row) fails the game as BadFen.
+            (Err(_), Err(e)) => assert!(matches!(e.kind, PgnErrorKind::BadFen(_)), "{name}"),
+            (Ok(_), Ok(g)) => {
+                let text = String::from_utf8(canonical_form(g)).unwrap();
+                if fen == START_FEN {
+                    assert!(!text.contains("[FEN") && !text.contains("[SetUp"), "{name}");
+                } else {
+                    assert!(
+                        text.contains(&format!("[FEN \"{fen}\"]\n[SetUp \"1\"]\n")),
+                        "{name}: {text}"
+                    );
+                }
+            }
+            (parsed, game) => panic!("{name}: {parsed:?} against {game:?}"),
+        }
+    }
+}
+
 #[test]
 fn ut_rul_031_oq_27_standard_start_omits_set_up_and_fen() {
     let plain = read_one("1. e4 e5 *\n");
@@ -741,20 +791,6 @@ fn ut_rul_031_oq_27_another_counter_or_placement_keeps_both_tags() {
         assert!(
             text.contains(&format!("[FEN \"{fen}\"]\n[SetUp \"1\"]\n")),
             "{text}"
-        );
-    }
-    // Each single-field variant of the drift-guard table (SF-02) keeps the tags.
-    for fen in [
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1", // side to move
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w Kkq - 0 1",  // castling
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 5 1", // halfmove clock
-    ] {
-        let g = read_one(&format!("[SetUp \"1\"]\n[FEN \"{fen}\"]\n\n*\n"));
-        assert!(
-            String::from_utf8(canonical_form(&g))
-                .unwrap()
-                .contains("[SetUp \"1\"]"),
-            "{fen}"
         );
     }
 }
@@ -823,11 +859,15 @@ fn ut_rul_024_nfr_9_part_b_errors_render_messages_without_paths_or_internals() {
             reason: chess_rules::IllegalReason::Blocked,
         },
         PgnErrorKind::AmbiguousSan { candidates: vec![] },
-        PgnErrorKind::BadSyntax { detail: "x" },
+        PgnErrorKind::BadSyntax {
+            reason: chess_rules::SyntaxReason::NotAMove,
+        },
         PgnErrorKind::UnterminatedComment,
         PgnErrorKind::UnbalancedVariation,
         PgnErrorKind::VariationTooDeep { limit: 64 },
-        PgnErrorKind::BadTag { detail: "x" },
+        PgnErrorKind::BadTag {
+            reason: chess_rules::TagReason::NameStart,
+        },
         PgnErrorKind::BadFen(chess_rules::Fen::parse("x").unwrap_err()),
     ];
     for kind in kinds {
@@ -1266,7 +1306,9 @@ fn ut_rul_020_if_2_a_bracket_or_percent_inside_a_line_is_not_a_tag_or_an_escape(
 fn ut_rul_020_if_2_a_closing_brace_alone_says_so() {
     let e = read_err("1. e4 } e5 *");
     match e.kind {
-        PgnErrorKind::BadSyntax { detail } => assert!(detail.contains("closing brace"), "{detail}"),
+        PgnErrorKind::BadSyntax { reason } => {
+            assert_eq!(reason, chess_rules::SyntaxReason::StrayClosingBrace);
+        }
         other => panic!("{other:?}"),
     }
 }

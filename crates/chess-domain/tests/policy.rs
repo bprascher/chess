@@ -536,6 +536,38 @@ fn ut_dom_025_check_setup_table() {
 }
 
 #[test]
+fn ut_dom_025_d10_one_player_on_both_seats_with_different_kinds_is_refused() {
+    // Desk review D10 (DF-07): a Player is human or computer, never both.
+    for mut s in [strict_hc(), training()] {
+        s.black = computer(1); // White is human(1)
+        let e = Policy::check_setup(&s).unwrap_err();
+        assert_eq!(
+            (e.field, e.reason),
+            (SetupField::Players, SetupReason::PlayersWrongKind),
+            "{:?}",
+            s.mode
+        );
+        // the computer on White, the human on Black
+        s.white = computer(1);
+        s.black = human(1);
+        let e = Policy::check_setup(&s).unwrap_err();
+        assert_eq!(
+            (e.field, e.reason),
+            (SetupField::Players, SetupReason::PlayersWrongKind)
+        );
+    }
+    // self-play with one kind stays allowed (is_self_play)
+    let mut s = strict_hh();
+    s.black = human(1);
+    assert!(s.is_self_play() && Policy::check_setup(&s).is_ok());
+    let mut s = strict_cc();
+    s.black = computer(4);
+    assert!(s.is_self_play() && Policy::check_setup(&s).is_ok());
+    // two different players of different kinds is the normal h-c game
+    assert!(Policy::check_setup(&strict_hc()).is_ok());
+}
+
+#[test]
 fn ut_dom_025_game_4_terminal_start_position_is_refused_for_a_new_game() {
     // checkmate (fool's mate), stalemate, and a dead-but-playable start
     for fen in [

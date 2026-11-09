@@ -253,8 +253,9 @@ impl Position {
 
     /// Classifies, in the order of SDD 3.11.2, why moving the piece on `from` to `to` is not
     /// legal. Returns `Other` only when none applies, which includes a move that is in fact legal
-    /// (a defect indicator, never shown as a rule); a promotion piece on a move that does not
-    /// promote, or a promotion to a king or pawn, is `CannotReach` (RF-06).
+    /// (a defect indicator, never shown as a rule). A promotion piece on a move that does not
+    /// promote (including a legal castling move, RC-01) is `NotAPromotion`; a promotion to a
+    /// king or pawn on a move that does promote is `CannotReach` (RF-06).
     pub fn explain_illegal(
         &self,
         from: Square,
@@ -270,6 +271,11 @@ impl Position {
         if piece.kind == PieceKind::King
             && let Some(reason) = self.explain_castling(piece.side, from, to)
         {
+            // RC-01: castling conditions all hold (`Other`), but a promotion letter was sent
+            // with it: a wrong request, not a library defect.
+            if reason == IllegalReason::Other && promotion.is_some() {
+                return IllegalReason::NotAPromotion;
+            }
             return reason;
         }
         if let Some(reason) = self.explain_geometry(piece, from, to) {
@@ -284,11 +290,11 @@ impl Position {
         // pawn, is a wrong request, not a library defect: it gets a stable reason of its own
         // and `Other` stays the defect indicator (SDD 3.11.2).
         if let Some(chosen) = promotion {
+            if !promotes {
+                return IllegalReason::NotAPromotion;
+            }
             if matches!(chosen, PieceKind::Pawn | PieceKind::King) {
                 return IllegalReason::CannotReach { piece: chosen };
-            }
-            if !promotes {
-                return IllegalReason::CannotReach { piece: piece.kind };
             }
         }
         if self.is_legal(Move {

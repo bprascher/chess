@@ -230,10 +230,15 @@ pub enum TreeError {
     AtFinalPosition,
     #[error("there is no move to save")]
     EmptyLine,
-    /// Line text that cannot be read, or a tree that cannot be written as line text: invalid
-    /// text, or variations nested deeper than the `chess-rules` limit (64).
+    /// Line text that cannot be read: invalid text, or variations nested deeper than the
+    /// `chess-rules` limit (64).
     #[error("the line text is not valid")]
     BadText,
+    /// `VariationTree::play` refused a move that would nest variations deeper than
+    /// `chess_rules::DEFAULT_MAX_VARIATION_DEPTH` (64), so every tree that can be built can be
+    /// written as line text (desk review D7).
+    #[error("the variation is nested too deeply")]
+    TooDeep,
 }
 
 /// `check_history` failures: an integration check, not shown to the player.

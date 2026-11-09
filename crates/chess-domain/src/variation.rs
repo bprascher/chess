@@ -3,7 +3,7 @@
 //! tombstone, so ids held by a UI stay valid. The consumer is the PGN mapping (XC-24): the
 //! tree is written and read through `chess-rules` line text.
 
-use chess_rules::{Move, PgnNode, Position, format_line, parse_line};
+use chess_rules::{DEFAULT_MAX_VARIATION_DEPTH, Move, PgnNode, Position, format_line, parse_line};
 
 use crate::error::TreeError;
 
@@ -128,7 +128,10 @@ impl VariationTree {
     }
 
     /// Plays `mv` at `at`. The same move twice returns the existing child. An illegal move is an
-    /// error and changes nothing.
+    /// error and changes nothing. A move that would be a variation (not the first child of
+    /// `at`) nested deeper than `chess_rules::DEFAULT_MAX_VARIATION_DEPTH` (64) is refused with
+    /// `TreeError::TooDeep` and changes nothing, so `to_pgn_text` succeeds for every tree that
+    /// can be built (desk review D7).
     pub fn play(&mut self, at: NodeId, mv: Move) -> Result<NodeId, TreeError> {
         let here = self.node(at)?;
         for &child in &here.children {
@@ -137,6 +140,10 @@ impl VariationTree {
             }
         }
         let position = here.position.play(mv)?;
+        let opens_variation = !here.children.is_empty();
+        if self.variation_depth(at)? + usize::from(opens_variation) > DEFAULT_MAX_VARIATION_DEPTH {
+            return Err(TreeError::TooDeep);
+        }
         if self.live >= MAX_NODES {
             return Err(TreeError::Full);
         }
@@ -154,6 +161,21 @@ impl VariationTree {
         }
         self.live += 1;
         Ok(id)
+    }
+
+    /// The variation nesting of `node`: the number of edges on its path from the root that are
+    /// not the first child of their parent (the first child is the main line, every other child
+    /// is a variation one level deeper, as `to_pgn_nodes` writes them).
+    fn variation_depth(&self, node: NodeId) -> Result<usize, TreeError> {
+        let mut depth = 0usize;
+        let mut at = node;
+        while let Some(parent) = self.node(at)?.parent {
+            if self.node(parent)?.children.first() != Some(&at) {
+                depth += 1;
+            }
+            at = parent;
+        }
+        Ok(depth)
     }
 
     /// Removes `node` and its subtree. The root cannot be deleted.
@@ -179,7 +201,7 @@ impl VariationTree {
 
     /// The tree as `PgnNode`s: the first child at each position is the main line, the other
     /// children are variations attached to the first child's node. Nesting depth is bounded by
-    /// `MAX_NODES`.
+    /// `DEFAULT_MAX_VARIATION_DEPTH` (`play` refuses deeper variations).
     pub fn to_pgn_nodes(&self) -> Vec<PgnNode> {
         self.line_nodes(self.root())
     }
@@ -220,11 +242,10 @@ impl VariationTree {
     }
 
     /// The tree as line text from the root position (`chess-rules::format_line`). The nodes are
-    /// legal by construction, so an illegal move cannot be the cause. The error arm is reached
-    /// for a tree whose variations nest deeper than `chess_rules::DEFAULT_MAX_VARIATION_DEPTH`
-    /// (64): the writer refuses it and this method reports it as `BadText`, well inside
-    /// `MAX_NODES` (GATE-103 rework DF-03). `from_pgn_text` applies the same limit on reading.
-    /// A distinct error for that case would change `TreeError`, and waits for an owner decision.
+    /// legal by construction and `play` keeps the variation nesting within
+    /// `chess_rules::DEFAULT_MAX_VARIATION_DEPTH` (64, desk review D7), the two causes the
+    /// writer has for refusing, so the `BadText` arm is a guard that no tree built through this
+    /// type reaches. `from_pgn_text` applies the same depth limit on reading.
     pub fn to_pgn_text(&self) -> Result<String, TreeError> {
         let root = &self.node(self.root())?.position;
         format_line(root, &self.to_pgn_nodes()).map_err(|_| TreeError::BadText)
