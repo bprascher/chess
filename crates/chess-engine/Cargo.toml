@@ -6,8 +6,29 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+# DD-EN-011: `FakeEngine`. Off by default. `chess-app`'s own `test-support` enables this one.
+# This crate's own tests get the same code through cfg(test) (no self dev-dependency, see
+# GATE-102 F-A1).
+test-support = []
+
+# DD-EN-012: the `fake_uci` test executable. It has no `required-features` (choice F-E3 in
+# docs/engineering/step2-engine-evidence.md): the integration tests need it in a plain
+# `cargo test`. It is a test tool and is never packaged.
+[[bin]]
+name = "fake_uci"
+path = "src/bin/fake_uci.rs"
+
 [dependencies]
 chess-rules.workspace = true
+# Feature set per DL2-5 / SDD-engine 3.4: process, io-util, sync, time, rt, macros.
+tokio = { workspace = true, features = ["process", "io-util", "sync", "time", "rt", "macros"] }
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true

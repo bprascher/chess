@@ -1,0 +1,38 @@
+# Error-pick replay vectors (EF-11, FF-8 intent). Pins SplitMix64::next_f64 (top 53 bits of the
+# first draw) and the pick formula 1 + second_draw % (count - 1) used by select_move.
+# Oracle: independent Python 3 implementation of Vigna's SplitMix64, generated 2026-11-10; it does not
+# share code with the crate. The file is owned by chess-engine (the shared splitmix64_vectors.txt is
+# owned by chess-domain and is untouched).
+# Format: seed_decimal roll53_hex line_count picked_index   (roll = roll53 / 2^53; picked_index in 1..count-1)
+0 1c4415072f63b9 2 1
+0 1c4415072f63b9 3 1
+0 1c4415072f63b9 5 1
+0 1c4415072f63b9 8 2
+1 122145bd91204b 2 1
+1 122145bd91204b 3 2
+1 122145bd91204b 5 4
+1 122145bd91204b 8 1
+7 c797c3c8b2641 2 1
+7 c797c3c8b2641 3 1
+7 c797c3c8b2641 5 1
+7 c797c3c8b2641 8 4
+42 17bae644c5fd6d 2 1
+42 17bae644c5fd6d 3 2
+42 17bae644c5fd6d 5 4
+42 17bae644c5fd6d 8 6
+3735928559 95bf721ed193d 2 1
+3735928559 95bf721ed193d 3 1
+3735928559 95bf721ed193d 5 3
+3735928559 95bf721ed193d 8 1
+123456789 4478e9b27bd6e 2 1
+123456789 4478e9b27bd6e 3 1
+123456789 4478e9b27bd6e 5 3
+123456789 4478e9b27bd6e 8 3
+1000000007 22ccc7110beb 2 1
+1000000007 22ccc7110beb 3 2
+1000000007 22ccc7110beb 5 2
+1000000007 22ccc7110beb 8 4
+18446744073709551615 1c9b2e2ee36ca5 2 1
+18446744073709551615 1c9b2e2ee36ca5 3 2
+18446744073709551615 1c9b2e2ee36ca5 5 2
+18446744073709551615 1c9b2e2ee36ca5 8 2
