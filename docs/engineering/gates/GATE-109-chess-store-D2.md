@@ -29,7 +29,7 @@
 
 | Item | Status |
 |---|---|
-| Reviewer pass (part D2) | NOT DONE |
+| Reviewer pass (part D2) | **Done (superseded 2026-11-25; was "NOT DONE").** See "Record update 2026-11-25" |
 | G3 review step | not requested yet |
 | Approved by | nobody |
 
@@ -65,3 +65,11 @@
 - **Gate answers added:** none beyond G3 for the stored-value rule `ended_at > 0`.
 - **Rollback:** revert the three hunks (`lifecycle.rs`, `game.rs`, `store.rs`); tested: no.
 - **Reviewer pass of the 2026-11-24 changes:** NOT DONE. Approved by: nobody.
+
+## Record update 2026-11-25 (G0 record keeping, systems engineer; baseline B6)
+
+- **Status: still OPEN, NOT APPROVED. PENDING Brian Prascher (G3).** GATE-108 was approved with conditions on 2026-11-25 (CR-35). GATE-109 is presented to Brian after it, one gate at a time (relay, CR-34). No approval of GATE-109 has been received.
+- **Reviewer reports (replace the stale "NOT DONE" lines above):** `docs/engineering/review-chess-store-D1-D2-D5.md` (PASS WITH CONDITIONS with one Major, FIND-D2R-01, concurrent `check_rating_invariant`); `review-chess-store-fixes-2.md` (PASS WITH CONDITIONS, no Major: FIND-D2R-01 fixed; Minor F2-04, F2-05, F2-09); `review-chess-store-D3-rulings.md` (PASS WITH CONDITIONS stands for the D2 files the D3 rulings changed: `void_game` and the removal of `void_game_repair_pair`, `set_analysis_used`; no new finding).
+- **Decisions that touch this gate:** **D-149** (`void_game_repair_pair` deleted, G1), **D-144** (the `> 0` check also applies to `void_game`, `void_unreadable_game` and the `reset_player` commit time; approved under GATE-111), **D-152** (the store drains the game's queue before a live finalize, abort, void or reset; GATE-111), **D-138** (`analysis_used` latch) and **D-139** (terminal data shape only), earlier. GATE-111 edits D2 files (`finalize_in_tx` and `abort_in_tx`); the D2 suite must stay green there.
+- **Open:** F2-05 (`set_analysis_used` can flag a finished game): the D3-rulings Reviewer says it "behaves as ruled", and the relay lists no ruling for it `[UNV]`; Brian's disposition is not recorded here.
+- The Reviewer verdicts are the agents' own and are not approvals. G2 and G3 decisions stay with Brian Prascher; the systems engineer approved nothing in this edit.

@@ -1,8 +1,8 @@
 # Release Notes
 
-## Phase 3 step 2 built through store part D3; GATE-108 approved with conditions: 2026-11-24
+## Phase 3 step 2 built through store part D3; GATE-108 approved with conditions: 2026-11-24 (Decision Log text entered 2026-11-25)
 
-Brian Prascher ruled on 2026-11-24 in genuine user messages. Rulings are in decision beads chess-a0r.3.52 and chess-a0r.3.56 (baseline B6). The code is committed on branch `feat/step2-core-services`.
+Brian Prascher ruled on 2026-11-24 and approved GATE-108 on 2026-11-25, in genuine user messages relayed by the coordinator. Rulings are in decision beads chess-a0r.3.52, chess-a0r.3.56 and chess-a0r.3.58 (baseline B6). The code is committed on branch `feat/step2-core-services`.
 
 ### Built
 - **`chess-engine`:** UCI wrapper, driver, arbiter, pool and a fake engine for tests. Stockfish 19 is fetched by `third_party/stockfish/fetch.sh`, and CI fetches it before the gate.
@@ -10,14 +10,15 @@ Brian Prascher ruled on 2026-11-24 in genuine user messages. Rulings are in deci
 - **Verification:** `CHESS_CI_OFFLINE=1 ci/check.sh` printed "All gates passed" (114 test binaries, 0 failed), run by the program manager. Reviewer and engineer test, mutation and kill-round figures are in `docs/engineering/` and are theirs, not re-run.
 
 ### Decisions
-- **GATE-108 (store part B, G3; open path G2): approved with conditions by Brian Prascher.** Conditions: the approval covers the format as of the reviewer's snapshot (the `ended_at` and matchup rules are approved under GATE-111); F2-07 accepted as closed; the engineer states the status of B-R04; the gate record is brought up to date (G0).
+- **GATE-108 (store part B, G3; open path G2): approved with conditions by Brian Prascher (2026-11-25).** Conditions: the approval covers the format as of the reviewer's snapshot (the `ended_at` and matchup rules are approved under GATE-111); F2-07 accepted as closed; the engineer states the status of B-R04; the gate record is brought up to date (G0). State of the conditions: (1) stands; (2) accepted; (3) **pending**, the D4 engineer states the B-R04 status (not found in the evidence); (4) done by the 2026-11-25 edit of the four gate records.
 - **D3 rulings, all accepted as recommended:** the journal refuses `ended_at` or `wall_ms` of 0 or below; a game parks on the first permanent error, with an inspect and clear API and a bound on the queue; `Start.matchup` text `hh|hc|cc`; the new public surface; imported games excluded from statistics; NULL `started_at` last in `list_games`; the `$TMPDIR` dependency of the hot-journal rule accepted. B-R03 and B-R05 are assigned to D4.
+- **Decision Log text is entered in `docs/requirements.md`:** **CR-32** (G3: `ended_at` rule, uncurable-batch policy, `matchup` text), **CR-33** (G2: new public surface, `$TMPDIR` dependency), **CR-34** (smaller items; B-R03 and B-R05 assigned to D4; gate order) and **CR-35** (the GATE-108 approval with its four conditions). No requirement statement, pass criterion or ID changed.
 - **Earlier 2026-11-22 and 2026-11-23 rulings** are recorded as CR-26 to CR-31 (see the entry below).
 
 ### Not done
-- **GATE-109 (D2, G3), GATE-110 (D5, G2) and GATE-111 (D3, G3) are not approved.** They are Brian's.
+- **Only GATE-108 is approved, with conditions; condition 3 (B-R04 status) is pending.** **GATE-109 (D2, G3), GATE-110 (D5, G2) and GATE-111 (D3, G3) are not approved.** They are Brian's and are presented to him one at a time; the four gate records are up to date and say OPEN, NOT APPROVED for 109 to 111.
 - Open: B-R03, B-R05 (D4); minor findings in chess-a0r.3.57; D4, store part C and `chess-app` are not started.
-- The Decision Log entry for the 2026-11-24 rulings is not yet in `docs/requirements.md`. The systems engineer still has to enter it.
+- Not verified: the relay carries no verbatim quotation; the class of some D3 items differs between the relay and the architect (see CR-34). The documents are uncommitted edits of the systems engineer.
 - Not run: power loss, a hosted CI run, Intel, the online `npm audit` path, sanitizers and cargo-mutants.
 
 ## Brian Prascher's 2026-11-22 and 2026-11-23 store rework rulings recorded (CR-26 to CR-31): 2026-11-23

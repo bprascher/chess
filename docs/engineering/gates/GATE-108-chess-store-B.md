@@ -5,7 +5,7 @@
 | Gate | **GATE-108** (follows GATE-107, part D1) |
 | Tier | **G3**: the journal file format is a **stored format** (SWE-001 section 3: "a stored-format change (journal, archive `format_version`, schema)"; SDD 3.11.1, architecture 7.6, SF-07 to SF-16, frozen at the first release by D-41). The change also adds public items to `chess-store` (`journal`, `StoreOptions::process`, the registry and lease methods, two error types) and changes the open path (F-A03), which is G2 on its own (Q2, Q5 of `swe-governance`). The highest tier any question gives applies |
 | Approver | **Brian Prascher** (G2 and G3 per SWE-001 section 3). A desk review of the System Architect never satisfies G2 or G3 |
-| Status | **OPEN. NOT APPROVED.** No approval has been received from anyone. The author is the Engineer stance and does not approve its own gate |
+| Status | **APPROVED WITH CONDITIONS by Brian Prascher, 2026-11-25** (decision bead chess-a0r.3.58, relayed by the coordinator, no verbatim quotation; Decision Log CR-35 in `docs/requirements.md`). Condition 3 (B-R04 status) is pending. Header text below is history as of 2026-11-11 and is not changed; see "Record update 2026-11-25" |
 | Date opened | 2026-11-11 |
 | Opened by | Software engineer (task chess-a0r.3.7, Engineer stance, run-to-gate, CR chess-a0r.20, baseline B6) |
 | Covers | `crates/chess-store` only (and the two new documents named below): new `src/journal/{mod,format,reader,reconcile,rebase,files,writer}.rs`, `src/repo/coord.rs`, `src/proc.rs`; changed `src/{open,migrate,backup,datadir,store,api,error,fault,lib}.rs`, `Cargo.toml` (one dependency, `crc32fast`, inherited from the workspace); tests `tests/{journal,journal_faults,journal_crash,coordination,hardening}.rs`, `tests/common/{mod,child}.rs`, and edits to `tests/{crash,open,fault_injection}.rs` for the new temp name |
@@ -31,9 +31,9 @@
 
 | Item | Status |
 |---|---|
-| Reviewer pass (part B) | NOT DONE |
-| G3 review step | not requested yet |
-| Approved by | nobody |
+| Reviewer pass (part B) | **Done (superseded 2026-11-25; was "NOT DONE").** Four Reviewer reports, see "Record update 2026-11-25" |
+| G3 review step | Brian Prascher, 2026-11-25: approved with conditions |
+| Approved by | **Brian Prascher, 2026-11-25, with four conditions** (the table was "nobody" until then) |
 
 
 ## Rework 2026-11-22 (decision bead chess-a0r.3.50)
@@ -74,3 +74,20 @@
 - **Gate answers added:** Q8 yes (stored format). No new component, edge or dependency.
 - **Rollback:** revert `Payload::validate`, `check_record`, `matchup_code` in `journal/format.rs` and the test fixtures; tested: no.
 - **Reviewer pass of the 2026-11-24 changes:** NOT DONE. Approved by: nobody.
+
+## Record update 2026-11-25 (G0 record keeping, systems engineer; baseline B6)
+
+- **Approval:** Brian Prascher **approved GATE-108 with conditions on 2026-11-25** (G3; open path G2), as the program manager recommended (decision bead chess-a0r.3.58, relayed, no verbatim quotation `[UNV]`; Decision Log **CR-35**). The earlier "OPEN. NOT APPROVED" lines in this file were true when written and stay as history.
+- **Conditions and their state:**
+
+| # | Condition | State at 2026-11-25 |
+|---|---|---|
+| 1 | The approval covers the format as of the Reviewer's snapshot; the `ended_at` and `matchup` rules are approved under GATE-111 | Stands. The Reviewer of the D3 rulings found the rules hold in `journal/format.rs` (9 of 9 format mutants killed); they are still approved only by GATE-111, which is **NOT approved** |
+| 2 | F2-07 (500-round kill test) accepted as closed | Accepted |
+| 3 | The engineer states the status of B-R04 (`create` can race with `probe`) | **Pending.** Not found in the evidence (`gate-briefs-store.md` 1.3 `[UNV]`); the D4 engineer states it |
+| 4 | The gate record is brought up to date (G0) | **Closed by this edit** |
+
+- **Reviewer reports (replace the stale "Reviewer pass NOT DONE" rows above and in the sections below):** `docs/engineering/review-chess-store-B.md` (PASS WITH CONDITIONS; B-R01 and B-R02 fixed, B-R06 fixed by D-125, B-R03 and B-R05 moved to D4 by D-153, B-R04 status not found); `review-chess-store-rework-1.md` (FAIL for part 1: FIND-RW1-01 and FIND-RW1-02, both Major); `review-chess-store-fixes-2.md` (PASS WITH CONDITIONS, no Major: both Majors fixed; Minor F2-04, F2-06, F2-07, F2-08); `review-chess-store-D3-rulings.md` (PASS WITH CONDITIONS stands for the files of this gate changed by the rulings, no new finding; FIND-D3RL-08 Info: pre-ruling test journals no longer valid).
+- **Decisions that touch this gate:** **D-144** (`ended_at` rule; built in `journal/format.rs`; approved under GATE-111), **D-146** (`Start.matchup` text; same), **D-151** (`$TMPDIR` dependency of the NF-2 exception accepted, G2). Also in force: D-137 (two-class trace rule), D-141, D-142, D-143 (see architecture Addendum N, section 11.4.22).
+- **Open for this gate's scope:** B-R04 status (condition 3); B-R03 and B-R05 are assigned to D4 (D-153, CR-34) and are not closed.
+- The Reviewer verdicts are the agents' own and are not approvals. G2 and G3 decisions stay with Brian Prascher; the systems engineer approved nothing in this edit.
