@@ -1,0 +1,21 @@
+# Throwaway spike for OQ-14 (beads chess-a0r.3.1). NOT a workspace member:
+# the empty [workspace] table below makes this package its own workspace root,
+# so the repository workspace needs no `exclude`.
+[package]
+name = "oq14-spike"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.99"
+publish = false
+license = "GPL-3.0-or-later"
+
+[workspace]
+
+[dependencies]
+crc32fast = "=1.5.4"
+# Comparison only (item 4): the safe no-replace rename and F_FULLFSYNC wrappers.
+rustix = { version = "=1.1.6", default-features = false, features = ["fs", "std"] }
+
+[lints.rust]
+warnings = "deny"
+unsafe_code = "forbid"

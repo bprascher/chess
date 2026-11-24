@@ -1,0 +1,13 @@
+# Throwaway spike S1 (OQ-14 item 7): behaviour of json_valid in the bundled SQLite.
+# Own workspace on purpose: not a member of the repository workspace, never built by ci/check.sh.
+# Versions equal the root [workspace.dependencies] entry for rusqlite (dependency-lookup-step2.md).
+[workspace]
+
+[package]
+name = "spike-sqlite-json"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+rusqlite = { version = "=0.41.1", default-features = false, features = ["bundled"] }
