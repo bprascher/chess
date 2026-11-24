@@ -2,7 +2,7 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/use_cases/UC-4_start_local_web_server.md | **1.0** | 2026-10-28 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
+| docs/use_cases/UC-4_start_local_web_server.md | **1.0.1** | 2026-11-09 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
 
 **Goal in Context:** The User wants the local web server running on a chosen port and the page opened in a browser, so that Chess can be played in a browser tab.
 
@@ -47,7 +47,7 @@
   - *Then:* Use case fails; nothing is bound.
 - **5a.** The default browser cannot be opened:
   - 5a1. System keeps the server running, and prints the URL again with a notice to open it by hand (PLAT-4). The exit status is not affected. Use case resumes at step 6.
-- **\*b.** The User stops the server with Ctrl-C or SIGTERM in its terminal:
+- **\*b.** The User stops the server with Ctrl-C (SIGINT), SIGTERM or SIGHUP (for example the terminal closes) in its terminal:
   - \*b1. System stops accepting connections, tells connected pages that the server stopped, suspends each open game as an interruption (clock suspended, state recorded, resumable, no change to Elo or statistics) and exits with status 0, with no confirmation (PLAT-4, RULE-5, GAME-4). Use case ends.
 - **\*a.** A request arrives whose Host or Origin is not the server's own loopback origin:
   - \*a1. System rejects it (NFR-7). The use case is not affected.
@@ -90,3 +90,4 @@
 | 0.2 | 2026-10-28 | CR-4: config errors, browser failure and stopping the server decided (PLAT-4, UG-15 closed). |
 | 0.3 | 2026-10-28 | Consistency pass (requirements Amendment 3, CR-5): baseline references updated to architecture amendment 3 and functional_decomp v0.3; version aligned across the set. |
 | 1.0 | 2026-10-28 | Baselined: approved by the user. Content unchanged from 0.3; references to functional_decomp updated to v1.0. |
+| 1.0.1 | 2026-11-09 | Amendment (CR-20, G3, Brian Prascher's confirmation of the SIGHUP rule; PLAT-4 amended): extension *b names SIGHUP with SIGINT and SIGTERM (same stop, exit 0). Text by the systems engineer; not independently reviewed; no approval beyond Brian Prascher's confirmation is claimed. |

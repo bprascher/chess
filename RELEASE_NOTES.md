@@ -1,5 +1,130 @@
 # Release Notes
 
+## Brian Prascher's 2026-11-22 and 2026-11-23 store rework rulings recorded (CR-26 to CR-31): 2026-11-23
+
+Documentation only. Brian Prascher ruled on 2026-11-22 and 2026-11-23 in genuine user messages relayed by the coordinator (tracker chess-a0r.3.50; no verbatim quotation). Baseline B6. Six Decision Log entries, split by gate class: **CR-26** (G2, 2026-11-22), **CR-27** (G3, 2026-11-22), **CR-28** (smaller items, 2026-11-22), **CR-29** (G2, 2026-11-23), **CR-30** (G3, 2026-11-23), **CR-31** (G1, 2026-11-23). The systems engineer approved nothing and committed nothing. **The code changes are being reviewed; no gate is approved. GATE-108, GATE-109 and GATE-110 are Brian's and have not been given. Delegation of G2 and G3 decisions to the program manager remains declined.**
+
+### Decisions recorded
+- **CR-26 (G2):** NF-4: an empty or schemaless `chess.db` beside journals, backups or backup files is refused with `Missing` and `create_fresh` is offered (supersedes the CR-25 reading that it opens silently); `create_fresh` confirmed; FIND-007 as is; 43 s first-launch `Busy` retry accepted; FIND-D5-02 B (variation by `(game, from_ply, pgn)`, idempotent save, `VariationRef` dropped).
+- **CR-27 (G3):** part B (journal) approved as built (CH-1, 2, 3, 6, 7, 8, 10, 12, 13, 14, FIND-B-01); FIND-B-06 option A narrowed (rollback exception only for a database with no players and no games); CH-4 (encode and decode), CH-5 B, CH-11 B, FIND-B-11 B (tolerant decode). **FIND-B-R03 and FIND-B-R05 are not dispositioned: open, owner D4.**
+- **CR-28:** FIND-D5-01 A, D2-04 `aborted`, D2-02 ordering, `VoidSpec` field `game`, failpoints `abort.`, `void.`, `reset.before_commit`, FIND-E5 and OQ-EN-004.
+- **CR-29 (G2):** FIND-RW1-01 two-class trace rule: SQLite `-wal` and `-journal` sidecars are not data traces on their own; real data traces still refuse; a zero-length `chess.db` with a non-empty `-wal` stays refused; the 1 s settle wait is removed.
+- **CR-30 (G3):** `analysis_used` is a latch (finalize ORs the stored flag); rebase idempotence kept; CH-5 reading as built; payloads must be JSON objects; clock text follows the domain (`0+0` refused).
+- **CR-31 (G1):** terminal data validated for shape only; stats and list order `(started_at, id)` with `limit` = oldest N; no `variation(game_id)` index now; failpoint registry and the related package items accepted.
+- Decision numbers are the architect's (Addendum M, D-125 to D-136) and are cited as "(architect)"; none is assigned by the systems engineer.
+
+### Documents changed
+| Document | Change | Status |
+|---|---|---|
+| `docs/requirements.md` | Decision Log CR-26 to CR-31; change-history rows (extensions 16 to 21); header sentence; one dated DAT-5 note (NF-4 and the trace rule; supersedes the 2026-11-11 note) | Amendment 8, extensions 16 to 21 |
+| `RELEASE_NOTES.md` | This entry | n/a |
+
+No requirement statement, pass criterion or ID changed. Nothing was renumbered.
+
+### Not done, not verified
+- **No gate approved.** GATE-108, GATE-109 and GATE-110 are Brian's and not given; the code changes are under review.
+- **Open, owner D4:** FIND-B-R03 (`close_final` not crash-idempotent) and FIND-B-R05 (`settle_rebase_files` can install an incomplete `.rebase`); the program manager recommends D4 fixes them; no ruling.
+- **Not edited here (other owners):** `docs/architecture.md` and the store, app and engine SDDs (the architect; Addendum M not read for this entry). The store verification cases NF2-1 to 11, NF4-1 to 19, VAR-1 to 12 and the journal tests need CT-ST numbers from the engineer; not allocated, no case added to `docs/requirements.md`. The front-end wording of the `StoreMissing` prompt (empty database file) is for the front-end SDD owners.
+- Relay gaps: the gate class of several items was not stated (entered as the architect classes them); whether Brian saw the architect's amended `create_fresh` reading (leaves an empty `chess.db`); the source section of "payloads must be JSON objects" and "clock text follows the domain" was not located; the architect's residual risks R-NF4-1 to R-NF4-3 are not separately dispositioned.
+- The CR-25 note on NF-4 sits under DAT-5 in `docs/requirements.md` although CR-25 calls it a DAT-2 note; left as is.
+- No code or test was run; nothing was independently reviewed. Tracker beads were not created, closed or commented by this task.
+
+## Brian Prascher's 2026-11-11 decisions recorded (CR-23, CR-24, CR-25): 2026-11-11
+
+Documentation only. Brian Prascher decided on 2026-11-11 in genuine user messages relayed by the coordinator (tracker chess-a0r.3.48; no verbatim quotation). Baseline B6. Three Decision Log entries, one per gate class: **CR-23** (G2), **CR-24** (G3), **CR-25** (smaller items accepted as proposed; gate class not stated). The systems engineer approved nothing and committed nothing. Process note: delegation of G2 and G3 decisions to the program manager was **not** granted (change request chess-a0r.19 amended); G2 and G3 stay with Brian.
+
+### Decisions recorded
+- **CR-23 (G2):** EF-03 CI change approved (`ci/check.sh` fails when the real Stockfish binary is absent, opt-out `CHESS_ALLOW_STOCKFISH_SKIP=1`; `ci.yml` fetches via `third_party/stockfish/fetch.sh`; store test-support stage; skip warning repeated at the end; Brian commits `fetch.sh` and its `.gitignore` himself). F-A05 (`HasUnfinishedGames{ids}`), F-A07 (`Store::create_fresh`) and E4 (`AppEngine` enum dispatch, synchronous factory) accepted per the architect's recommendations (option A each). Decision numbers are the architect's (D-116 onward), cited as "(architect)".
+- **CR-24 (G3):** F-A04 (`k = 0` on rows with NULL `game_id`) and F-A06 (preferences passed in, base-time initial clock checkpoint, `self_play` and `custom_start` derived in the store) accepted per the architect's recommendations (option A).
+- **CR-25:** F-A08 (`store_uuid` from `RandomState` bytes, no new edge); **OQ-31** (Ctrl-Z is a no-op key in the TUI); the D-109 reading (scratch-file create and remove errors stay `Unavailable`); the CR-22 reading of CR-5 (the "is kept" bullet limits DAT-5 pruning only); TBC-11 non-blocking, **stays OPEN for release** (no licence ruling); store rework behaviours: empty `chess.db` is a first-launch state, `first_launch` true for exactly the opener that created the schema with a `Busy` retry on first launch, `Corrupt` replaces `Internal` for unreadable stored values, a missing `store.id` is not recreated (FIND-007), and an empty `chess.db` with traces opens as a first launch (NF-4). **FIND-007 and NF-4 are the two items Brian was asked to confirm explicitly; they are entered as accepted and flagged.**
+
+### Documents changed
+| Document | Change | Status |
+|---|---|---|
+| `docs/requirements.md` | Decision Log CR-23, CR-24, CR-25; change-history rows (extensions 13 to 15); header sentence; one dated DAT-2 note (NF-4 and FIND-007 reading); TBC-11 register note | Amendment 8, extensions 13 to 15 |
+| `docs/design/SDD-chess-cli.md` | 1.0.2 to **1.0.3** (OQ-31): section 5 "Signals" row, A5, DD-CLI-6, UF-CLI-9, header, change-log row, approval record. Status stays BASELINED; text not independently reviewed | BASELINED, not reviewed |
+| `RELEASE_NOTES.md` | This entry | n/a |
+
+### Not done, not verified
+- **Not edited here (other owners):** `docs/architecture.md` and the store, app, engine and desktop SDDs (the architect enters D-116 onward and the SDD notes; not read for this entry). The CI files were not read or reviewed by the systems engineer; the CI change is Brian's approval, not a review.
+- The relay did not say whether `backups/` is set aside by `create_fresh` (open detail of the F-A07 recommendation).
+- NF-4 weakens the DAT-2 and DAT-5 "missing store" alert for a zero-length `chess.db`; the DAT-2 note records it, and no distinguishing rule was decided.
+- That crossterm raw mode clears `ISIG` on macOS, and `chess-domain` `rating_series` use of `k`, were not read or run. The Ctrl-Z PTY test has no ID yet.
+- Part B journal format: **not decided, not recorded**, by instruction.
+- No code or test was run; nothing was independently reviewed. Tracker beads were not created, closed or commented by this task.
+
+## DAT-6 backup replacement ruling recorded (CR-22): 2026-11-10
+
+Documentation only (G2 record keeping). Brian Prascher ruled on 2026-11-10, relayed by the coordinator (tracker chess-a0r.3.42; no verbatim quotation). Baseline B5. The systems engineer approved nothing and committed nothing.
+
+### Decision recorded (CR-22)
+- Brian keeps his F-A02 ruling: for v1 the pre-upgrade backup `chess.db.bak-v<N>` is **replaced**, against the DAT-6 note (CR-5) that the copy "is kept". This closes the conflict flagged with CR-21.
+- DAT-6 gains one dated note (replacement is intended for v1 and is to be revisited for later versions: store SDD OQ-ST-006, tracker chess-a0r.3.35, architecture D-108) and one verification case (retry after a failed migration succeeds; a failed new backup leaves the previous good copy unchanged; a restored pre-upgrade copy upgraded again replaces the old backup), written to agree with store SDD CT-ST-019 and CT-ST-090. The DAT-6 statement and existing pass criteria are unchanged.
+
+### Documents changed
+| Document | Change | Status |
+|---|---|---|
+| `docs/requirements.md` | Decision Log CR-22; change-history row (extension 12); header sentence; DAT-6 note and verification case | Amendment 8, extension 12 |
+| `RELEASE_NOTES.md` | This entry | n/a |
+
+### Not done, not verified
+- Architecture and store SDD text are the architect's and were not edited. The policy after v1 (OQ-ST-006) is open.
+- My reading of the CR-5 "is kept" bullet as a limit on DAT-5 pruning is an interpretation, to confirm.
+- No code or test was run; nothing was independently reviewed.
+
+## SIGHUP rule confirmed and PLAT-4 amended; TBC-11, Stockfish tag commit and architect decisions recorded (CR-20, CR-21): 2026-11-09
+
+Documentation only. Brian Prascher decided on 2026-11-09 in genuine user messages relayed by the coordinator (tracker chess-a0r.3.34; no verbatim quotation was supplied). Two Decision Log entries: **CR-20** (G3: PLAT-4) and **CR-21** (G0 record of other decisions). Baseline B5. Nothing was approved by the systems engineer, and nothing was committed.
+
+### Decisions recorded
+- **CR-20 (G3):** SIGHUP exits 4 in headless runs and 0 in `chess serve` is confirmed. PLAT-4 gains an amendment bullet: SIGHUP stops `chess serve` like SIGINT and SIGTERM (no confirmation, games suspended, exit 0). One PLAT-4 verification case and one CLI-5 verification case (headless SIGINT and SIGHUP exit 4) are added. The PLAT-4 statement and every existing pass criterion are unchanged; the old Stopping bullet is kept as history. Revert path is written in the amendment bullet.
+- **CR-21 (G0):** TBC-11 is **still open**, open for release, owner Brian Prascher; his "Ok" accepted the non-blocking handling and is not a licence ruling (tracker chess-a0r.3.30 stays open). The Stockfish 19 tag commit `edb0d9db6731067ec50ce619ff372b463bc4dd5d` is confirmed (supersedes the "not confirmed" of CR-18). The chess-a0r.3.31 items (`PINNED_UCI_ELO_RANGE` 1320..=3190, D-71 and D-83 wording, workspace `unsafe_code` forbid, F7 fallback C, CLI SIGTSTP handling, `serde` for `desktop-tauri`) and the F-A02 REPLACE ruling for the v1 backup file are recorded as pointers only; the architect enters them (D-108 onward) and no D number is assigned here.
+- **Open questions of SDD-chess-cli 1.0.1:** OQ-CLI-008, -009, -010 and -011 are all still open; the confirmation did not answer them.
+
+### Documents changed
+| Document | Change | Status |
+|---|---|---|
+| `docs/requirements.md` | Decision Log CR-20 and CR-21; change-history rows (extensions 10, 11); header sentence; PLAT-4 amendment bullet and verification case; CLI-5 note and verification case; register notes TBD-26, TBD-36, TBC-11; one dated note under IF-4 | Amendment 8, extensions 10 and 11 |
+| `docs/design/SDD-chess-cli.md` | 1.0.1 to **1.0.2** (G3 wording): DD-CLI-8 and DD-CLI-9 sentences only, header, change-log row, review record. Status stays BASELINED; text not independently reviewed | BASELINED, not reviewed |
+| `docs/use_cases/UC-4_start_local_web_server.md`, `UC-27_run_scripted_headless_game.md` | 1.0 to 1.0.1: SIGHUP named in extension *b (UC-4) and 3b (UC-27) | Amendment, not reviewed |
+| `RELEASE_NOTES.md` | This entry | n/a |
+
+### Not done, not verified
+- **Not edited here (other owners):** `docs/architecture.md` (6.1, D-36 row, D-108 onward) and the store, app and engine SDDs; the README exit table; `docs/functional_decomp.md` F-8.12 (still says SIGINT or SIGTERM); the SIGTSTP text of SDD-chess-cli section 3 and DD-CLI-6 stays as written until the architect's entry.
+- **Reading to confirm:** "the PLAT-4 extension" is read as adding SIGHUP only; no other signal was named in the relayed text.
+- **Conflict flagged, not resolved:** F-A02 REPLACE against the DAT-6 note (CR-5) that the pre-upgrade copy "is kept". No DAT-6 verification case covers retry after a failed migration.
+- No code was run; no test was executed; the SDD and use-case text was not independently reviewed.
+
+## Step-2 dependency decisions, TBD-36 exit status, Stockfish 19 facts recorded (CR-18, CR-19): 2026-11-09
+
+Documentation only (G0 record keeping) plus one G3 amendment of `SDD-chess-cli`. Brian Prascher (G2/G3 approver) decided on 2026-11-09, typed in session and relayed by the coordinator (no verbatim quotation was supplied). Two Decision Log entries: **CR-18** (G2: dependencies, CI product, Stockfish 19 facts) and **CR-19** (G3: TBD-36, public CLI surface; separate because it has its own gate, amends CLI-4 and CLI-5 notes and has its own revert path). `docs/requirements.md` stays 1.0, Amendment 8, now extensions 8 and 9. **No requirement statement, pass criterion or ID changed. Nothing was renumbered.** Trackers: chess-a0r.3.2, chess-dfi, chess-85m, chess-a0r.3.3, chess-a0r.3.5 (CR-18); chess-a0r.3.16 (closed by the PM), chess-a0r.3.17 (CR-19).
+
+### Decisions recorded (CR-18, G2)
+- **Step-2 dependency lookup** (`docs/engineering/dependency-lookup-step2.md` v0.2, `step2-deps-findings-packages.md`): DL2-1 to DL2-13 and DL2-15 accepted as recommended; DL2-14 confirmed (no `libc`, no `rustix` in `chess-store`); F1 (TypeScript 7.0.2 side-by-side route), F2 (`npm audit --omit=dev` gates; full tree non-gating) and the VULN-001 triage (`not_affected`, dev-only) accepted; F3 option B (one `deny.toml` `ignore` entry for RUSTSEC-2026-0441 plus a VULN-004 revisit); F4 option A (one `deny.toml` change); F5 option A with `serde` (derive) a direct dependency of `chess-cli`; F7 option B (60-minute Vitest browser-mode spike with a fallback agreed in advance). The architecture rows are D-101..D-105 (architect).
+- **chess-85m:** option C: GitHub Actions with SHA-pinned actions; `ci/check.sh` is the gate of record.
+- **Stockfish 19:** archive SHA-256 `a1f0e3bc...adaa77` confirmed against the release page; the tag commit `edb0d9db...` is **not** confirmed.
+- **TBC-7, TBC-8, TBC-9 closed as to fact** (chess-a0r.3.5; evidence `docs/engineering/stockfish19-fetch-results.md`): `lipo` lists `x86_64 arm64`; `UCI_Elo` 1320 to 3190 (default 1320); the shipped `Copying.txt` is GPL Version 3. **Compatibility with GPL-3.0-or-later (D-10) is for Brian and is not asserted:** new register item **TBC-11** (also the licence of the embedded NNUE net).
+
+### Decisions recorded (CR-19, G3: TBD-36 closed)
+- **A1:** a signal stop (SIGINT, SIGTERM, SIGHUP) exits **4** in every run form except `chess serve`, which exits 0. Plain mode handles SIGINT like SIGTERM; plain-mode end of input with an unfinished game is `quit`, exit 0.
+- **B1:** one fixed exit map for every run form (0 success; 1 usage, setup, refusal or cancellation; 2 engine unavailable; 3 store error; 4 signal) with six sub-rules: declined or cancelled exits 1; PGN import exits 0 if all games were imported or skipped, 1 if any failed; `install-cli` failures exit 1; `calibrate` is outside the contract; fatal start-up or engine failure exits with its class; `--help`, `--version` and successful listings exit 0, `stats <unknown>` exits 1.
+- **C1:** no new setup flag; `--version` added (exit 0).
+- Effect on users and scripts: the numbers become a scripting contract once released (D-36). A script that waits for 143 after SIGTERM sees 4.
+
+### Documents changed
+| Document | Change | Status |
+|---|---|---|
+| `docs/requirements.md` | Decision Log CR-18 and CR-19; change-history rows (extensions 8, 9); header sentence; CLI-4 and CLI-5 amendment bullets, a "Superseded" bullet for the 2026-10-31 note and a verification addition in CLI-5; one dated note under IF-4; register: TBD-36 and TBC-7, -8, -9 closed, TBD-21 note, TBC-11 added | Stays 1.0, Amendment 8 |
+| `docs/design/SDD-chess-cli.md` | 1.0 to **1.0.1** (G3 contract text): A3 rewritten (rules ER-1 to ER-8); DD-CLI-1, -2, -6, -7, -8, -9, -10, -11, -12, section 7, UF-CLI-2, -5, -6, -10, OQ-CLI-002 closed, OQ-CLI-008 to -011 opened, RAT-CLI-13 added (RAT-CLI-11 superseded), CLI-5 trace row; test rows UT-CLI-08, CT-CLI-04..12, CT-CLI-13, E2E-CLI-03..07, -10..14, -15..20 amended and UT-CLI-019, UT-CLI-020, CT-CLI-022 to CT-CLI-024, E2E-CLI-24 to E2E-CLI-27 added | Stays BASELINED. Amendment text not independently reviewed, no desk review |
+| `docs/engineering/decision-package-tbd36-cli-surface.md` | 0.1 to 0.2: ruling recorded; new section 12 lists the verification additions for the software engineer | Working record |
+| `RELEASE_NOTES.md` | This entry | n/a |
+
+### Not done, not verified
+- **Not edited here (other owners):** `docs/architecture.md` (D-101..D-105, 3.4, ASM-3, 6.1 exit paragraph and the D-36 row; the architect); the README exit table; SDD-app 4.4, SDD-ui CT-UI-12; `Cargo.toml`, `deny.toml`, `package.json`, `ci/`, `.github/workflows/ci.yml` and `third_party/stockfish/fetch.sh` (software engineer). Their working-tree changes seen in `git status` are not part of this entry and were not reviewed.
+- **Inferences in CR-19, to confirm (OQ-CLI-008 to OQ-CLI-011):** cancel at the ECO prompt and end of input at a prompt of a subcommand read as exit 1; stdout write failure proposed as exit 1; whether `-V` exists; what a signal mid-PGN-import leaves stored (the core's rule). SIGHUP for headless runs and `serve` extends signals named in CR-5 and PLAT-4; PLAT-4 text is not amended.
+- **Carried from CR-18:** the F7 fallback was not named in the ruling as relayed; the specific action pin values, a named macOS image, branch protection and the first hosted CI run were not stated; the Stockfish tag commit is unconfirmed and `fetch.sh` does not check it; `UCI_Elo` out-of-range behaviour is not determined; no Intel hardware run.
+- **Not run:** nothing was built or executed for this entry; no Mermaid block changed. Test rows are planned designs, not results. No Reviewer pass was made of this entry or of the SDD amendment; the Decision Log wording relays the coordinator's summary and not Brian's words.
+
 ## Follow-up decisions recorded (CR-17): per-payload Latin-1, pre-release `v1`, mode-policy changes: 2026-11-09
 
 Documentation for the decisions (G0 record keeping) plus G1 text amendments of two SDDs and the architecture addendum. Brian Prascher (G2/G3 approver) decided on 2026-11-09, typed in session and relayed by the coordinator (no verbatim quotation was supplied); logged as **CR-17** (`docs/requirements.md`, Decision Log and change history, Amendment 8, extension 7). **No requirement statement, pass criterion, verification-case content or ID changed. Nothing was renumbered.** The six decision beads of CR-16 (chess-b9j, chess-9mm, chess-7m5, chess-4yc, chess-ebi, chess-0yz) are cited as one group by his decision. Trackers: chess-9o7 (closed), chess-n3h, chess-3ey (closed), chess-9iy.

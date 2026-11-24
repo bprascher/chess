@@ -2,7 +2,7 @@
 
 | Document | Version | Date | Status | Owner | Approver |
 |---|---|---|---|---|---|
-| docs/use_cases/UC-27_run_scripted_headless_game.md | **1.0** | 2026-10-28 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
+| docs/use_cases/UC-27_run_scripted_headless_game.md | **1.0.1** | 2026-11-09 | **Baselined v1.0, 2026-10-28** (approved by the user). Derived from requirements v1.0 Amendment 3 (CR-5), architecture v1.0 amendment 3 and functional_decomp v1.0 | Systems engineer role (Claude), for Brian Prascher | Brian Prascher (user): **approved 2026-10-28** |
 
 **Goal in Context:** The User wants a script to run a complete game from command-line flags with no prompts, and to get the finished game as PGN and a usable exit status.
 
@@ -46,7 +46,7 @@
   - 2c1. System fails as 2a (CLI-4): a human side needs input that a script cannot give. Use case fails.
 - **3a.** The engine fails or the game cannot be completed:
   - 3a1. System exits non-zero (CLI-5, ENG-4): code 2 when the engine is unavailable, 3 on a store error. The game stays resumable if moves were stored. Use case fails.
-- **3b.** The run receives SIGINT or SIGTERM:
+- **3b.** The run receives SIGINT, SIGTERM or SIGHUP:
   - 3b1. System leaves an unfinished game that can be resumed as a watched game (RULE-5, UC-9), prints no PGN, and exits with code 4 (CLI-4, CLI-5). Use case fails.
 
 **Technology and Data Variations:**
@@ -86,3 +86,4 @@
 | 0.2 | 2026-10-28 | CR-4: scripted runs are computer-only, stored and rated, with `--data-dir` for isolation (CLI-4, CLI-5; UG-13, A-5 closed). |
 | 0.3 | 2026-10-28 | Consistency pass (requirements Amendment 3, CR-5): baseline references updated to architecture amendment 3 and functional_decomp v0.3; version aligned across the set. Exit codes closed (TBD-21), signal extension 3b, scripted human play via plain mode. |
 | 1.0 | 2026-10-28 | Baselined: approved by the user. Content unchanged from 0.3; references to functional_decomp updated to v1.0. |
+| 1.0.1 | 2026-11-09 | Amendment (CR-19 A1 and CR-20, Brian Prascher's G3 decisions): extension 3b names SIGHUP with SIGINT and SIGTERM (exit 4, same outcome). Text by the systems engineer; not independently reviewed; no approval beyond Brian Prascher's decisions is claimed. |
