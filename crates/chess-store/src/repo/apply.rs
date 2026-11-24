@@ -455,10 +455,6 @@ fn apply_voided(tx: &Connection, key: i64, payload: &VoidedPayload) -> Result<()
 /// clocks if the plan has some, and set `journal_seq` **exactly** to `journal_seq` when given
 /// (the rebase sets the new file's last `seq`, which can be lower than the old value; `None`
 /// leaves it). Idempotent: the plan applied twice leaves what it left once.
-#[allow(
-    dead_code,
-    reason = "called by part D4 (open_for_resume, rebase step 2, startup recovery); tested here"
-)]
 pub(crate) fn apply_reconcile_plan(
     conn: &mut Connection,
     game: GameId,

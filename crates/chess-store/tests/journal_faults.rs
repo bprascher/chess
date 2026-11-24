@@ -418,7 +418,7 @@ fn ct_st_089_both_directories_are_synced_before_the_second_move() {
     drop(guard);
     // The startup path completes it by moving the .rebase into place.
     assert_eq!(
-        chess_store::journal::settle_rebase_files(&jdir, game).unwrap(),
+        chess_store::journal::settle_rebase_files(&jdir, game, Uuid::from_u128(STORE)).unwrap(),
         chess_store::journal::Settled::RenamedIntoPlace
     );
     assert!(scan(dir.path(), 60).damaged.is_none());

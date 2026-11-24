@@ -13,6 +13,7 @@ pub(crate) mod jobs;
 pub(crate) mod lifecycle;
 pub(crate) mod player;
 pub(crate) mod rating;
+pub(crate) mod resume;
 pub(crate) mod stats;
 
 use chess_domain::{GameId, PlayerId};

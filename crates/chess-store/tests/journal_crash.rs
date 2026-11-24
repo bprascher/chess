@@ -140,7 +140,8 @@ fn make_damaged(dir: &Path) -> Vec<u8> {
 fn rebase_routine(dir: &Path) -> Result<(), JournalError> {
     let game = Uuid::from_u128(GAME);
     let dirj = jdir(dir);
-    settle_rebase_files(&dirj, game).map_err(|e| JournalError::write_failed_for_test(&e))?;
+    settle_rebase_files(&dirj, game, Uuid::from_u128(STORE))
+        .map_err(|e| JournalError::write_failed_for_test(&e))?;
     let path = jpath(dir, GAME);
     let Ok(bytes) = fs::read(&path) else {
         return Ok(());
