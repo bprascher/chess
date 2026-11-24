@@ -1,6 +1,6 @@
 # Workspace per docs/architecture.md section 3.1 and 3.2.
-# Workspace crates only; no third-party dependency is declared yet
-# (docs/engineering/step1-scaffolding-evidence.md).
+# Third-party versions are declared once, in [workspace.dependencies] below. A crate opts in with
+# `name = { workspace = true }` (and may add features there). Each crate adds only its own entries.
 [workspace]
 resolver = "3"
 members = [
@@ -31,6 +31,69 @@ chess-engine = { path = "crates/chess-engine" }
 chess-store = { path = "crates/chess-store" }
 chess-app = { path = "crates/chess-app" }
 chess-server = { path = "crates/chess-server" }
+
+# Third-party dependencies, step 2 (chess-store, chess-engine, chess-app, chess-cli, chess-server).
+# Source: docs/engineering/dependency-lookup-step2.md section 2 (pins) and 5A (features, decisions
+# DL2-1..15 accepted by Brian Prascher 2026-11-09, G2); architecture section 3.4. Exact `=` pins,
+# as in the step-1 crate manifests. Nothing here is built until a crate lists it.
+# Not listed yet (later tasks): tauri, tauri-build (desktop/src-tauri), npm packages (chess-dfi),
+# libc and rustix (DL2-14: none admitted), tokio-stream (not admitted), tracing-appender (dropped, DL2-6 A).
+# Step-1 crates (shakmaty, serde and thiserror in chess-domain and chess-rules, uuid in chess-domain,
+# proptest) keep their own `=` pins in their manifests; the values below equal them.
+
+# --- runtime ---
+# tokio features are per crate (DL2-5); a crate adds them with `tokio = { workspace = true, features = [...] }`:
+#   chess-store  : sync, rt, time
+#   chess-engine : process, io-util, sync, time, rt, macros
+#   chess-app    : rt-multi-thread, sync, time, macros
+#   chess-cli    : rt-multi-thread, macros, signal, sync, time
+#   chess-server : rt-multi-thread, net, sync, time, macros
+# 1.54.0 is yanked (RUSTSEC-2026-0384); the exact pin keeps a lock refresh away from it (F11).
+tokio = { version = "=1.54.1", default-features = false }
+# chess-store only. Not the defaults: they add ffi-sqlite-wasm-rs and the statement cache (F9).
+rusqlite = { version = "=0.41.1", default-features = false, features = ["bundled"] }
+# chess-store: journal record checksum (D-6).
+crc32fast = "=1.5.3"
+# store, app (domain keeps its own pin). No `v4`: ids from random bytes via getrandom (DL2-4 A).
+uuid = { version = "=1.29.0", default-features = false, features = ["v5", "serde"] }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+thiserror = "=2.0.21"
+tracing = "=0.1.44"
+# chess-app. No env-filter (DL2-6 A).
+tracing-subscriber = { version = "=0.3.23", default-features = false, features = ["fmt", "std"] }
+# chess-app. CancellationToken needs no feature.
+tokio-util = "=0.7.20"
+# app, cli, server. The server adds `sink` (D-17).
+futures-util = { version = "=0.3.34", default-features = false, features = ["std"] }
+# chess-app, archive export and import (DL2-1 A). Never call `extract` (F8).
+zip = { version = "=9.1.3", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+# chess-app, content_hash (DL2-2 A).
+sha2 = { version = "=0.11.1", default-features = false }
+# chess-app only, file frames (DL2-3 A).
+base64 = { version = "=0.23.1", default-features = false, features = ["std"] }
+# chess-app, OS random source (DL2-4 A).
+getrandom = "=0.4.3"
+unicode-segmentation = "=1.13.3"
+unicode-normalization = "=0.1.26"
+# chess-app generates the TypeScript types; the crate's `ts` Cargo feature is the project's own (architecture 3.4).
+ts-rs = "=12.0.1"
+# chess-cli.
+toml = "=1.1.8"
+clap = { version = "=4.6.7", features = ["derive"] }
+ratatui = "=0.30.2"
+crossterm = { version = "=0.29.0", features = ["event-stream"] }
+# chess-server. Only http1, tokio, ws (DL2-15: ws brings tokio-tungstenite).
+axum = { version = "=0.8.9", default-features = false, features = ["http1", "tokio", "ws"] }
+rust-embed = "=8.13.0"
+
+# --- dev only (use under [dev-dependencies]) ---
+tempfile = "=3.27.0"
+proptest = "=1.12.0"
+insta = "=1.49.0"
+# CLI end-to-end through a PTY (DL2-11 A). Brings the unmaintained pin-utils (deny.toml ignore, VULN-004).
+expectrl = "=0.9.0"
+vt100 = "=0.18.1"
 
 [workspace.lints.rust]
 # Warnings are errors (SWE-001 ASM-S2). A suppression needs a written reason.

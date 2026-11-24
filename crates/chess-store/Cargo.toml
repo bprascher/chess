@@ -6,8 +6,30 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+# DD-ST-024: `FaultPlan` and the failpoint registry (part D1). Off by default: the type is not
+# in the public surface and the call sites compile to nothing. Enabled by this crate's own
+# tests and by later test-only users.
+test-support = []
+
 [dependencies]
 chess-domain.workspace = true
+# Inherited from the root [workspace.dependencies] (step2-prep-evidence.md section 5, DL2-5).
+# tokio features for this crate: sync, rt, time (DL2-5, SDD-chess-store 3.4).
+tokio = { workspace = true, features = ["sync", "rt", "time"] }
+rusqlite.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+# DL2 (admitted, pinned in the root [workspace.dependencies]): CRC-32/ISO-HDLC of the journal format
+# (SF-08, spike OQ-14).
+crc32fast.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+proptest.workspace = true
 
 [lints]
 workspace = true

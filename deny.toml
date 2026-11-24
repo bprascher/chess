@@ -5,16 +5,31 @@
 
 [graph]
 all-features = true
+# The product is macOS only (PLAT-1). Without this, Linux and Windows only crates (for example the
+# Tauri GTK stack) are checked and raise findings for code that is never built here.
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin"]
 
 [advisories]
 version = 2
 yanked = "deny"
-# No ignore entries. An ignore needs a written reason and a Decision Log entry (SWE-001 section 5).
-ignore = []
+# An ignore needs a written reason and a Decision Log entry (SWE-001 section 5).
+ignore = [
+    # RUSTSEC-2026-0441: `pin-utils` 0.1.1 is unmaintained (informational, not a vulnerability).
+    # Reached only through the dev-dependency chain expectrl -> nix 0.26.4 -> pin-utils (CLI
+    # end-to-end tests, DL2-11 A). No safe upgrade exists. cargo-deny has no dev-only scope, so
+    # this waives the advisory for every crate; any other unmaintained crate still fails.
+    # Decision: F3 option B, Brian Prascher, 2026-11-09 (G2). Record: VULN-004.
+    # Revisit when expectrl or ptyprocess leaves nix 0.26, or the advisory gets a fix; and at the
+    # CLI end-to-end task and at release.
+    { id = "RUSTSEC-2026-0441", reason = "unmaintained pin-utils, dev-only via expectrl -> nix 0.26.4; no fix exists; VULN-004" },
+]
 
 [licenses]
 version = 2
 confidence-threshold = 0.9
+# Allow-list entries are written ahead of the crates that need them (F4 option A), so
+# "not encountered" is expected until those crates are in Cargo.lock. Silenced for licences only.
+unused-allowed-license = "allow"
 allow = [
     "MIT",
     "Apache-2.0",
@@ -22,6 +37,22 @@ allow = [
     "Unicode-3.0",
     "Unlicense",
     "GPL-3.0-or-later",
+    # Permissive. Used by foldhash and zlib-rs (zip, DL2-1 A). Decision: F4 option A, 2026-11-09.
+    "Zlib",
+]
+# MPL-2.0 is file-level copyleft and its text names the GNU GPL as a Secondary License, so it
+# combines with this GPL-3.0-or-later project (a reading of licence names, not legal advice).
+# It is allowed per crate, not globally, so a new MPL-2.0 crate stays visible and triggers the
+# notice duty (NFR-6). All five arrive through Tauri: cssparser, cssparser-macros, dtoa-short and
+# selectors through tauri-utils -> dom_query; option-ext through dirs-sys -> tauri-build.
+# Re-check against the real Cargo.lock when desktop/src-tauri gets its first dependency
+# (dependency-lookup-step2.md section 4.1, ASM-DL2-2).
+exceptions = [
+    { allow = ["MPL-2.0"], crate = "cssparser" },
+    { allow = ["MPL-2.0"], crate = "cssparser-macros" },
+    { allow = ["MPL-2.0"], crate = "dtoa-short" },
+    { allow = ["MPL-2.0"], crate = "selectors" },
+    { allow = ["MPL-2.0"], crate = "option-ext" },
 ]
 
 [licenses.private]

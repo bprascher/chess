@@ -13,12 +13,21 @@ jobs:
     # macOS only: the product is a macOS app (PLAT-1). Intel is built, not run (test-strategy).
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      # Actions are pinned by commit SHA (chess-85m, decision of 2026-11-06). The tag in the trailing
+      # comment was re-checked with read-only `git ls-remote` on 2026-11-09. Update SHA and comment together.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       # rustup reads rust-toolchain.toml (1.99.1, stable only, D-76) and installs it.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "26.13.0"
       # Fresh resolve, no --locked: the published locks of cargo-deny carry known
       # vulnerabilities (dependency-lookup-step1.md F5).
       - run: cargo install cargo-deny --version 0.20.2
+      # The real-Stockfish tests (FF-7, EI-EN-002) must run on the clean machine, not skip: ci/check.sh
+      # fails when the binary is absent. fetch.sh downloads the pinned Stockfish 19 release (NEEDS THE
+      # NETWORK) and enforces the pinned SHA-256 of the archive (exit 2 on a mismatch). It needs curl,
+      # tar, shasum, lipo and jq on the runner [UNV: not run on a hosted runner; chess-a0r.3.10 rework].
+      - run: third_party/stockfish/fetch.sh
+      # ci/check.sh is the gate of record (chess-85m option C): the same script runs locally.
+      # This hosted run is a clean-machine second opinion, not a different set of checks.
       - run: ci/check.sh
