@@ -2,7 +2,7 @@
 
 An offline, single-machine chess application for macOS with three front-ends (terminal UI, local web UI, desktop app) on top of one shared Rust core, using Stockfish as the engine.
 
-> **Status: requirements and architecture baselined v1.0 (2026-10-26) with Amendment 8 and its addenda; all nine SDDs baselined v1.0 (eight on 2026-11-05; the rules SDD on 2026-11-09, per Brian Prascher's decision B4); Phase 1 (design closure) closed 2026-11-06; Phase 2 (foundation: Cargo workspace, `chess-rules`, `chess-domain`) is complete and gate G-3 passed with conditions on 2026-11-09. Phase 3 has not started.** The delivery plan is tracked in beads (see [Project management](#project-management)). Open items need measurement or a check during implementation (TBD register in [docs/requirements.md](docs/requirements.md), §14 of [docs/architecture.md](docs/architecture.md)). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced.
+> **Status: requirements and architecture baselined v1.0 (2026-10-26) with Amendment 8 and its addenda; all nine SDDs baselined v1.0 (eight on 2026-11-05; the rules SDD on 2026-11-09, per Brian Prascher's decision B4); Phase 1 (design closure) closed 2026-11-06; Phase 2 (foundation: Cargo workspace, `chess-rules`, `chess-domain`) is complete and gate G-3 passed with conditions on 2026-11-09. Phase 3 (core services) is in progress: `chess-engine` and `chess-store` (through part D3) are built and reviewed, GATE-108 (store part B) was approved with conditions on 2026-11-24, and GATE-109 to GATE-111 are waiting for Brian Prascher.** The delivery plan is tracked in beads (see [Project management](#project-management)). Open items need measurement or a check during implementation (TBD register in [docs/requirements.md](docs/requirements.md), §14 of [docs/architecture.md](docs/architecture.md)). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced.
 
 ## Planned features
 
@@ -64,8 +64,14 @@ Online or network play (a possible future enhancement), matchmaking, accounts wi
 
 ## Project management
 
-Work is tracked with [beads](https://github.com/gastownhall/beads) (`bd`). The approved delivery plan is the program epic `chess-a0r` with five phases: design closure, foundation, core services, GUI/desktop/packaging, and verification and release. The plan is baselined (currently B4). Run `bd show chess-a0r` for the plan and `bd ready --exclude-type epic` for available work. Six human gates (G-1 to G-6) belong to Brian Prascher; G-1 (Board findings) and G-2 (Amendment 8 and OQ-16) passed on 2026-11-04, and Phase 1 closed on 2026-11-06. `.beads/issues.jsonl` is a passive export of the tracker, and `.pm/` holds the baseline snapshots.
+Work is tracked with [beads](https://github.com/gastownhall/beads) (`bd`). The approved delivery plan is the program epic `chess-a0r` with five phases: design closure, foundation, core services, GUI/desktop/packaging, and verification and release. The plan is baselined (currently B6). Run `bd show chess-a0r` for the plan and `bd ready --exclude-type epic` for available work. Six human gates (G-1 to G-6) belong to Brian Prascher; G-1 (Board findings) and G-2 (Amendment 8 and OQ-16) passed on 2026-11-04, and Phase 1 closed on 2026-11-06. `.beads/issues.jsonl` is a passive export of the tracker, and `.pm/` holds the baseline snapshots.
 
 ## Next steps
 
-Phase 1 (design closure) and Phase 2 (foundation) are closed. The Cargo workspace, CI and quality-gate scaffolding, `chess-rules` (types, FEN, move generation, SAN, PGN, ECO table) and `chess-domain` are built and reviewed; gate G-3 passed with conditions on 2026-11-09 (Brian Prascher), and open conditions are tracked in beads (see RELEASE_NOTES.md). `chess-store` code waits on the `flock`/`F_FULLFSYNC` spike and the remaining crate lookups. Phase 3 starts when Brian says so. See section 13 of [docs/architecture.md](docs/architecture.md) and `bd ready`.
+Phases 1 and 2 are closed (gate G-3 passed with conditions on 2026-11-09). Phase 3 is in progress on branch `feat/step2-core-services`:
+
+- **Built and reviewed:** `chess-engine` (UCI wrapper, driver, arbiter, pool) and `chess-store` parts A, B, D1, D2, D5 and D3 (SQLite repositories, per-game journal, leases, open path, finalize, backlog). The offline gate `CHESS_CI_OFFLINE=1 ci/check.sh` passes (114 test binaries). Stockfish 19 is fetched by `third_party/stockfish/fetch.sh`.
+- **Gates:** GATE-108 (store part B) approved with conditions on 2026-11-24. GATE-109 (D2), GATE-110 (D5) and GATE-111 (D3) are open and are Brian Prascher's to approve.
+- **Next:** `chess-store` D4 (resume, rebase and start-up recovery) and part C, then the shared core `chess-app`, the protocol types, the CLI and the server. Later phases cover the GUI, desktop shell, packaging and release.
+
+Not yet run: power loss, a hosted CI run, Intel hardware and the online `npm audit` path. See section 13 of [docs/architecture.md](docs/architecture.md), [RELEASE_NOTES.md](RELEASE_NOTES.md) and `bd ready`.

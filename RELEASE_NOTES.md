@@ -1,5 +1,25 @@
 # Release Notes
 
+## Phase 3 step 2 built through store part D3; GATE-108 approved with conditions: 2026-11-24
+
+Brian Prascher ruled on 2026-11-24 in genuine user messages. Rulings are in decision beads chess-a0r.3.52 and chess-a0r.3.56 (baseline B6). The code is committed on branch `feat/step2-core-services`.
+
+### Built
+- **`chess-engine`:** UCI wrapper, driver, arbiter, pool and a fake engine for tests. Stockfish 19 is fetched by `third_party/stockfish/fetch.sh`, and CI fetches it before the gate.
+- **`chess-store`:** SQLite repositories, the per-game journal (CRC frames, flushed before each move is acknowledged), rebase, leases, the process registry, the open path (first launch, interrupted creation, `create_fresh`), finalize, rating and statistics, and the backlog for applying journal records (parts A, B, D1, D2, D5, D3).
+- **Verification:** `CHESS_CI_OFFLINE=1 ci/check.sh` printed "All gates passed" (114 test binaries, 0 failed), run by the program manager. Reviewer and engineer test, mutation and kill-round figures are in `docs/engineering/` and are theirs, not re-run.
+
+### Decisions
+- **GATE-108 (store part B, G3; open path G2): approved with conditions by Brian Prascher.** Conditions: the approval covers the format as of the reviewer's snapshot (the `ended_at` and matchup rules are approved under GATE-111); F2-07 accepted as closed; the engineer states the status of B-R04; the gate record is brought up to date (G0).
+- **D3 rulings, all accepted as recommended:** the journal refuses `ended_at` or `wall_ms` of 0 or below; a game parks on the first permanent error, with an inspect and clear API and a bound on the queue; `Start.matchup` text `hh|hc|cc`; the new public surface; imported games excluded from statistics; NULL `started_at` last in `list_games`; the `$TMPDIR` dependency of the hot-journal rule accepted. B-R03 and B-R05 are assigned to D4.
+- **Earlier 2026-11-22 and 2026-11-23 rulings** are recorded as CR-26 to CR-31 (see the entry below).
+
+### Not done
+- **GATE-109 (D2, G3), GATE-110 (D5, G2) and GATE-111 (D3, G3) are not approved.** They are Brian's.
+- Open: B-R03, B-R05 (D4); minor findings in chess-a0r.3.57; D4, store part C and `chess-app` are not started.
+- The Decision Log entry for the 2026-11-24 rulings is not yet in `docs/requirements.md`. The systems engineer still has to enter it.
+- Not run: power loss, a hosted CI run, Intel, the online `npm audit` path, sanitizers and cargo-mutants.
+
 ## Brian Prascher's 2026-11-22 and 2026-11-23 store rework rulings recorded (CR-26 to CR-31): 2026-11-23
 
 Documentation only. Brian Prascher ruled on 2026-11-22 and 2026-11-23 in genuine user messages relayed by the coordinator (tracker chess-a0r.3.50; no verbatim quotation). Baseline B6. Six Decision Log entries, split by gate class: **CR-26** (G2, 2026-11-22), **CR-27** (G3, 2026-11-22), **CR-28** (smaller items, 2026-11-22), **CR-29** (G2, 2026-11-23), **CR-30** (G3, 2026-11-23), **CR-31** (G1, 2026-11-23). The systems engineer approved nothing and committed nothing. **The code changes are being reviewed; no gate is approved. GATE-108, GATE-109 and GATE-110 are Brian's and have not been given. Delegation of G2 and G3 decisions to the program manager remains declined.**
