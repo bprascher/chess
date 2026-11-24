@@ -2,7 +2,7 @@
 
 An offline, single-machine chess application for macOS with three front-ends (terminal UI, local web UI, desktop app) on top of one shared Rust core, using Stockfish as the engine.
 
-> **Status: requirements and architecture baselined v1.0 (2026-10-26) with Amendment 8 and its addenda; all nine SDDs baselined v1.0 (eight on 2026-11-05; the rules SDD on 2026-11-09, per Brian Prascher's decision B4); Phase 1 (design closure) closed 2026-11-06; Phase 2 (foundation: Cargo workspace, `chess-rules`, `chess-domain`) is complete and gate G-3 passed with conditions on 2026-11-09. Phase 3 (core services) is in progress: `chess-engine` and `chess-store` (through part D3) are built and reviewed, GATE-108 (store part B) was approved with conditions on 2026-11-24, and GATE-109 to GATE-111 are waiting for Brian Prascher.** The delivery plan is tracked in beads (see [Project management](#project-management)). Open items need measurement or a check during implementation (TBD register in [docs/requirements.md](docs/requirements.md), §14 of [docs/architecture.md](docs/architecture.md)). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced.
+> **Status: requirements and architecture baselined v1.0 (2026-10-26) with Amendment 8 and its addenda; all nine SDDs baselined v1.0 (eight on 2026-11-05; the rules SDD on 2026-11-09, per Brian Prascher's decision B4); Phase 1 (design closure) closed 2026-11-06; Phase 2 (foundation: Cargo workspace, `chess-rules`, `chess-domain`) is complete and gate G-3 passed with conditions on 2026-11-09. Phase 3 (core services) is in progress: `chess-engine` and `chess-store` (through part D4) are built, GATE-108 (store part B) and GATE-109 (D2) were approved with conditions, and GATE-110 to GATE-112 are waiting for Brian Prascher.** The delivery plan is tracked in beads (see [Project management](#project-management)). Open items need measurement or a check during implementation (TBD register in [docs/requirements.md](docs/requirements.md), §14 of [docs/architecture.md](docs/architecture.md)). See [RELEASE_NOTES.md](RELEASE_NOTES.md) for what has been produced.
 
 ## Planned features
 
@@ -70,8 +70,8 @@ Work is tracked with [beads](https://github.com/gastownhall/beads) (`bd`). The a
 
 Phases 1 and 2 are closed (gate G-3 passed with conditions on 2026-11-09). Phase 3 is in progress on branch `feat/step2-core-services`:
 
-- **Built and reviewed:** `chess-engine` (UCI wrapper, driver, arbiter, pool) and `chess-store` parts A, B, D1, D2, D5 and D3 (SQLite repositories, per-game journal, leases, open path, finalize, backlog). The offline gate `CHESS_CI_OFFLINE=1 ci/check.sh` passes (114 test binaries). Stockfish 19 is fetched by `third_party/stockfish/fetch.sh`.
-- **Gates:** GATE-108 (store part B) approved with conditions on 2026-11-24. GATE-109 (D2), GATE-110 (D5) and GATE-111 (D3) are open and are Brian Prascher's to approve.
-- **Next:** `chess-store` D4 (resume, rebase and start-up recovery) and part C, then the shared core `chess-app`, the protocol types, the CLI and the server. Later phases cover the GUI, desktop shell, packaging and release.
+- **Built and reviewed:** `chess-engine` (UCI wrapper, driver, arbiter, pool) and `chess-store` parts A, B, D1, D2, D5, D3 and D4 (SQLite repositories, per-game journal, leases, open path, finalize, backlog, resume and start-up recovery; D4 awaits its reviewer pass). The offline gate `CHESS_CI_OFFLINE=1 ci/check.sh` passes (130 test binaries). Stockfish 19 is fetched by `third_party/stockfish/fetch.sh`.
+- **Gates:** GATE-108 (store part B) and GATE-109 (D2) are approved with conditions. GATE-110 (D5), GATE-111 (D3) and GATE-112 (D4) are open and are Brian Prascher's to approve.
+- **Next:** `chess-store` part C (backup, restore), then the shared core `chess-app`, the protocol types, the CLI and the server. Later phases cover the GUI, desktop shell, packaging and release.
 
 Not yet run: power loss, a hosted CI run, Intel hardware and the online `npm audit` path. See section 13 of [docs/architecture.md](docs/architecture.md), [RELEASE_NOTES.md](RELEASE_NOTES.md) and `bd ready`.

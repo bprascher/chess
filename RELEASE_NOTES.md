@@ -1,5 +1,23 @@
 # Release Notes
 
+## Store part D4 built; GATE-109 approved with conditions: 2026-11-25
+
+Brian Prascher approved GATE-109 (store part D2, G3 with G2 public items) with conditions in a genuine user message. The program manager records the ruling in a decision bead and the Decision Log text is still to be entered, so this entry is the first record of it. The code is committed on branch `feat/step2-store-d4` and merged to `main`.
+
+### Built
+- **`chess-store` part D4 (chess-a0r.3.40):** `open_for_resume`, rebase orchestration, start-up recovery inside `Store::open`, the B-R03 repair (`close_final`, using `same_file`), the B-R05 repair (an incomplete `.rebase` is moved to `damaged/`, bytes kept), the whole journal applied in one call, and the B-R04 fix (an 80 ms lock grace in `create`).
+- **Verification:** `CHESS_CI_OFFLINE=1 ci/check.sh` printed "All gates passed" (130 test binaries, 0 failed), run by the program manager. D4 test counts, mutants and kill rounds are the engineer's figures and were not re-run. A fresh reviewer pass on D4 has not run.
+
+### Decisions
+- **GATE-109 (store part D2: game lifecycle writes and ratings): approved with conditions.** Conditions: (1) GATE-111 re-lists its edits to D2 files and the D2 tests stay green; (2) F2-05 (`set_analysis_used` refuses a game that is not `in_progress`, unless the flag is already set) is accepted as built; (3) the three unwired failpoints (`finalize.after_journal_end`, `finalize.after_commit_before_rename`, `reset.after_commit_before_voided_record`) are wired before the first release.
+- **B-R04 is closed** (GATE-108 condition 3). B-R03 and B-R05 are fixed in D4 and await review.
+
+### Not done
+- **GATE-110 (D5, G2), GATE-111 (D3, G3) and GATE-112 (D4, G3) are not approved.** They are Brian's.
+- D4 has not had a fresh reviewer pass. D4 differs from the SDD in the `open_for_resume` return type and the `StoredMove` and `ClockPair` names; start-up recovery runs inside `Store::open`; the plan applier keeps its 5 s lock wait. These need Brian's review under GATE-112.
+- Store part C and `chess-app` are not started.
+- Not run: power loss, a hosted CI run, Intel, the online `npm audit` path, sanitizers and cargo-mutants.
+
 ## Phase 3 step 2 built through store part D3; GATE-108 approved with conditions: 2026-11-24 (Decision Log text entered 2026-11-25)
 
 Brian Prascher ruled on 2026-11-24 and approved GATE-108 on 2026-11-25, in genuine user messages relayed by the coordinator. Rulings are in decision beads chess-a0r.3.52, chess-a0r.3.56 and chess-a0r.3.58 (baseline B6). The code is committed on branch `feat/step2-core-services`.
