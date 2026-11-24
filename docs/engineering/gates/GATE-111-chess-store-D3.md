@@ -5,7 +5,7 @@
 | Gate | **GATE-111** (follows GATE-110, part D5) |
 | Tier | **G3.** Q2 yes (new public items of `chess-store`: `Store::apply_records`, `Store::sync_backlog`, `Store::backlog_status`, `ApplyOutcome`, `BacklogStatus`) makes it G2 on its own. Q8 yes: the change writes **stored shapes and values** that are irreversible once released: `MOVE.ply = journal ply + 1` (D-92), the `GAME` row that a `Start` record creates (`started_at` = `wall_ms`, frozen `rated`/`self_play`/`custom_start`), the `GAME.termination` text that a `GameEnd` reason maps to, the void fields written from a `Voided` record, and `GAME.journal_seq` rules (monotone for a batch, exact for a plan). Per GATE-103 and the D2 precedent (GATE-109) the highest tier any question gives applies |
 | Approver | **Brian Prascher** (G2 and G3 per SWE-001 section 3). A desk review of the System Architect never satisfies G2 or G3 |
-| Status | **OPEN. NOT APPROVED.** No approval has been received from anyone. The author is the Engineer stance and does not approve its own gate. GATE-108, GATE-109 and GATE-110 are also not approved |
+| Status | **OPEN. NOT APPROVED.** No approval has been received from anyone. The author is the Engineer stance and does not approve its own gate. GATE-108 was **approved with conditions by Brian Prascher on 2026-11-25** (CR-35); GATE-109 and GATE-110 are not approved. Header text is history as of 2026-11-23; see "Record update 2026-11-25" |
 | Date opened | 2026-11-23 |
 | Opened by | Software engineer (task chess-a0r.3.39, Engineer stance, run-to-gate, CR chess-a0r.20, baseline B6) |
 | Covers | `crates/chess-store` only, plus two documents. New: `src/repo/apply.rs`, `src/backlog.rs`, `src/store/d3.rs`, `tests/apply.rs`, `tests/apply_backlog.rs`. Additive or behavior-preserving edits: `src/thread.rs` (command loop, backlog, tests), `src/store.rs` (spawn wiring, one private option field, one test-support builder), `src/api.rs` (two types appended), `src/lib.rs` (module and exports), `src/repo/mod.rs` (one line), `src/repo/finalize.rs` (the bodies of `finalize_game` and `abort_game` moved into `finalize_in_tx` and `abort_in_tx`; the wrappers keep the transaction, the failpoint and the commit; D2 tests unchanged and green). Not edited: `error.rs`, `fault.rs` (the two failpoints were already registered), `lifecycle.rs`, every SDD, root `Cargo.toml`, `deny.toml`, `ci/` |
@@ -28,7 +28,7 @@
 
 | Item | Status |
 |---|---|
-| Reviewer pass (part D3) | NOT DONE |
+| Reviewer pass (part D3) | **Done (superseded 2026-11-25; was "NOT DONE").** See "Record update 2026-11-25" |
 | G3 review step | not requested yet |
 | Approved by | nobody |
 
@@ -40,3 +40,11 @@
 - **Rollback:** revert the hunks named in the evidence file; tested: no.
 - **Open for Brian / SDD owner:** `unpark_game` returns `Option<usize>`, the bounds are estimates, and `sync_backlog` now says `GameParked` where SDD 3.11.9 and the dated note (1) of 2026-11-23 say `Busy`; `StoreError` gained two variants (`non_exhaustive`).
 - **Reviewer pass of the 2026-11-24 changes:** NOT DONE. Approved by: nobody.
+
+## Record update 2026-11-25 (G0 record keeping, systems engineer; baseline B6)
+
+- **Status: still OPEN, NOT APPROVED. PENDING Brian Prascher (G3; public surface G2).** Brian's rulings of 2026-11-24 are recorded as **CR-32** (G3), **CR-33** (G2) and **CR-34** (smaller items); they are rulings, not a gate approval. GATE-111 is presented last of the four. **GATE-108 condition 1** puts the approval of the `ended_at` and `matchup` rules under this gate, so it is the gate that approves them.
+- **Reviewer reports (replace the stale "NOT DONE" and "none yet" lines above):** `docs/engineering/review-chess-store-D3.md` (earlier snapshot, before the rulings: PASS WITH CONDITIONS with two open Majors, FIND-D3-01 and FIND-D3-02; both are ruled and built); `docs/engineering/review-chess-store-D3-rulings.md` (code after the rulings: **PASS WITH CONDITIONS, no Major**; open: FIND-D3RL-01 and -02 documented-but-unenforced contracts, -03 sync timeout overshoot, -04 global transient mapping without retry cap, -05 four surviving non-equivalent mutants; the reviewer ran the suite and mutants himself; conditions in its section 8). The architect's `desk-review-G1-step2-D3.md` was before the rulings (three conditions DR-01 to DR-03).
+- **Decisions that touch this gate (architecture Addendum N, section 11.4.22):** **D-144** `ended_at` rule (G3), **D-145** uncurable-batch policy (G3 stored-value rule, results G2), **D-146** `Start.matchup` text (G3), **D-147** `journal_seq` rule (relay: G0 text; architect: stored-value rule G3), **D-148** new public surface (G2), **D-149** `void_game_repair_pair` deleted (G1), **D-150** statistics and list rules (G1), **D-151** `$TMPDIR` dependency accepted (G2), **D-152** D3-04 takeback deletes `move_eval`, D3-09 queue flush, D3-10 whole journal in one batch, **D-153** D4 acceptance lines for B-R03 and B-R05.
+- **Open for Brian, not ruled by value `[UNV]`:** `unpark_game` returns `Option<usize>`; the queue bounds (256 per game, 4 096 in all) are estimates; the transient-code list; `sync_backlog` returns `GameParked` where SDD 3.11.9 and its dated note say `Busy`; `StoreError` gained two variants.
+- The Reviewer verdicts are the agents' own and are not approvals. G2 and G3 decisions stay with Brian Prascher; the systems engineer approved nothing in this edit.

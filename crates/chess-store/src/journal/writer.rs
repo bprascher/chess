@@ -30,7 +30,7 @@ use uuid::Uuid;
 use crate::datadir::{DataDir, FILE_MODE};
 use crate::error::{JournalError, WriteCause, write_cause};
 use crate::fault;
-use crate::journal::files::{journal_path, move_no_replace, sync_dir};
+use crate::journal::files::{finish_close_final, journal_path};
 use crate::journal::format::{FormatError, JournalRecord, Payload, encode_header, encode_record};
 
 /// `probe`: whether a game's journal lock is held right now.
@@ -87,21 +87,31 @@ impl MoveJournal {
                     JournalError::write_failed(&e)
                 }
             })?;
-        let created = (|| -> Result<(), JournalError> {
-            file.try_lock().map_err(|e| match e {
-                fs::TryLockError::WouldBlock => JournalError::Locked { owner_kind: None },
-                fs::TryLockError::Error(e) => JournalError::write_failed(&e),
-            })?;
-            let header = encode_header(game.as_uuid(), self.store);
-            file.write_all(&header)
-                .and_then(|()| fault::sync_file("sync.journal_create_file", &path, &file))
-                .and_then(|()| {
-                    path.parent().map_or(Ok(()), |dir| {
-                        fault::sync_dir_named("sync.journal_create_dir", dir)
-                    })
+        // B-R04: another descriptor can hold the lock of the file for a moment between its
+        // creation and our `try_lock`: `probe` (lock, unlock) or a resume that found the new
+        // name. A prober lets go within microseconds, so `WouldBlock` is retried for a short
+        // grace period. If the holder stays, the file belongs to it: this call reports `Locked`
+        // and **does not remove the file** (it used to, which could delete a holder's file).
+        match lock_with_grace(&file) {
+            Ok(()) => {}
+            Err(fs::TryLockError::WouldBlock) => {
+                return Err(JournalError::Locked { owner_kind: None });
+            }
+            Err(fs::TryLockError::Error(e)) => {
+                let _ = fs::remove_file(&path);
+                return Err(JournalError::write_failed(&e));
+            }
+        }
+        let header = encode_header(game.as_uuid(), self.store);
+        let created = file
+            .write_all(&header)
+            .and_then(|()| fault::sync_file("sync.journal_create_file", &path, &file))
+            .and_then(|()| {
+                path.parent().map_or(Ok(()), |dir| {
+                    fault::sync_dir_named("sync.journal_create_dir", dir)
                 })
-                .map_err(|e| JournalError::write_failed(&e))
-        })();
+            })
+            .map_err(|e| JournalError::write_failed(&e));
         if let Err(error) = created {
             let _ = fs::remove_file(&path);
             return Err(error);
@@ -115,6 +125,26 @@ impl MoveJournal {
     /// not proven free.
     pub fn probe(&self, game: &GameId) -> LeaseState {
         probe_path(&self.path(game))
+    }
+}
+
+/// How long a `try_lock` that meets `WouldBlock` keeps trying (B-R04): 40 tries 2 ms apart,
+/// about 80 ms at most. A prober holds the lock for microseconds; a live session holds it for
+/// the life of the game, and then the caller pays this one wait before it is told `Locked`.
+const LOCK_GRACE_TRIES: u32 = 40;
+const LOCK_GRACE_STEP: std::time::Duration = std::time::Duration::from_millis(2);
+
+/// `File::try_lock` with the grace period above.
+pub(crate) fn lock_with_grace(file: &File) -> Result<(), fs::TryLockError> {
+    let mut tries = 0;
+    loop {
+        match file.try_lock() {
+            Err(fs::TryLockError::WouldBlock) if tries < LOCK_GRACE_TRIES => {
+                tries += 1;
+                std::thread::sleep(LOCK_GRACE_STEP);
+            }
+            other => return other,
+        }
     }
 }
 
@@ -242,17 +272,15 @@ impl JournalWriter {
     }
 
     /// Appends nothing further: moves the file to `journal/done/` (no replace), syncs both
-    /// directories and releases the lock.
+    /// directories and releases the lock. **Crash-idempotent (B-R03, D-153):** the move is
+    /// `hard_link` then `remove_file`; if an earlier attempt died between the two calls and the
+    /// journal exists under both names, the same call finishes the move by removing the old
+    /// name (`finish_close_final`, same device and inode). A `done/` file that is a different
+    /// file is an error and nothing is touched. The failpoint `journal.close_final.linked` sits
+    /// between the two calls.
     pub fn close_final(self) -> Result<(), JournalError> {
         let path = self.inner.path.clone();
-        let fail = |e: &io::Error| JournalError::write_failed(e);
-        let dir = path.parent().ok_or(JournalError::Unreadable)?;
-        let name = path.file_name().ok_or(JournalError::Unreadable)?;
-        let done = dir.join("done");
-        crate::datadir::create_dir_0700(&done).map_err(|e| fail(&e))?;
-        move_no_replace(&path, &done.join(name)).map_err(|e| fail(&e))?;
-        sync_dir(dir).map_err(|e| fail(&e))?;
-        sync_dir(&done).map_err(|e| fail(&e))?;
+        finish_close_final(&path).map_err(|e| JournalError::write_failed(&e))?;
         // The lock is released when the last handle on the file drops with `self`.
         Ok(())
     }

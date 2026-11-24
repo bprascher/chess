@@ -95,10 +95,12 @@ const SDD_NAMES: [&str; 13] = [
     "restore.after_replay",
     "restore.before_rename",
 ];
-const NEW_NAMES: [&str; 3] = [
+const NEW_NAMES: [&str; 4] = [
     "backup.before_rename",
     "journal.rebase.old_linked",
     "journal.rebase.new_linked",
+    // Part D4 (B-R03, D-153): between `hard_link` and `remove_file` of `close_final`.
+    "journal.close_final.linked",
 ];
 
 #[test]

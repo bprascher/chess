@@ -468,12 +468,15 @@ fn settle_rebase_files_handles_the_crash_windows() {
     let game = Uuid::from_u128(30);
     let jnl = jdir.join(format!("{}.jnl", game.hyphenated()));
     let rebase = jdir.join(format!("{}.jnl.rebase", game.hyphenated()));
-    assert_eq!(settle_rebase_files(&jdir, game).unwrap(), Settled::Nothing);
+    assert_eq!(
+        settle_rebase_files(&jdir, game, Uuid::from_u128(STORE)).unwrap(),
+        Settled::Nothing
+    );
     // (a)/(b): a .rebase beside a (damaged) journal is stale and removed; the journal stays.
     fs::write(&jnl, b"damaged").unwrap();
     fs::write(&rebase, b"stale").unwrap();
     assert_eq!(
-        settle_rebase_files(&jdir, game).unwrap(),
+        settle_rebase_files(&jdir, game, Uuid::from_u128(STORE)).unwrap(),
         Settled::RemovedStaleRebase
     );
     assert!(!rebase.exists());
@@ -482,20 +485,121 @@ fn settle_rebase_files_handles_the_crash_windows() {
     fs::write(&jnl, b"rebased").unwrap();
     fs::hard_link(&jnl, &rebase).unwrap();
     assert_eq!(
-        settle_rebase_files(&jdir, game).unwrap(),
+        settle_rebase_files(&jdir, game, Uuid::from_u128(STORE)).unwrap(),
         Settled::RemovedStaleRebase
     );
     assert_eq!(fs::read(&jnl).unwrap(), b"rebased");
     assert_eq!(fs::metadata(&jnl).unwrap().nlink(), 1);
-    // (c): no journal, a complete .rebase: moved into place, never replacing.
+    // (c): no journal, a complete .rebase: moved into place, never replacing. "Complete" is
+    // checked (B-R05): a real rebase file, built the way the builder builds one.
+    let complete = {
+        let mut bytes = encode_header(game, Uuid::from_u128(STORE)).to_vec();
+        for record in [
+            JournalRecord {
+                seq: 1,
+                wall_ms: 5,
+                payload: jb::start(30),
+            },
+            JournalRecord {
+                seq: 2,
+                wall_ms: 5,
+                payload: jb::clock(1, 2),
+            },
+        ] {
+            bytes.extend(encode_record(&record).unwrap());
+        }
+        bytes
+    };
     fs::remove_file(&jnl).unwrap();
-    fs::write(&rebase, b"complete").unwrap();
+    fs::write(&rebase, &complete).unwrap();
     assert_eq!(
-        settle_rebase_files(&jdir, game).unwrap(),
+        settle_rebase_files(&jdir, game, Uuid::from_u128(STORE)).unwrap(),
         Settled::RenamedIntoPlace
     );
-    assert_eq!(fs::read(&jnl).unwrap(), b"complete");
+    assert_eq!(fs::read(&jnl).unwrap(), complete);
     assert!(!rebase.exists());
+}
+
+/// B-R05: an incomplete `.rebase` with no journal is not installed. Its bytes are kept under
+/// `damaged/<uuid>.<k>.rebase`; no `<uuid>.jnl` appears.
+#[test]
+fn b_r05_an_incomplete_rebase_is_moved_aside_and_never_installed() {
+    let dir = TempDir::new().unwrap();
+    let jdir = dir.path().join("journal");
+    fs::create_dir_all(&jdir).unwrap();
+    let game = Uuid::from_u128(31);
+    let jnl = jdir.join(format!("{}.jnl", game.hyphenated()));
+    let rebase = jdir.join(format!("{}.jnl.rebase", game.hyphenated()));
+    let store = Uuid::from_u128(STORE);
+    let mut good = encode_header(game, store).to_vec();
+    for record in [
+        JournalRecord {
+            seq: 1,
+            wall_ms: 5,
+            payload: jb::start(31),
+        },
+        JournalRecord {
+            seq: 2,
+            wall_ms: 6,
+            payload: jb::mv(0),
+        },
+        JournalRecord {
+            seq: 3,
+            wall_ms: 6,
+            payload: jb::clock(1, 2),
+        },
+    ] {
+        good.extend(encode_record(&record).unwrap());
+    }
+    let cut_at_record = {
+        // Cut exactly before the closing Clock: every record is whole, but the file does not
+        // end the way a rebase ends.
+        let last = encode_record(&JournalRecord {
+            seq: 3,
+            wall_ms: 6,
+            payload: jb::clock(1, 2),
+        })
+        .unwrap()
+        .len();
+        good[..good.len() - last].to_vec()
+    };
+    let cases: Vec<(&str, Vec<u8>)> = vec![
+        ("empty", Vec::new()),
+        ("garbage", b"complete".to_vec()),
+        ("header only", good[..HEADER_LEN].to_vec()),
+        ("torn", good[..good.len() - 3].to_vec()),
+        ("whole records, no closing clock", cut_at_record),
+        ("another store", {
+            let mut other = good.clone();
+            other[..HEADER_LEN].copy_from_slice(&encode_header(game, Uuid::from_u128(1)));
+            other
+        }),
+    ];
+    for (n, (name, bytes)) in cases.iter().enumerate() {
+        fs::write(&rebase, bytes).unwrap();
+        let settled = settle_rebase_files(&jdir, game, store).unwrap();
+        let k = n + 1;
+        let aside = jdir
+            .join("damaged")
+            .join(format!("{}.{k}.rebase", game.hyphenated()));
+        assert_eq!(
+            settled,
+            Settled::MovedAsideIncomplete {
+                damaged: aside.clone()
+            },
+            "{name}"
+        );
+        assert!(!jnl.exists(), "{name}: nothing was installed");
+        assert!(!rebase.exists(), "{name}");
+        assert_eq!(&fs::read(&aside).unwrap(), bytes, "{name}: bytes kept");
+    }
+    // The complete one is installed.
+    fs::write(&rebase, &good).unwrap();
+    assert_eq!(
+        settle_rebase_files(&jdir, game, store).unwrap(),
+        Settled::RenamedIntoPlace
+    );
+    assert_eq!(fs::read(&jnl).unwrap(), good);
 }
 
 // ------------------------------------------------------------------ rebase builder

@@ -32,7 +32,7 @@
 
 | Item | Status |
 |---|---|
-| Reviewer pass (part D5) | NOT DONE |
+| Reviewer pass (part D5) | **Done (superseded 2026-11-25; was "NOT DONE").** See "Record update 2026-11-25" |
 | System Architect desk review (G1) | NOT REQUESTED yet (after the Reviewer pass; items 1 and 2 first) |
 | Approved by | nobody |
 
@@ -68,3 +68,10 @@
 - **Gate answers added:** none. No signature or schema change.
 - **Rollback:** revert the SQL text in `stats.rs` and `game.rs`; tested: no.
 - **Reviewer pass of the 2026-11-24 changes:** NOT DONE. Approved by: nobody.
+
+## Record update 2026-11-25 (G0 record keeping, systems engineer; baseline B6)
+
+- **Tier: G2** (corrected 2026-11-23, see the header). **Status: still OPEN, NOT APPROVED. PENDING Brian Prascher (G2).** The "Rulings 2026-11-24" section above says "(G3)", which does not match the header; the tier is G2 as the header says `[INF: the 2026-11-24 section's "(G3)" is inconsistent with the corrected header; the header governs until Brian or the engineer states otherwise]`. GATE-108 was approved with conditions on 2026-11-25 (CR-35); GATE-110 is presented one gate at a time after GATE-109. No approval of GATE-110 has been received.
+- **Reviewer reports (replace the stale "NOT DONE" lines above):** `docs/engineering/review-chess-store-D1-D2-D5.md` (PASS WITH CONDITIONS, all Minor); `review-chess-store-fixes-2.md` (PASS WITH CONDITIONS, no Major; Minor F2-01, F2-02, F2-03); `review-chess-store-D3-rulings.md` (PASS WITH CONDITIONS stands for `repo/stats.rs` and the `ORDER BY` in `repo/game.rs`; 7 of 7 mutants killed; condition FIND-D3RL-06, the tie-break test works only because a planted index steers the planner).
+- **Decisions that touch this gate:** **D-150** (imported games excluded from statistics; NULL `started_at` sorts last; G1, CR-34 items F2-01 and F2-02), **D-140** (order `(started_at, id)`, oldest N, no `variation(game_id)` index now), and FIND-D5-02 B (CR-26). GATE-111 edits D5 files (`stats.rs`, `game.rs`).
+- The Reviewer verdicts are the agents' own and are not approvals. G2 and G3 decisions stay with Brian Prascher; the systems engineer approved nothing in this edit.

@@ -658,6 +658,7 @@ fn finish_open(
             upgraded_from: (outcome.backed_up).then_some(outcome.from),
             schema_version: outcome.to,
             loose_permissions,
+            recovery: crate::journal::StartupReport::default(),
         },
     })
 }

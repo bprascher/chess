@@ -69,6 +69,9 @@ pub const CT_NAMED_FAILPOINTS: &[&str] = &[
     // SDD 3.7.3 rule (6): the cleanup truncate of a failed append (D-82). Not in the section 4
     // list; registered by part B.
     "journal.truncate_error",
+    // D4 (B-R03, D-153): between `hard_link` and `remove_file` of `close_final`; the journal
+    // exists under two names.
+    "journal.close_final.linked",
 ];
 
 /// Names added by part D1 for the part A code (not in the SDD list; reported as an SDD gap).

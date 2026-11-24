@@ -26,6 +26,7 @@ use crate::repo::{apply, coord, finalize, game, invariant, lifecycle, player, ra
 use crate::thread::{Applier, MonotonicClock, StoreThread, instant_clock};
 
 mod d3;
+mod d4;
 mod d5;
 
 /// The injected wall clock, Unix epoch milliseconds (IFR-ST-05).
@@ -156,20 +157,23 @@ impl Store {
             applier,
             monotonic,
         )?;
-        Ok(OpenedStore {
-            store: Store {
-                inner: Arc::new(Inner {
-                    writer,
-                    readers: Arc::new(ReadPool::new(opened.readers)),
-                    clock,
-                    store_id: data_dir.read_store_id()?.map(|id| id.store_uuid),
-                    data_dir,
-                    process,
-                    failed_jobs_requeued: std::sync::atomic::AtomicBool::new(false),
-                }),
-            },
-            report: opened.report,
-        })
+        let store = Store {
+            inner: Arc::new(Inner {
+                writer,
+                readers: Arc::new(ReadPool::new(opened.readers)),
+                clock,
+                store_id: data_dir.read_store_id()?.map(|id| id.store_uuid),
+                data_dir,
+                process,
+                failed_jobs_requeued: std::sync::atomic::AtomicBool::new(false),
+            }),
+        };
+        // DD-ST-019 (part D4): the journals that have no live lock are brought to the store's
+        // state before the caller sees the store. A journal that cannot be recovered is
+        // reported, never an error of the open.
+        let mut report = opened.report;
+        report.recovery = crate::journal::recover::startup(&store).await;
+        Ok(OpenedStore { store, report })
     }
 
     pub fn data_dir(&self) -> &DataDir {

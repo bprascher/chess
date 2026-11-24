@@ -4,9 +4,10 @@ pub mod format;
 pub mod reader;
 pub mod rebase;
 pub mod reconcile;
+pub mod recover;
 pub mod writer;
 
-pub use files::{MovedAside, Settled, move_aside_damaged, settle_rebase_files};
+pub use files::{CloseRepair, MovedAside, Settled, move_aside_damaged, settle_rebase_files};
 pub use format::{JournalRecord, Kind, Payload};
 pub use reader::{DamageKind, DamagedInfo, Scan, scan_bytes, scan_file};
 pub use rebase::{
@@ -16,5 +17,8 @@ pub use rebase::{
 pub use reconcile::{
     ClockPair, Folded, Plan, ReconcileInput, RunSource, StoredMove, apply_plan, fold, reconcile,
     reconciled_clocks,
+};
+pub use recover::{
+    Recovered, RecoveredGame, RecoveryOutcome, RecoveryReport, ResumeError, StartupReport,
 };
 pub use writer::{JournalWriter, LeaseState, MoveJournal};

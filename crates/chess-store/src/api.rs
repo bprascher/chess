@@ -161,6 +161,9 @@ pub struct OpenReport {
     pub upgraded_from: Option<u32>,
     pub schema_version: u32,
     pub loose_permissions: bool,
+    /// What the startup recovery did with the journals that had no live lock (DD-ST-019, part
+    /// D4): one line per journal, in the order it worked. Empty on a first launch.
+    pub recovery: crate::journal::StartupReport,
 }
 
 /// Who this process is in `PROCESS_HEARTBEAT` (SDD 3.11.6): the owner string is
