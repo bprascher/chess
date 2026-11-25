@@ -1,5 +1,20 @@
 # Release Notes
 
+## GATE-110 approved with conditions; store part D4 fixed after review: 2026-11-26
+
+Brian Prascher approved GATE-110 (store part D5: statistics rows, evaluations, variations, job queue; G2) with conditions in a genuine user message. The program manager records the ruling in a decision bead, and the Decision Log text is still to be entered.
+
+### Decisions
+- **GATE-110 approved with conditions.** Conditions: (1) the F2-03 tie-break is pinned by a test that does not depend on a planted index, or accepted as is; (2) the status of the D5R-04 boundary scanner (UT-ST-038) over `api_analysis.rs` and `store/d5.rs` is stated; (3) GATE-111's edits to D5 files are listed in GATE-111. These are the program manager's recommended conditions as accepted; the exact wording is in its decision bead.
+
+### Built
+- **Store part D4 review fixes:** the fresh reviewer found one Major (a second resumer could move a live journal aside and leave two writers; FIND-D4R-01) and the engineer found a second in the same family (`settle_rebase_files` ran without a lock). Both are fixed: a resume claims the game with an exclusive `.rebase` and re-checks under that claim. Minor findings (symlinks, row status, rebase completeness, report, recovery time bound) are fixed. Engineer-reported: 46 of 48 hand mutants killed. The full gate `CHESS_CI_OFFLINE=1 ci/check.sh` printed "All gates passed" (134 test binaries, 0 failed), run by the program manager.
+
+### Not done
+- **GATE-111 (D3, G3) and GATE-112 (D4, G3) are not approved.** D4 has not had its limited fresh re-check of the fixes. Store part C and `chess-app` are not started.
+- Condition 3 of GATE-109 (three unwired failpoints) is open before the first release (chess-a0r.3.60).
+- Not run: power loss, a hosted CI run, Intel, the online `npm audit` path, sanitizers and cargo-mutants.
+
 ## Store part D4 built; GATE-109 approved with conditions: 2026-11-25
 
 Brian Prascher approved GATE-109 (store part D2, G3 with G2 public items) with conditions on 2026-11-25 in a genuine user message relayed by the coordinator (decision bead chess-a0r.3.59, baseline B6). The Decision Log text is entered in `docs/requirements.md` as **CR-36**. The D4 code is committed on branch `feat/step2-store-d4` and merged to `main` (Brian committed, merged and pushed). The documents named below as corrected are uncommitted edits of the systems engineer.
