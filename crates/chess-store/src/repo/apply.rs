@@ -55,8 +55,18 @@ fn with_short_busy<T>(
     conn: &mut Connection,
     f: impl FnOnce(&mut Connection) -> Result<T, StoreError>,
 ) -> Result<T, StoreError> {
+    with_busy(conn, APPLY_BUSY_TIMEOUT, f)
+}
+
+/// Runs `f` with `timeout` as the busy timeout and restores the previous value, also after an
+/// error.
+pub(crate) fn with_busy<T>(
+    conn: &mut Connection,
+    timeout: Duration,
+    f: impl FnOnce(&mut Connection) -> Result<T, StoreError>,
+) -> Result<T, StoreError> {
     let previous: i64 = conn.pragma_query_value(None, "busy_timeout", |row| row.get(0))?;
-    conn.busy_timeout(APPLY_BUSY_TIMEOUT)?;
+    conn.busy_timeout(timeout)?;
     let result = f(conn);
     let restored = conn.busy_timeout(Duration::from_millis(u64::try_from(previous).unwrap_or(0)));
     if restored.is_err() {

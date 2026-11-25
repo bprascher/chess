@@ -28,7 +28,7 @@ use uuid::Uuid;
 use crate::datadir::FILE_MODE;
 use crate::error::JournalError;
 use crate::fault;
-use crate::journal::files::{journal_path, move_aside_damaged, rebase_path, sync_dir};
+use crate::journal::files::{MovedAside, journal_path, move_aside_damaged, rebase_path, sync_dir};
 use crate::journal::format::{
     ClockPayload, FormatError, HEADER_LEN, JournalRecord, Kind, MovePayload, Payload, StartPayload,
     encode_header, encode_record,
@@ -176,7 +176,9 @@ pub struct RebaseFile {
 
 /// Step 1: creates `journal/<uuid>.jnl.rebase` (mode `0600`, never replaces a file), locks it,
 /// writes the bytes and syncs the file and `journal/`. A stale `.rebase` must have been removed
-/// first (`settle_rebase_files`). Failpoint `journal.rebase.built` follows the syncs.
+/// first (`settle_rebase_files`). A `.rebase` that exists is another rebase of this game in
+/// progress (or the leftover of a dead one, which the next recovery settles): `Locked`, and the
+/// file is left alone (FIND-D4R-02). Failpoint `journal.rebase.built` follows the syncs.
 pub fn write_rebase_file(
     journal_dir: &Path,
     game: Uuid,
@@ -189,7 +191,10 @@ pub fn write_rebase_file(
         .create_new(true)
         .mode(FILE_MODE)
         .open(&path)
-        .map_err(|e| io_err(&e))?;
+        .map_err(|e| match e.kind() {
+            io::ErrorKind::AlreadyExists => JournalError::Locked { owner_kind: None },
+            _ => io_err(&e),
+        })?;
     let written = (|| -> Result<(), JournalError> {
         file.try_lock().map_err(|e| match e {
             fs::TryLockError::WouldBlock => JournalError::Locked { owner_kind: None },
@@ -223,22 +228,80 @@ pub fn swap_in_rebased(
     game: Uuid,
     rebase: RebaseFile,
 ) -> Result<JournalWriter, JournalError> {
+    swap(journal_dir, game, rebase, true).map(|(writer, _)| writer)
+}
+
+/// The swap with the two things the recovery needs: the name `move_aside_damaged` made (the
+/// file just made, FIND-D4R-06), and `may_move_aside`. A caller that holds **no** lock on an
+/// existing `<uuid>.jnl` (the rebase of a game that had no journal file) passes `false`: a
+/// journal that appeared meanwhile belongs to someone else, is never moved, and the link of the
+/// new file, which never replaces, answers `Locked` (FIND-D4R-01). The `.rebase` name is then
+/// removed so that nothing of this attempt stays.
+pub(crate) fn swap(
+    journal_dir: &Path,
+    game: Uuid,
+    rebase: RebaseFile,
+    may_move_aside: bool,
+) -> Result<(JournalWriter, Option<MovedAside>), JournalError> {
     let io_err = |e: &io::Error| JournalError::write_failed(e);
     let jnl = journal_path(journal_dir, game);
     let new = rebase_path(journal_dir, game);
+    let mut aside = None;
     if fs::symlink_metadata(&jnl).is_ok() {
-        move_aside_damaged(journal_dir, game).map_err(|e| io_err(&e))?;
+        if !may_move_aside {
+            let _ = fs::remove_file(&new);
+            return Err(JournalError::Locked { owner_kind: None });
+        }
+        aside = Some(move_aside_damaged(journal_dir, game).map_err(|e| io_err(&e))?);
     }
     fault::check("journal.rebase.old_aside", &jnl).map_err(|e| io_err(&e))?;
-    fs::hard_link(&new, &jnl).map_err(|e| io_err(&e))?;
+    match fs::hard_link(&new, &jnl) {
+        Ok(()) => {}
+        Err(e) if !may_move_aside && e.kind() == io::ErrorKind::AlreadyExists => {
+            let _ = fs::remove_file(&new);
+            return Err(JournalError::Locked { owner_kind: None });
+        }
+        Err(e) => return Err(io_err(&e)),
+    }
     fault::check("journal.rebase.new_linked", &jnl).map_err(|e| io_err(&e))?;
     fs::remove_file(&new).map_err(|e| io_err(&e))?;
     sync_dir(journal_dir).map_err(|e| io_err(&e))?;
     fault::check("journal.rebase.new_in_place", &jnl).map_err(|e| io_err(&e))?;
-    Ok(JournalWriter::from_locked(
-        rebase.file,
-        jnl,
-        rebase.len,
-        rebase.last_seq + 1,
+    Ok((
+        JournalWriter::from_locked(rebase.file, jnl, rebase.len, rebase.last_seq + 1),
+        aside,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// FIND-D4R-01, the last line of defence: a swap that holds no lock on an existing
+    /// `<uuid>.jnl` never moves it, answers `Locked`, and takes its own `.rebase` away
+    /// (mutants M02, M07).
+    #[test]
+    fn a_swap_without_a_hold_on_the_journal_refuses_to_move_it() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let (game, store) = (Uuid::from_u128(1), Uuid::from_u128(2));
+        let jdir = dir.path().to_path_buf();
+        let rebased = Rebased {
+            bytes: encode_header(game, store).to_vec(),
+            last_seq: 1,
+        };
+        let file = write_rebase_file(&jdir, game, &rebased).unwrap();
+        fs::write(journal_path(&jdir, game), b"someone's live journal").unwrap();
+        let refused = swap(&jdir, game, file, false);
+        assert!(matches!(refused, Err(JournalError::Locked { .. })));
+        assert_eq!(
+            fs::read(journal_path(&jdir, game)).unwrap(),
+            b"someone's live journal"
+        );
+        assert!(!rebase_path(&jdir, game).exists());
+        assert!(!jdir.join("damaged").exists());
+        // With the hold (the damaged-journal path) the same swap moves the old file aside.
+        let file = write_rebase_file(&jdir, game, &rebased).unwrap();
+        let (_, aside) = swap(&jdir, game, file, true).unwrap();
+        assert_eq!(aside.unwrap().k, 1);
+    }
 }

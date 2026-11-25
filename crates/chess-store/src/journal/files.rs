@@ -24,10 +24,13 @@ pub(crate) fn move_no_replace(src: &Path, dst: &Path) -> io::Result<()> {
     fs::remove_file(src)
 }
 
-/// True when both names are the same file (same device and inode).
+/// True when both names are the same **regular** file (same device and inode). A link is never
+/// followed (`symlink_metadata`) and a name that is not a regular file is never "the same file":
+/// a symbolic link at `done/<uuid>.jnl` that points at the journal must not make a caller delete
+/// the journal as "already moved" (FIND-D4R-03). `Err` when either name does not exist.
 pub(crate) fn same_file(a: &Path, b: &Path) -> io::Result<bool> {
-    let (a, b) = (fs::metadata(a)?, fs::metadata(b)?);
-    Ok(a.dev() == b.dev() && a.ino() == b.ino())
+    let (a, b) = (fs::symlink_metadata(a)?, fs::symlink_metadata(b)?);
+    Ok(a.is_file() && b.is_file() && a.dev() == b.dev() && a.ino() == b.ino())
 }
 
 pub(crate) fn sync_dir(dir: &Path) -> io::Result<()> {
@@ -71,7 +74,7 @@ pub fn move_aside_damaged(journal_dir: &Path, game: Uuid) -> io::Result<MovedAsi
     let mut k = 1u32;
     let moved = loop {
         let dst = name(k);
-        match fs::metadata(&dst) {
+        match fs::symlink_metadata(&dst) {
             Ok(_) => {
                 if same_file(&src, &dst)? {
                     fs::remove_file(&src)?;
@@ -130,7 +133,21 @@ pub enum Settled {
 /// closing `Clock`, which the builder also leaves alone when it already is the last record).
 /// A file cut at a record boundary before the closing `Clock` ends in a `Move`, `Start` or
 /// the like and is refused here.
-pub(crate) fn rebase_is_complete(bytes: &[u8], game: Uuid, store: Uuid) -> bool {
+///
+/// **The shape alone cannot tell a cut file from a whole one** (FIND-D4R-05): a rebase that
+/// copies a stopped `Clock` from the middle of the old journal has that shape at the boundary
+/// after it, so a file cut there looks like a rebase of a journal that ends in a stopped
+/// `Clock`. `journal_seq` is the other witness: step 2 of the rebase stores the new file's last
+/// `seq` in `GAME.journal_seq` before the file is moved into place, so a file whose last `seq`
+/// is **below** the stored value was cut after the store learned its length. With the row's
+/// `journal_seq` given, such a file is incomplete. `None` (no row to ask) leaves the shape test
+/// alone.
+pub(crate) fn rebase_is_complete(
+    bytes: &[u8],
+    game: Uuid,
+    store: Uuid,
+    journal_seq: Option<u64>,
+) -> bool {
     let Ok(scan) = scan_bytes(bytes, game, store) else {
         return false;
     };
@@ -141,7 +158,9 @@ pub(crate) fn rebase_is_complete(bytes: &[u8], game: Uuid, store: Uuid) -> bool 
     {
         return false;
     }
-    scan.records.last().is_some_and(ends_a_rebase)
+    scan.records
+        .last()
+        .is_some_and(|last| ends_a_rebase(last) && journal_seq.is_none_or(|seq| last.seq >= seq))
 }
 
 fn ends_a_rebase(record: &JournalRecord) -> bool {
@@ -165,6 +184,18 @@ fn ends_a_rebase(record: &JournalRecord) -> bool {
 /// "row with no journal" path rebuilds one from the rows (the store is ahead of an empty
 /// journal, D-66, so the rebase builds from the store).
 pub fn settle_rebase_files(journal_dir: &Path, game: Uuid, store: Uuid) -> io::Result<Settled> {
+    settle_rebase_files_at(journal_dir, game, store, None)
+}
+
+/// `settle_rebase_files` with the row's `GAME.journal_seq` for the completeness test of a
+/// `.rebase` that is about to be installed (see `rebase_is_complete`). The recovery uses this one
+/// after it has read the row; the public function above cannot know the row.
+pub(crate) fn settle_rebase_files_at(
+    journal_dir: &Path,
+    game: Uuid,
+    store: Uuid,
+    journal_seq: Option<u64>,
+) -> io::Result<Settled> {
     let jnl = journal_path(journal_dir, game);
     let rebase = rebase_path(journal_dir, game);
     if fs::symlink_metadata(&rebase).is_err() {
@@ -176,7 +207,7 @@ pub fn settle_rebase_files(journal_dir: &Path, game: Uuid, store: Uuid) -> io::R
         return Ok(Settled::RemovedStaleRebase);
     }
     let bytes = fs::read(&rebase)?;
-    if rebase_is_complete(&bytes, game, store) {
+    if rebase_is_complete(&bytes, game, store, journal_seq) {
         move_no_replace(&rebase, &jnl)?;
         sync_dir(journal_dir)?;
         return Ok(Settled::RenamedIntoPlace);
@@ -252,4 +283,135 @@ pub(crate) fn finish_close_final(path: &Path) -> io::Result<CloseRepair> {
     sync_dir(dir)?;
     sync_dir(&done)?;
     Ok(repair)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::os::unix::fs::symlink;
+
+    use super::*;
+    use crate::journal::format::{
+        ClockPayload, ClockText, MovePayload, SeatKind, StartPayload, UuidText, encode_header,
+        encode_record,
+    };
+
+    #[test]
+    fn same_file_is_true_only_for_one_regular_file_under_two_names() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let (a, b, c) = (
+            dir.path().join("a"),
+            dir.path().join("b"),
+            dir.path().join("c"),
+        );
+        fs::write(&a, b"x").unwrap();
+        fs::hard_link(&a, &b).unwrap();
+        fs::write(&c, b"x").unwrap();
+        assert!(same_file(&a, &b).unwrap());
+        assert!(!same_file(&a, &c).unwrap());
+        // A link is never followed and is never "the same file" (FIND-D4R-03).
+        let link = dir.path().join("link");
+        symlink(&a, &link).unwrap();
+        assert!(!same_file(&a, &link).unwrap());
+        assert!(!same_file(&link, &a).unwrap());
+        let dangling = dir.path().join("dangling");
+        symlink(dir.path().join("nowhere"), &dangling).unwrap();
+        assert!(!same_file(&a, &dangling).unwrap());
+        // A directory is not a regular file.
+        assert!(!same_file(dir.path(), dir.path()).unwrap());
+        assert!(same_file(&a, &dir.path().join("missing")).is_err());
+    }
+
+    /// CT-ST-089 "no-replace": a move onto an existing name fails and changes nothing (F01).
+    #[test]
+    fn move_no_replace_never_replaces() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let (src, dst) = (dir.path().join("src"), dir.path().join("dst"));
+        fs::write(&src, b"new").unwrap();
+        fs::write(&dst, b"old").unwrap();
+        let err = move_no_replace(&src, &dst).unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::AlreadyExists);
+        assert_eq!(fs::read(&src).unwrap(), b"new");
+        assert_eq!(fs::read(&dst).unwrap(), b"old");
+        fs::remove_file(&dst).unwrap();
+        move_no_replace(&src, &dst).unwrap();
+        assert!(!src.exists());
+        assert_eq!(fs::read(&dst).unwrap(), b"new");
+    }
+
+    fn start(game: Uuid) -> Payload {
+        Payload::Start(StartPayload {
+            game: UuidText(game),
+            white: UuidText(Uuid::from_u128(1)),
+            black: UuidText(Uuid::from_u128(2)),
+            white_kind: SeatKind::Human,
+            black_kind: SeatKind::Human,
+            matchup: "hh".into(),
+            mode: "strict".into(),
+            custom_start: false,
+            start_fen: None,
+            clock_spec: ClockText::parse("300+2"),
+            rated: true,
+            self_play: false,
+        })
+    }
+
+    fn mv(ply: u32) -> Payload {
+        Payload::Move(MovePayload {
+            ply,
+            uci: format!("u{ply}"),
+            think_ms: 1,
+            white_ms: Some(1),
+            black_ms: Some(1),
+            san: format!("s{ply}"),
+            fen_after: format!("f{ply}"),
+        })
+    }
+
+    fn stopped() -> Payload {
+        Payload::Clock(ClockPayload {
+            white_ms: Some(5),
+            black_ms: Some(6),
+            running_side: None,
+        })
+    }
+
+    /// FIND-D4R-05: every byte offset of a rebase that carries a stopped `Clock` in the middle.
+    /// With the row's `journal_seq` only the whole file is complete; the shape alone also
+    /// accepts the cut right after the middle `Clock`, which is why the witness exists.
+    #[test]
+    fn only_the_whole_rebase_is_complete_at_every_byte_offset() {
+        let (game, store) = (Uuid::from_u128(7), Uuid::from_u128(8));
+        let payloads = [start(game), mv(0), stopped(), mv(1), stopped()];
+        let mut bytes = encode_header(game, store).to_vec();
+        let mut ends = Vec::new();
+        for (i, payload) in payloads.into_iter().enumerate() {
+            let record = JournalRecord {
+                seq: u64::try_from(i).unwrap() + 1,
+                wall_ms: 10,
+                payload,
+            };
+            bytes.extend(encode_record(&record).unwrap());
+            ends.push(bytes.len());
+        }
+        let last_seq = 5;
+        let mut shape_only = Vec::new();
+        for cut in 0..=bytes.len() {
+            let part = &bytes[..cut];
+            assert_eq!(
+                rebase_is_complete(part, game, store, Some(last_seq)),
+                cut == bytes.len(),
+                "offset {cut}"
+            );
+            if rebase_is_complete(part, game, store, None) {
+                shape_only.push(cut);
+            }
+        }
+        assert_eq!(shape_only, vec![ends[2], ends[4]]);
+        // A store that stopped short of the file does not reject it; one ahead of it does.
+        assert!(rebase_is_complete(&bytes, game, store, Some(4)));
+        assert!(!rebase_is_complete(&bytes, game, store, Some(6)));
+        // Another game's or store's header is never complete.
+        assert!(!rebase_is_complete(&bytes, Uuid::from_u128(9), store, None));
+        assert!(!rebase_is_complete(&bytes, game, Uuid::from_u128(9), None));
+    }
 }

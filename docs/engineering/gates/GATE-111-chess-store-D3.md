@@ -48,3 +48,17 @@
 - **Decisions that touch this gate (architecture Addendum N, section 11.4.22):** **D-144** `ended_at` rule (G3), **D-145** uncurable-batch policy (G3 stored-value rule, results G2), **D-146** `Start.matchup` text (G3), **D-147** `journal_seq` rule (relay: G0 text; architect: stored-value rule G3), **D-148** new public surface (G2), **D-149** `void_game_repair_pair` deleted (G1), **D-150** statistics and list rules (G1), **D-151** `$TMPDIR` dependency accepted (G2), **D-152** D3-04 takeback deletes `move_eval`, D3-09 queue flush, D3-10 whole journal in one batch, **D-153** D4 acceptance lines for B-R03 and B-R05.
 - **Open for Brian, not ruled by value `[UNV]`:** `unpark_game` returns `Option<usize>`; the queue bounds (256 per game, 4 096 in all) are estimates; the transient-code list; `sync_backlog` returns `GameParked` where SDD 3.11.9 and its dated note say `Busy`; `StoreError` gained two variants.
 - The Reviewer verdicts are the agents' own and are not approvals. G2 and G3 decisions stay with Brian Prascher; the systems engineer approved nothing in this edit.
+
+## D2 files edited by GATE-111 (GATE-109 condition 1; G0 record keeping, systems engineer, 2026-11-25)
+
+Brian approved GATE-109 with conditions on 2026-11-25 (CR-36). Condition 1: GATE-111 re-lists its edits to D2 files and the D2 tests stay green. The list, read from the code and the records (`[OBS]` unless marked):
+
+| D2 file | GATE-111 edit | Source |
+|---|---|---|
+| `crates/chess-store/src/repo/finalize.rs` | The bodies of `finalize_game` and `abort_game` moved into `finalize_in_tx` and `abort_in_tx` (both `pub(crate)`); the wrappers keep the transaction, the failpoint and the commit | CHG-111 "Covers"; functions present in the file |
+| `crates/chess-store/src/repo/lifecycle.rs` | `void_game` refuses `ended_at <= 0` (D-144); `void_game_repair_pair` removed (D-149, G1) | rulings 2026-11-24 above; `lifecycle.rs` line 83 check |
+| `crates/chess-store/src/repo/game.rs` | `set_analysis_used` guard: refuses a game that is not `in_progress` unless the flag is already set (F2-05, accepted under GATE-109 condition 2) | GATE-109 record "Rulings 2026-11-24"; code read |
+| `crates/chess-store/src/store.rs` and `src/thread.rs` | The queue drain before live terminal commands (D3-09, D-152): `Store::write_after_flush` and `Command::RunFlushed` on the store thread flush the queued batches of the game before a live finalize, abort, void or reset runs | `store.rs` and `thread.rs` read. Note: the drain is in `thread.rs` and `store.rs`, not in `store/d3.rs`. The GATE-109 record names a `store.rs` hunk |
+
+- **D2 tests stay green:** the D2 suite (`tests/lifecycle.rs`, `tests/lifecycle_faults.rs` and the shared tests) is green: 130 test binaries pass in the PM full gate of 2026-11-25 (check-12). This is a PM figure `[UNV by the systems engineer: not re-run here]`. The condition continues to hold for every later edit to these files.
+- **Status unchanged:** GATE-111 is still **OPEN, NOT APPROVED. PENDING Brian Prascher (G3; public surface G2).** The header line "GATE-109 and GATE-110 are not approved" is history as of 2026-11-23; GATE-109 is approved with conditions (CR-36), GATE-110 is not approved. Listing the edits closes the list part of GATE-109 condition 1; the condition closes when this gate is decided.

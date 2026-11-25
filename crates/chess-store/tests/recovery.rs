@@ -390,7 +390,8 @@ fn b_r03_a_journal_under_two_names_is_finished_by_the_scan() {
 }
 
 /// B-R03: a `done/` file that is **not** the same file is not a retry: neither file is touched,
-/// and the scan reports it as a failure.
+/// and the scan reports it with its own outcome, `DoneNameCollision` (FIND-D4R-04; it was
+/// `Failed` before the review, which said "write failed" for a name collision).
 #[test]
 fn b_r03_a_different_file_in_done_is_damage_and_nothing_is_touched() {
     let (d, s) = live();
@@ -401,10 +402,10 @@ fn b_r03_a_different_file_in_done_is_damage_and_nothing_is_touched() {
     fs::write(done_path(d.path(), 1), b"another file").unwrap();
     let before = fs::read(jpath(d.path(), 1)).unwrap();
     let opened = reopen(d.path(), s);
-    assert!(matches!(
+    assert_eq!(
         opened.report.recovery.outcome_of(gid(1)),
-        Some(RecoveryOutcome::Failed { .. })
-    ));
+        Some(&RecoveryOutcome::DoneNameCollision)
+    );
     assert_eq!(fs::read(jpath(d.path(), 1)).unwrap(), before);
     assert_eq!(fs::read(done_path(d.path(), 1)).unwrap(), b"another file");
     assert_eq!(status(&opened.store, 1), GameStatus::InProgress);
