@@ -5,7 +5,7 @@
 | Gate | **GATE-110** (the number is the one named in the work order; no GATE-109 file existed in this directory when this was written, `[OBS ls]`) |
 | Tier | **G2** (corrected 2026-11-23, G0 record fix). The header said "G1 as built" with two items that might raise it to G2: FIND-D5-01 (the store-owned row type) and FIND-D5-02 (the opaque `VariationRef`) are interface decisions, and the Engineer's own text said the higher tier applies when unsure. Approver for G2: **Brian Prascher**. The G1 text that stood here: "G1 as built, with two items for the architect that may raise it to G2" |
 | Approver | System Architect, **desk review**, after the Reviewer pass, for G1. If item 1 or 2 is ruled to be an interface or edge decision, the approver is **Brian Prascher** (G2). A desk review never satisfies G2 or G3 |
-| Status | **OPEN. NOT APPROVED.** No approval has been received from anyone. The author is the Engineer stance and does not approve its own gate |
+| Status | **APPROVED WITH CONDITIONS (Brian Prascher, G2, 2026-11-26, relayed; CR-37, bead chess-a0r.3.61).** Conditions 1 and 2 open (bead chess-a0r.3.62); condition 3 closed. Header text above and the sections below are history up to 2026-11-25; see "Approval 2026-11-26". The author is the Engineer stance and did not approve this gate |
 | Date opened | 2026-11-11 |
 | Opened by | Software engineer (task chess-a0r.3.41, Engineer stance, run-to-gate, CR chess-a0r.20, baseline B6) |
 | Covers | `src/api_analysis.rs`, `src/repo/stats.rs`, `src/repo/analysis.rs`, `src/repo/jobs.rs`, `src/store/d5.rs` (new); small additive edits to `src/lib.rs`, `src/repo/mod.rs`, `src/error.rs` (`VariationAnchor`, `NotOwner`), `src/fault.rs` (`D5_FAILPOINTS`), `src/store.rs` (`mod d5;`, one `Inner` field); tests `tests/stats_rows.rs`, `tests/analysis_variations.rs`, `tests/job_queue.rs`, `tests/d5_faults.rs`, `tests/stats_bench.rs`, `tests/d5_support/mod.rs` |
@@ -75,3 +75,24 @@
 - **Reviewer reports (replace the stale "NOT DONE" lines above):** `docs/engineering/review-chess-store-D1-D2-D5.md` (PASS WITH CONDITIONS, all Minor); `review-chess-store-fixes-2.md` (PASS WITH CONDITIONS, no Major; Minor F2-01, F2-02, F2-03); `review-chess-store-D3-rulings.md` (PASS WITH CONDITIONS stands for `repo/stats.rs` and the `ORDER BY` in `repo/game.rs`; 7 of 7 mutants killed; condition FIND-D3RL-06, the tie-break test works only because a planted index steers the planner).
 - **Decisions that touch this gate:** **D-150** (imported games excluded from statistics; NULL `started_at` sorts last; G1, CR-34 items F2-01 and F2-02), **D-140** (order `(started_at, id)`, oldest N, no `variation(game_id)` index now), and FIND-D5-02 B (CR-26). GATE-111 edits D5 files (`stats.rs`, `game.rs`).
 - The Reviewer verdicts are the agents' own and are not approvals. G2 and G3 decisions stay with Brian Prascher; the systems engineer approved nothing in this edit.
+
+## Approval 2026-11-26 (G0 record keeping, systems engineer; baseline B6)
+
+- **Status: APPROVED WITH CONDITIONS by Brian Prascher (G2), 2026-11-26**, in a genuine user message relayed by the coordinator ("Brian, relayed"; decision bead chess-a0r.3.61; Decision Log CR-37). Brian committed and merged to `main` locally; not yet pushed. Earlier "OPEN. NOT APPROVED" lines in this record are history. The systems engineer approved nothing; this edit records Brian's decision.
+- **Conditions and state:**
+
+| # | Condition | State | Owner and evidence |
+|---|---|---|---|
+| 1 | The F2-03 tie-break (`id` for equal `started_at`) is pinned by a test that does not depend on a planted index, or accepted as is | **OPEN** | Bead chess-a0r.3.62 (software engineer). Reviewer finding FIND-D3RL-06: with the index helper removed the `stats_rows` binary passes with `, g.id` deleted from `stats.rs` and `game.rs` `[OBS review-chess-store-D3-rulings.md]`. Brian may instead accept as is; no such acceptance is recorded |
+| 2 | The status of the UT-ST-038 integer-identity scanner (FIND-D5R-04) over `api_analysis.rs` and `store/d5.rs` is stated | **OPEN** (status is stated here, the engineer's confirmation or extension is due in chess-a0r.3.62) | `[OBS crates/chess-store/tests/boundary.rs line 66]` the scanner reads `api.rs`, `store.rs`, `error.rs` and `datadir.rs` only: it does **not** cover `api_analysis.rs` or `store/d5.rs`. `[OBS grep]` those two files declare no public `i64` identity; their public integers are `u32` and `u64` counts and plies (`plies`, `active_ms`, `ply`, `depth`, `evaluated`, `total`, `from_ply`) and `u32` job counts. `[UNV]` not checked by running the scanner over them |
+| 3 | GATE-111's edits to D5 files are listed in the GATE-111 record | **CLOSED** by this edit | GATE-111 record, section "D5 files edited by GATE-111 (GATE-110 condition 3)" |
+
+- Rollback, scope and the "Covers" list are unchanged. The Reviewer verdicts are the agents' own and are not approvals.
+
+## GATE-110 conditions 2026-11-26
+
+- **Status: still OPEN, NOT APPROVED. PENDING Brian Prascher (G2).** Brian approved with conditions (relayed by the coordinator, no verbatim quote); the engineer approves nothing.
+- **Condition 1 (F2-03 tie-break without a planted index):** built `crates/chess-store/tests/tie_break.rs`. Mutants S02 and S05 are killed **by a source-text pin only**; the `reverse_unordered_selects` route did not work (survivors with the pragma on; hook removed, no `src` change). Seven further mutants are killed by behavioural tests with no index. Details: `step2-store-D5-evidence.md`, section "GATE-110 conditions 2026-11-26".
+- **Condition 2 (D5R-04):** the UT-ST-038 scanner did not cover `api_analysis.rs` and `store/d5.rs`; it now covers eight files including them and `store/d3.rs`, `store/d4.rs`, with a planted-leak self-test.
+- **Gate answers added:** none. No signature, schema or `src` change. Rollback: delete `tests/tie_break.rs`, revert `tests/boundary.rs`; tested: no.
+- **Reviewer pass of these test changes:** NOT DONE. Approved by: nobody.

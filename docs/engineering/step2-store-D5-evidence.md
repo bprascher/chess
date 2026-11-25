@@ -167,3 +167,39 @@ Engineer stance. **GATE-110 stays PENDING (Brian Prascher, G3 for stored-format 
 - **F2-02 (G1, D-150):** `list_games` (and so `games_for_history`) order `g.started_at IS NULL, g.started_at, g.id`: a game with no start time comes last. Test `f2_02_a_game_without_a_start_time_is_listed_last` (limit 2 keeps the two played games; a window excludes the NULL row as before). Mutant KILLED.
 - **F2-03:** the `id` tie-break is now pinned. The plain scan returns equal start times in `id` order anyway, so the mutants that drop `g.id` were equivalent in black-box terms; the test creates two expression indexes `(started_at, 0 - id)` and `(started_at IS NULL, started_at, 0 - id)` with SQL so that SQLite scans ties in the opposite order. `tests/stats_rows.rs::f2_03_equal_start_times_are_ordered_by_id_and_a_limit_keeps_the_lower_id` covers `stats_rows`, `head_to_head_rows`, `list_games`, `games_for_history` with `limit 1`. **Mutants S02 (statistics) and S05 (`list_games`) now KILLED** (also with the `IS NULL` term in place) `[RAN]`.
 - Verification: as above. Not reviewed. Approved by: nobody.
+
+
+## GATE-110 conditions 2026-11-26 (task chess-a0r.3.62, baseline B6)
+
+Engineer stance. **GATE-110 stays PENDING (Brian Prascher, G2). Nothing here is an approval.** Only `crates/chess-store/tests` changed; **no `src` change** (a test-support hook was tried and removed, see below). Not reviewed by a Reviewer.
+
+### Condition 1: F2-03 tie-break pinned without a planted index (FIND-D3RL-06)
+
+- **New file `tests/tie_break.rs`** (no feature needed, 4 tests, no index created):
+  - `equal_start_times_are_ordered_by_id_whichever_seat_the_player_has` and `..._after_analyze`: five games, three with equal `started_at`; the tied games are inserted in the order 7, 3, 5 with mixed seats for Ann (black, white, black), so their row keys are 1, 2, 3 and the tie order is neither the game number nor the uuid order. Covers `stats_rows` (no limit, limits 1 to 4, window then limit), `head_to_head_rows` (limits 1 to 4), `games_for_history` (all, limit 3), `list_games` (no player, limits 2 and 3).
+  - `tie_break_is_named_in_every_order_by`: reads `src/repo/stats.rs` and `src/repo/game.rs`, takes every `ORDER BY` that sorts by `started_at` and asserts it ends in `, g.id` (exactly one clause per file). `the_order_by_scanner_finds_what_it_is_meant_to_find` is its self-test.
+- **Premise that did not hold `[RAN]`:** `PRAGMA reverse_unordered_selects = ON` cannot expose the missing tie-break. I added a test-support hook (`Store::set_reverse_unordered_selects`, via `ReadPool`) and ran S02 and S05 with the pragma on: both survived all behavioural assertions. `[INF]` SQLite applies the pragma only to queries with no `ORDER BY`; I did not read SQLite's source to confirm. I removed the hook (`git checkout` of `readpool.rs` and `store.rs`), so `src` is unchanged.
+- **Honest limit:** with the `, g.id` dropped, no data-only test I could build changes the answer: `game.id` is the rowid, ties come out in rowid order on the scan and sorter plans SQLite chose here (`[INF]`, I did not print `EXPLAIN QUERY PLAN` from the bundled SQLite). **S02 and S05 are killed only by the source-text test**, a structural pin that does not depend on the planner. The behavioural tests kill the other mutants below without any index. Brian may accept the structural pin or ask for a different seam.
+- **Mutants, run on `tie_break.rs` alone, planted index helper not involved `[RAN]`** (each applied to the original file, then restored):
+
+| Mutant | Change | Result |
+|---|---|---|
+| S02 | stats `ORDER BY g.started_at, g.id` -> `g.started_at` | KILLED by `tie_break_is_named_in_every_order_by` only |
+| S05 | list `... g.started_at, g.id` -> `g.started_at` | KILLED by `tie_break_is_named_in_every_order_by` only |
+| M-id-desc-stats | stats `g.id DESC` | KILLED (3 tests) |
+| M-id-desc-list | list `g.id DESC` | KILLED (3 tests) |
+| M-no-start-stats | stats `ORDER BY g.id` | KILLED (3 tests) |
+| M-tie-by-uuid-stats | stats tie on `g.uuid` | KILLED (3 tests) |
+| M-tie-by-uuid-list | list tie on `g.uuid` | KILLED (3 tests) |
+| M-swap-list | list `ORDER BY g.id, started_at IS NULL, started_at` | KILLED (3 tests) |
+| M-start-desc-stats | stats `started_at DESC, g.id` | KILLED (2 behavioural tests) |
+
+### Condition 2: D5R-04, UT-ST-038 scan coverage
+
+- **Answer: it did NOT scan `api_analysis.rs` or `store/d5.rs`.** The scanner's file list was `["api.rs", "store.rs", "error.rs", "datadir.rs"]` `[OBS tests/boundary.rs before this change]`.
+- **Extended** (`tests/boundary.rs`): `SCANNED_PUBLIC_FILES` = `api.rs`, `api_analysis.rs`, `store.rs`, `store/d3.rs`, `store/d4.rs`, `store/d5.rs`, `error.rs`, `datadir.rs`. All clean `[RAN]`. New self-test `ut_st_038_a_planted_leak_in_the_d5_files_is_detected` plants `pub game_id: i64` and a `player: Option<u64>` parameter into the text of `api_analysis.rs` and `store/d5.rs` and asserts each is found.
+- **Planted in the real files `[RAN]`:** appending a `pub game_id: i64` struct to `src/api_analysis.rs`, then to `src/store/d5.rs`, made `ut_st_038_no_public_type_or_method_takes_or_returns_an_integer_identity` and the self-test fail; files restored (`git status`: only the two test files differ).
+- **Not scanned:** `backlog.rs`, `backup.rs`, `migrate.rs`, `journal/`, `repo/coord.rs` (public via `pub use`/`pub mod`). Not in scope of this condition; reported.
+
+### Verification `[RAN]`
+`cargo test -p chess-store` 3 runs and `--features test-support` 3 runs: all exit 0 (537 and 642 tests passed in the first run of each). `cargo fmt --check`, `clippy --all-targets -D warnings` both feature settings clean. `node ci/check-crate-edges.mjs` OK. `CHESS_CI_OFFLINE=1 ci/check.sh`: exit 0, "All gates passed." Unverified: `EXPLAIN QUERY PLAN` of the bundled SQLite for the seat `OR`.

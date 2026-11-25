@@ -61,9 +61,24 @@ fn integer_identity_declarations(text: &str) -> Vec<String> {
     found
 }
 
+/// Every file that declares or implements public API of the crate (`pub use` in `lib.rs` names
+/// the types; `store/d3.rs`, `store/d4.rs` and `store/d5.rs` hold the `impl Store` methods of
+/// parts D3 to D5, `api_analysis.rs` the analysis and statistics types).
+const SCANNED_PUBLIC_FILES: [&str; 8] = [
+    "api.rs",
+    "api_analysis.rs",
+    "store.rs",
+    "store/d3.rs",
+    "store/d4.rs",
+    "store/d5.rs",
+    "error.rs",
+    "datadir.rs",
+];
+
 #[test]
 fn ut_st_038_no_public_type_or_method_takes_or_returns_an_integer_identity() {
-    for file in ["api.rs", "store.rs", "error.rs", "datadir.rs"] {
+    // GATE-110 condition 2 (FIND-D5R-04): the files added by parts D3 to D5 are scanned too.
+    for file in SCANNED_PUBLIC_FILES {
         let found = integer_identity_declarations(&source(file));
         assert!(found.is_empty(), "{file}: {found:?}");
     }
@@ -77,6 +92,21 @@ fn ut_st_038_the_scanner_itself_finds_what_it_is_meant_to_find() {
         integer_identity_declarations("pub id: PlayerId, pub game: Option<GameId>, pub ply: u32")
             .is_empty()
     );
+}
+
+/// FIND-D5R-04: a planted integer identity in the text of `api_analysis.rs` and `store/d5.rs`
+/// is detected, so the extended file list is not a vacuous scan.
+#[test]
+fn ut_st_038_a_planted_leak_in_the_d5_files_is_detected() {
+    for file in ["api_analysis.rs", "store/d5.rs"] {
+        assert!(SCANNED_PUBLIC_FILES.contains(&file), "{file} is scanned");
+        let clean = source(file);
+        assert!(integer_identity_declarations(&clean).is_empty(), "{file}");
+        let planted = format!("{clean}\npub struct Leak {{\n    pub game_id: i64,\n}}\n");
+        assert_eq!(integer_identity_declarations(&planted).len(), 1, "{file}");
+        let planted = format!("{clean}\n    pub async fn leak(&self, player: Option<u64>) {{}}\n");
+        assert_eq!(integer_identity_declarations(&planted).len(), 1, "{file}");
+    }
 }
 
 #[test]
