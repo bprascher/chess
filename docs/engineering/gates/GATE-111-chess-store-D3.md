@@ -62,3 +62,18 @@ Brian approved GATE-109 with conditions on 2026-11-25 (CR-36). Condition 1: GATE
 
 - **D2 tests stay green:** the D2 suite (`tests/lifecycle.rs`, `tests/lifecycle_faults.rs` and the shared tests) is green: 130 test binaries pass in the PM full gate of 2026-11-25 (check-12). This is a PM figure `[UNV by the systems engineer: not re-run here]`. The condition continues to hold for every later edit to these files.
 - **Status unchanged:** GATE-111 is still **OPEN, NOT APPROVED. PENDING Brian Prascher (G3; public surface G2).** The header line "GATE-109 and GATE-110 are not approved" is history as of 2026-11-23; GATE-109 is approved with conditions (CR-36), GATE-110 is not approved. Listing the edits closes the list part of GATE-109 condition 1; the condition closes when this gate is decided.
+
+## D5 files edited by GATE-111 (GATE-110 condition 3; G0 record keeping, systems engineer, 2026-11-26)
+
+Brian approved GATE-110 with conditions on 2026-11-26 (CR-37, bead chess-a0r.3.61). Condition 3: GATE-111's edits to D5 files are listed here. Read from the evidence files, the Reviewer report and the code (`[OBS]` unless marked):
+
+| D5 file | Change | Gate it is recorded under | Source |
+|---|---|---|---|
+| `crates/chess-store/src/repo/stats.rs` | `AND g.status <> 'imported'` in the statistics SQL (F2-01, D-150, G1); `ORDER BY started_at, id` (FIND-D5R-03, D-140) | Recorded in the GATE-110 record ("Rulings 2026-11-24") and `step2-store-D5-evidence.md`; **not in GATE-111's "Covers" list** | `step2-store-D5-evidence.md` lines 157 and 166; `review-chess-store-D3-rulings.md` lines 17 and 78 |
+| `crates/chess-store/src/repo/game.rs` (`list_games`, `games_for_history`) | `ORDER BY` with a NULL `started_at` last and `id` tie-break (F2-02, F2-03, D-150, G1) | As above | same sources |
+| `src/api_analysis.rs`, `src/store/d5.rs`, `src/repo/analysis.rs`, `src/repo/jobs.rs` | no GATE-111 edit found | n/a | `[UNV]` git history cannot separate the gates: every part-D file is in one commit (4f662c3), so this is the absence of any mention in the D3 evidence and review `[OBS grep of step2-store-D3-evidence.md]`, not proof |
+
+- **Table written by D3 into a D5-owned table, not a D5 file edit:** `src/repo/apply.rs` (a D3 file) deletes the `move_eval` rows of plies a takeback or a plan removes (FIND-D3-04, D-152; line 364). `move_eval` is the table the D5 evaluation commands write.
+- **Attribution note:** the GATE-110 record's "Record update 2026-11-25" says "GATE-111 edits D5 files (`stats.rs`, `game.rs`)". The evidence shows those two edits were made in the 2026-11-24 rulings pass and are recorded under D5; GATE-111's own CHG-111 scope names none of them. The statement is kept as "the D5 files touched by the same rulings batch as GATE-111", `[INF]`.
+- **Status unchanged:** GATE-111 is still **OPEN, NOT APPROVED. PENDING Brian Prascher (G3; public surface G2).** The header line "GATE-109 and GATE-110 are not approved" is history: GATE-109 and GATE-110 are approved with conditions (CR-36, CR-37). The systems engineer approved nothing in this edit.
+

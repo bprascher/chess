@@ -1,18 +1,23 @@
 # Release Notes
 
-## GATE-110 approved with conditions; store part D4 fixed after review: 2026-11-26
+## GATE-110 approved with conditions; store part D4 review fixes built, re-check pending: 2026-11-26
 
-Brian Prascher approved GATE-110 (store part D5: statistics rows, evaluations, variations, job queue; G2) with conditions in a genuine user message. The program manager records the ruling in a decision bead, and the Decision Log text is still to be entered.
+Brian Prascher approved GATE-110 (store part D5: statistics rows, evaluations, variations, job queue; G2) with three conditions on 2026-11-26, in a genuine user message relayed by the coordinator (decision bead chess-a0r.3.61, baseline B6; no verbatim quotation). Brian committed and merged to `main` locally; it is not yet pushed. The Decision Log text is entered in `docs/requirements.md` as **CR-37** (change-history extension 27). The edits that record this are the systems engineer's uncommitted G0 record keeping.
 
 ### Decisions
-- **GATE-110 approved with conditions.** Conditions: (1) the F2-03 tie-break is pinned by a test that does not depend on a planted index, or accepted as is; (2) the status of the D5R-04 boundary scanner (UT-ST-038) over `api_analysis.rs` and `store/d5.rs` is stated; (3) GATE-111's edits to D5 files are listed in GATE-111. These are the program manager's recommended conditions as accepted; the exact wording is in its decision bead.
+- **GATE-110 approved with conditions** (the program manager's recommended conditions, accepted; wording in bead chess-a0r.3.61). State of each:
+  1. The F2-03 tie-break (`id` for equal `started_at`) is pinned by a test that does not depend on a planted index, or accepted as is: **open**, bead chess-a0r.3.62 (software engineer).
+  2. The UT-ST-038 scanner status over `api_analysis.rs` and `store/d5.rs` is stated: **open**, same bead. Stated in the GATE-110 record: the scanner reads `api.rs`, `store.rs`, `error.rs` and `datadir.rs` only, so it does not cover the two D5 files `[OBS]`.
+  3. GATE-111's edits to D5 files are listed in GATE-111: **closed** by the GATE-111 record update (GATE-111 names no D5 file in its own scope; the 2026-11-24 rulings touched `repo/stats.rs` and `repo/game.rs`).
+- **Superseded wording:** the 2026-11-25 entry below says GATE-110 is not approved; that was true on 2026-11-25. GATE-108, GATE-109 and GATE-110 are now approved with conditions (CR-35, CR-36, CR-37).
 
 ### Built
-- **Store part D4 review fixes:** the fresh reviewer found one Major (a second resumer could move a live journal aside and leave two writers; FIND-D4R-01) and the engineer found a second in the same family (`settle_rebase_files` ran without a lock). Both are fixed: a resume claims the game with an exclusive `.rebase` and re-checks under that claim. Minor findings (symlinks, row status, rebase completeness, report, recovery time bound) are fixed. Engineer-reported: 46 of 48 hand mutants killed. The full gate `CHESS_CI_OFFLINE=1 ci/check.sh` printed "All gates passed" (134 test binaries, 0 failed), run by the program manager.
+- **Store part D4 review fixes (engineer-reported, committed on `main`):** the fresh reviewer found one Major (a second resumer could move a live journal aside and leave two writers; FIND-D4R-01) and the engineer found a second Major-rated finding in the same family while proving the fix (`settle_rebase_files` ran without a lock; FIND-D4F-01). Both are fixed: a resume claims the game with an exclusive `.rebase` and re-checks under that claim. The review's Minor findings (symlinks, row status, rebase completeness, report, recovery time bound) are fixed by the engineer. 46 of 48 new hand mutants were killed (engineer's figure; the two survivors are argued, not killed). The full gate `CHESS_CI_OFFLINE=1 ci/check.sh` printed "All gates passed" (134 test binaries, 0 failed); the figure is the program manager's, from bead chess-a0r.3.40, and the systems engineer did not re-run it. These fixes are not yet reviewed: the limited fresh re-check has not run.
 
-### Not done
-- **GATE-111 (D3, G3) and GATE-112 (D4, G3) are not approved.** D4 has not had its limited fresh re-check of the fixes. Store part C and `chess-app` are not started.
-- Condition 3 of GATE-109 (three unwired failpoints) is open before the first release (chess-a0r.3.60).
+### Not done, not verified
+- **GATE-111 (D3, G3) and GATE-112 (D4, G3) are not approved.** Both are Brian's. D4 has not had its limited fresh re-check of the fixes, and its open points for Brian (the `open_for_resume` signature and public surface, FIND-D4R-08) are not decided. Store part C and `chess-app` are not started.
+- GATE-110 conditions 1 and 2 are open (chess-a0r.3.62). GATE-109 condition 1 closes when GATE-111 is decided; its condition 3 (three unwired failpoints) is open before the first release (chess-a0r.3.60).
+- Not verified: the 134-binary result and the mutant counts (the systems engineer did not re-run them); whether the UT-ST-038 scanner would pass over the two D5 files (not run).
 - Not run: power loss, a hosted CI run, Intel, the online `npm audit` path, sanitizers and cargo-mutants.
 
 ## Store part D4 built; GATE-109 approved with conditions: 2026-11-25
