@@ -1,21 +1,38 @@
 # Release Notes
 
+## GATE-110 approved with conditions; store part D4 fixed after review: 2026-11-26
+
+Brian Prascher approved GATE-110 (store part D5: statistics rows, evaluations, variations, job queue; G2) with conditions in a genuine user message. The program manager records the ruling in a decision bead, and the Decision Log text is still to be entered.
+
+### Decisions
+- **GATE-110 approved with conditions.** Conditions: (1) the F2-03 tie-break is pinned by a test that does not depend on a planted index, or accepted as is; (2) the status of the D5R-04 boundary scanner (UT-ST-038) over `api_analysis.rs` and `store/d5.rs` is stated; (3) GATE-111's edits to D5 files are listed in GATE-111. These are the program manager's recommended conditions as accepted; the exact wording is in its decision bead.
+
+### Built
+- **Store part D4 review fixes:** the fresh reviewer found one Major (a second resumer could move a live journal aside and leave two writers; FIND-D4R-01) and the engineer found a second in the same family (`settle_rebase_files` ran without a lock). Both are fixed: a resume claims the game with an exclusive `.rebase` and re-checks under that claim. Minor findings (symlinks, row status, rebase completeness, report, recovery time bound) are fixed. Engineer-reported: 46 of 48 hand mutants killed. The full gate `CHESS_CI_OFFLINE=1 ci/check.sh` printed "All gates passed" (134 test binaries, 0 failed), run by the program manager.
+
+### Not done
+- **GATE-111 (D3, G3) and GATE-112 (D4, G3) are not approved.** D4 has not had its limited fresh re-check of the fixes. Store part C and `chess-app` are not started.
+- Condition 3 of GATE-109 (three unwired failpoints) is open before the first release (chess-a0r.3.60).
+- Not run: power loss, a hosted CI run, Intel, the online `npm audit` path, sanitizers and cargo-mutants.
+
 ## Store part D4 built; GATE-109 approved with conditions: 2026-11-25
 
-Brian Prascher approved GATE-109 (store part D2, G3 with G2 public items) with conditions in a genuine user message. The program manager records the ruling in a decision bead and the Decision Log text is still to be entered, so this entry is the first record of it. The code is committed on branch `feat/step2-store-d4` and merged to `main`.
+Brian Prascher approved GATE-109 (store part D2, G3 with G2 public items) with conditions on 2026-11-25 in a genuine user message relayed by the coordinator (decision bead chess-a0r.3.59, baseline B6). The Decision Log text is entered in `docs/requirements.md` as **CR-36**. The D4 code is committed on branch `feat/step2-store-d4` and merged to `main` (Brian committed, merged and pushed). The documents named below as corrected are uncommitted edits of the systems engineer.
 
 ### Built
 - **`chess-store` part D4 (chess-a0r.3.40):** `open_for_resume`, rebase orchestration, start-up recovery inside `Store::open`, the B-R03 repair (`close_final`, using `same_file`), the B-R05 repair (an incomplete `.rebase` is moved to `damaged/`, bytes kept), the whole journal applied in one call, and the B-R04 fix (an 80 ms lock grace in `create`).
-- **Verification:** `CHESS_CI_OFFLINE=1 ci/check.sh` printed "All gates passed" (130 test binaries, 0 failed), run by the program manager. D4 test counts, mutants and kill rounds are the engineer's figures and were not re-run. A fresh reviewer pass on D4 has not run.
+- **Verification:** `CHESS_CI_OFFLINE=1 ci/check.sh` printed "All gates passed" (130 test binaries, 0 failed), run by the program manager on 2026-11-25; the systems engineer did not re-run it. D4 was verified by two engineers (per the tracker relay; bead chess-a0r.3.40 is still IN_PROGRESS). D4 test counts, hand mutants (57 of 62 killed, 5 survivors judged non-defects by the author) and kill rounds are the engineers' figures and were not re-run. **A fresh Reviewer pass on D4 has not run; D4 is built and engineer-verified, not reviewed or accepted.**
 
 ### Decisions
-- **GATE-109 (store part D2: game lifecycle writes and ratings): approved with conditions.** Conditions: (1) GATE-111 re-lists its edits to D2 files and the D2 tests stay green; (2) F2-05 (`set_analysis_used` refuses a game that is not `in_progress`, unless the flag is already set) is accepted as built; (3) the three unwired failpoints (`finalize.after_journal_end`, `finalize.after_commit_before_rename`, `reset.after_commit_before_voided_record`) are wired before the first release.
-- **B-R04 is closed** (GATE-108 condition 3). B-R03 and B-R05 are fixed in D4 and await review.
+- **GATE-109 (store part D2: game lifecycle writes and ratings): approved with conditions.** Conditions and their state: (1) GATE-111 re-lists its edits to D2 files and the D2 tests stay green: **pending until GATE-111 is decided**; the list is entered in the GATE-111 record (`repo/finalize.rs`, `repo/lifecycle.rs`, `repo/game.rs`, and the queue drain in `store.rs` and `thread.rs`) and the D2 suite is green in the PM full gate of 2026-11-25 (130 test binaries); (2) F2-05 (`set_analysis_used` refuses a game that is not `in_progress`, unless the flag is already set) is accepted as built: **closed**; (3) the three unwired failpoints (`finalize.after_journal_end`, `finalize.after_commit_before_rename`, `reset.after_commit_before_voided_record`) are wired before the first release: **open**, bead chess-a0r.3.60 (a code grep on 2026-11-25 finds no production call site for the three names).
+- **GATE-108 condition 3 (B-R04 status) is met:** the D4 engineer states B-R04 fixed and verified (an 80 ms lock grace in `create`; 0 spurious `Locked` in 30 000 in-thread and 4 000 cross-process creates, idle machine; `step2-store-D4-evidence.md` section 6). That is the engineer's claim, not reviewed. The four GATE-108 conditions are closed. B-R03 and B-R05 are fixed in D4 by the engineer and await the Reviewer pass and GATE-112.
+- **Decision Log:** CR-36 (GATE-109 approval, G3, public items G2); change-history extension 26. CR-32 to CR-35 are the 2026-11-24 and 2026-11-25 entries entered before it.
 
 ### Not done
-- **GATE-110 (D5, G2), GATE-111 (D3, G3) and GATE-112 (D4, G3) are not approved.** They are Brian's.
+- **GATE-110 (D5), GATE-111 (D3, G3) and GATE-112 (D4, G3) are not approved.** They are Brian's; the gate records say OPEN, NOT APPROVED. GATE-109 conditions 1 and 3 are not closed.
 - D4 has not had a fresh reviewer pass. D4 differs from the SDD in the `open_for_resume` return type and the `StoredMove` and `ClockPair` names; start-up recovery runs inside `Store::open`; the plan applier keeps its 5 s lock wait. These need Brian's review under GATE-112.
 - Store part C and `chess-app` are not started.
+- Not verified: `README.md` (not edited by the systems engineer) says "Built and reviewed" for D4 parts while noting D4 awaits its reviewer pass; read it as built and not yet reviewed. The relay carries no verbatim quotation.
 - Not run: power loss, a hosted CI run, Intel, the online `npm audit` path, sanitizers and cargo-mutants.
 
 ## Phase 3 step 2 built through store part D3; GATE-108 approved with conditions: 2026-11-24 (Decision Log text entered 2026-11-25)

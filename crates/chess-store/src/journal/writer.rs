@@ -87,6 +87,11 @@ impl MoveJournal {
                     JournalError::write_failed(&e)
                 }
             })?;
+        // Test seam (FIND-D4R-09): the new name exists and is not locked yet.
+        fault::check("journal.create.created", &path).map_err(|e| {
+            let _ = fs::remove_file(&path);
+            JournalError::write_failed(&e)
+        })?;
         // B-R04: another descriptor can hold the lock of the file for a moment between its
         // creation and our `try_lock`: `probe` (lock, unlock) or a resume that found the new
         // name. A prober lets go within microseconds, so `WouldBlock` is retried for a short

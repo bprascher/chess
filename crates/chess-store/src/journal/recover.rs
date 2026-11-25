@@ -29,6 +29,7 @@
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 use chess_domain::{GameId, GameStatus, PlayerKind};
 use uuid::Uuid;
@@ -38,14 +39,14 @@ use crate::error::{Entity, JournalError, StoreError, WriteCause};
 use crate::fault;
 use crate::journal::files::{
     Settled, finish_close_final, journal_path, move_aside_damaged, rebase_path, same_file,
-    settle_rebase_files, sync_dir,
+    settle_rebase_files_at, sync_dir,
 };
 use crate::journal::format::{
     ClockText, HEADER_LEN, JournalRecord, Kind, Payload, SeatKind, StartPayload, UuidText,
     decode_header, encode_header, matchup_code,
 };
 use crate::journal::reader::{DamageKind, DamagedInfo, scan_bytes};
-use crate::journal::rebase::{RebaseInput, build_rebased, swap_in_rebased, write_rebase_file};
+use crate::journal::rebase::{RebaseInput, build_rebased, swap, write_rebase_file};
 use crate::journal::reconcile::{
     ClockPair, Folded, Plan, ReconcileInput, RunSource, StoredMove, apply_plan, fold, reconcile,
     reconciled_clocks,
@@ -142,6 +143,12 @@ pub enum RecoveryOutcome {
     /// An incomplete `.rebase` with no journal was moved aside (B-R05); the game is rebuilt from
     /// the store (the outcome of that rebuild follows as `Rebased`).
     IncompleteRebaseMovedAside,
+    /// `done/<uuid>.jnl` holds a file that is not this journal (a different file, or anything
+    /// that is not a regular file, such as a symbolic link), so `close_final` can never finish
+    /// for this game and a person has to look (FIND-D4R-04, B-R03: "a different file is damage,
+    /// not a retry"). The scan touched nothing: both names stay, the rows are as they were, and
+    /// a resume is **not** blocked (it reads the journal under `journal/` as usual).
+    DoneNameCollision,
 }
 
 /// One game's line in the startup report.
@@ -230,20 +237,13 @@ pub(crate) enum Fate {
     MovedAside,
     FinishedClose,
     IncompleteRebaseMovedAside,
+    DoneCollision,
 }
 
 pub(crate) struct Done {
     holder: Holder,
     recovered: Recovered,
     fate: Fate,
-}
-
-struct Prepared {
-    file: Option<File>,
-    bytes: Option<Vec<u8>>,
-    settled: Settled,
-    /// B-R03: `journal/<uuid>.jnl` was the same file as `done/<uuid>.jnl`; the old name is gone.
-    finished_close: bool,
 }
 
 fn io_err(e: &io::Error) -> JournalError {
@@ -283,9 +283,27 @@ fn exists(path: &Path) -> bool {
     fs::symlink_metadata(path).is_ok()
 }
 
-/// The file-only prologue (blocking): lock, repair the windows of `close_final` and of the
-/// rebase, read the journal.
-fn prepare(jdir: &Path, id: Uuid, store: Uuid) -> Result<Prepared, JournalError> {
+/// What `journal/done/<uuid>.jnl` is, next to a journal that exists under `journal/` (B-R03).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DoneState {
+    /// No journal under `journal/`, or no `done/` name.
+    Absent,
+    /// The same regular file under both names (`close_final` died between link and removal).
+    SameFile,
+    /// Another file, or a name that is not a regular file (a symbolic link, FIND-D4R-03).
+    Different,
+}
+
+struct Prepared {
+    /// The file whose lock we hold: `<uuid>.jnl`, else `<uuid>.jnl.rebase`, else nothing.
+    file: Option<File>,
+    done: DoneState,
+}
+
+/// The file-only prologue (blocking): lock the journal (or the `.rebase`) and look at `done/`.
+/// Nothing is moved or removed here: what to do with the files depends on the row, which the
+/// caller reads next, under this lock (FIND-D4R-04, FIND-D4R-05).
+fn prepare(jdir: &Path, id: Uuid) -> Result<Prepared, JournalError> {
     let jnl = journal_path(jdir, id);
     let reb = rebase_path(jdir, id);
     let target = if exists(&jnl) {
@@ -295,42 +313,81 @@ fn prepare(jdir: &Path, id: Uuid, store: Uuid) -> Result<Prepared, JournalError>
     } else {
         None
     };
-    let mut file = match &target {
+    if target.is_none() {
+        // Test seam (FIND-D4R-01): the decision "no file" is made here; what follows is acted on
+        // later, possibly after another process has built the journal.
+        fault::check("journal.resume.no_file_seen", jdir).map_err(|e| io_err(&e))?;
+    }
+    let file = match &target {
         Some(path) => lock_open(path)?,
         None => None,
     };
     // B-R03: the journal under two names (`close_final` died between the link and the removal).
-    let done = jdir.join("done").join(format!("{}.jnl", id.hyphenated()));
-    if file.is_some() && exists(&jnl) && exists(&done) {
-        if same_file(&jnl, &done).map_err(|e| io_err(&e))? {
-            fs::remove_file(&jnl).map_err(|e| io_err(&e))?;
-            sync_dir(jdir).map_err(|e| io_err(&e))?;
-            return Ok(Prepared {
-                file: None,
-                bytes: None,
-                settled: Settled::Nothing,
-                finished_close: true,
-            });
+    let done_path = jdir.join("done").join(format!("{}.jnl", id.hyphenated()));
+    let done = if file.is_some() && exists(&jnl) && exists(&done_path) {
+        if same_file(&jnl, &done_path).map_err(|e| io_err(&e))? {
+            DoneState::SameFile
+        } else {
+            DoneState::Different
         }
-        // A different file in `done/`: not a retry. Neither file is touched.
-        return Err(JournalError::WriteFailed {
-            cause: WriteCause::Io(io::ErrorKind::AlreadyExists),
-        });
-    }
-    let settled = settle_rebase_files(jdir, id, store).map_err(|e| io_err(&e))?;
+    } else {
+        DoneState::Absent
+    };
+    Ok(Prepared { file, done })
+}
+
+/// What the file steps after the row is known leave: the lock, and the bytes of the journal.
+struct Settle {
+    settled: Settled,
+    file: Option<File>,
+    bytes: Option<Vec<u8>>,
+}
+
+/// Repairs the windows of the rebase (B-R05) and reads the journal. `journal_seq` is the row's
+/// value for an in-progress game (the completeness witness of a `.rebase`), `None` otherwise.
+///
+/// **Only under a lock.** With no file in our hands there is nothing to repair: a `.rebase` or a
+/// journal that shows up now belongs to a process that is building it, and moving, removing or
+/// installing it would destroy that work (FIND-D4R-01; the row is read between the decision
+/// "no file" and this call, which is long enough for another resumer to run its whole rebase).
+fn settle_and_read(
+    jdir: &Path,
+    id: Uuid,
+    store: Uuid,
+    journal_seq: Option<u64>,
+    mut file: Option<File>,
+) -> Result<Settle, JournalError> {
+    let settled = if file.is_some() {
+        settle_rebase_files_at(jdir, id, store, journal_seq).map_err(|e| io_err(&e))?
+    } else {
+        Settled::Nothing
+    };
     if matches!(settled, Settled::MovedAsideIncomplete { .. }) {
         file = None;
     }
     let bytes = match &file {
-        Some(_) => Some(fs::read(&jnl).map_err(|e| io_err(&e))?),
+        Some(_) => match fs::read(journal_path(jdir, id)) {
+            Ok(bytes) => Some(bytes),
+            // We locked a `.rebase` that its creator then removed (it lost the race for the
+            // lock of its own new file, or gave up): there is no file under our lock any more.
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                file = None;
+                None
+            }
+            Err(e) => return Err(io_err(&e)),
+        },
         None => None,
     };
-    Ok(Prepared {
+    Ok(Settle {
+        settled,
         file,
         bytes,
-        settled,
-        finished_close: false,
     })
+}
+
+/// The header of a journal that names this game and this store.
+fn header_names(bytes: &[u8], id: Uuid, store: Uuid) -> bool {
+    decode_header(bytes).is_ok_and(|header| header.game == id && header.store == store)
 }
 
 /// The intact part of a journal as the recovery sees it.
@@ -447,16 +504,56 @@ fn join<T>(result: Result<T, tokio::task::JoinError>) -> Result<T, ResumeError> 
     result.map_err(|_| ResumeError::Store(StoreError::Internal))
 }
 
-/// One game, lock held (SDD 3.11.3; the table in the module comment).
-#[allow(
-    clippy::too_many_lines,
-    reason = "one routine with one match per row of the case table in the module comment"
-)]
+/// How many times a resume that found another process building the journal starts again (the
+/// second look finds the file and takes its lock, or is told `Locked`).
+const RACE_ATTEMPTS: u32 = 3;
+
+/// One game, lock held (SDD 3.11.3; the table in the module comment). `deadline` bounds the
+/// total wait of the startup scan for the database (FIND-D4R-07); a resume passes `None`.
 pub(crate) async fn recover_game(
     store: &Store,
     game: GameId,
     intent: Intent,
+    deadline: Option<Instant>,
 ) -> Result<Done, ResumeError> {
+    for _ in 0..RACE_ATTEMPTS {
+        if let Some(done) = recover_game_once(store, game, intent, deadline).await? {
+            return Ok(done);
+        }
+    }
+    Err(JournalError::Locked { owner_kind: None }.into())
+}
+
+/// The connection's normal lock wait (`open.rs`, 5 s): one step never waits longer for the
+/// database than this, whatever the budget has left.
+const NORMAL_WAIT: Duration = Duration::from_secs(5);
+
+/// How long the next database step of the startup scan may wait: `None` without a deadline
+/// (the connection's normal wait), otherwise the time left, at most `NORMAL_WAIT`; `Busy` when
+/// the budget is spent.
+fn wait_left(deadline: Option<Instant>) -> Result<Option<Duration>, StoreError> {
+    let Some(deadline) = deadline else {
+        return Ok(None);
+    };
+    let left = deadline.saturating_duration_since(Instant::now());
+    if left.is_zero() {
+        return Err(StoreError::Busy);
+    }
+    Ok(Some(left.min(NORMAL_WAIT)))
+}
+
+/// `Ok(None)`: another process built the journal while this one was deciding that there was none
+/// (FIND-D4R-01); nothing of this attempt is left on disk and the caller starts again.
+#[allow(
+    clippy::too_many_lines,
+    reason = "one routine with one match per row of the case table in the module comment"
+)]
+async fn recover_game_once(
+    store: &Store,
+    game: GameId,
+    intent: Intent,
+    deadline: Option<Instant>,
+) -> Result<Option<Done>, ResumeError> {
     let store_uuid = store.store_uuid()?;
     let data = store.data_dir().clone();
     let jdir = data.journal_dir();
@@ -464,49 +561,58 @@ pub(crate) async fn recover_game(
 
     let prep = {
         let jdir = jdir.clone();
-        join(tokio::task::spawn_blocking(move || prepare(&jdir, id, store_uuid)).await)??
+        join(tokio::task::spawn_blocking(move || prepare(&jdir, id)).await)??
     };
-    let incomplete_aside = matches!(prep.settled, Settled::MovedAsideIncomplete { .. });
     let no_row = || StoreError::NotFound {
         entity: Entity::Game,
         id,
     };
-    if prep.finished_close {
-        return Ok(Done {
+    if intent == Intent::Startup && prep.done == DoneState::Different {
+        // FIND-D4R-04: nothing is touched and the game is not made unresumable; a resume goes on
+        // from `journal/`. The lock is released with `prep`.
+        return Ok(Some(Done {
             holder: Holder::None,
             recovered: empty_recovered(),
-            fate: Fate::FinishedClose,
-        });
+            fate: Fate::DoneCollision,
+        }));
     }
 
     let Some(row) = store.resume_row(game).await? else {
         if intent == Intent::Resume {
             return Err(no_row().into());
         }
-        // The scan: a file that is only a header, for a game with no row, is removed.
+        // The scan: a file that is only a header, for a game with no row, is removed (only when
+        // that header names this game and this store, FIND-D4R-12).
+        let settle = {
+            let (jdir, file) = (jdir.clone(), prep.file);
+            join(
+                tokio::task::spawn_blocking(move || {
+                    settle_and_read(&jdir, id, store_uuid, None, file)
+                })
+                .await,
+            )??
+        };
         let mut fate = Fate::NoRow;
-        if let (Some(_), Some(bytes)) = (&prep.file, &prep.bytes)
+        if let (Some(_), Some(bytes)) = (&settle.file, &settle.bytes)
             && bytes.len() == HEADER_LEN
-            && decode_header(bytes).is_ok()
+            && header_names(bytes, id, store_uuid)
         {
-            {
-                let jdir = jdir.clone();
-                join(
-                    tokio::task::spawn_blocking(move || {
-                        fs::remove_file(journal_path(&jdir, id))
-                            .and_then(|()| sync_dir(&jdir))
-                            .map_err(|e| io_err(&e))
-                    })
-                    .await,
-                )??;
-                fate = Fate::RemovedEmpty;
-            }
+            let jdir = jdir.clone();
+            join(
+                tokio::task::spawn_blocking(move || {
+                    fs::remove_file(journal_path(&jdir, id))
+                        .and_then(|()| sync_dir(&jdir))
+                        .map_err(|e| io_err(&e))
+                })
+                .await,
+            )??;
+            fate = Fate::RemovedEmpty;
         }
-        return Ok(Done {
+        return Ok(Some(Done {
             holder: Holder::None,
             recovered: empty_recovered(),
             fate,
-        });
+        }));
     };
 
     let final_row = row.record.status != GameStatus::InProgress;
@@ -514,49 +620,103 @@ pub(crate) async fn recover_game(
     let stored_clocks = clocks_of(&row);
     let nothing_stored = db_seq == 0 && row.moves.is_empty();
 
+    // B-R03, finished: the same regular file under both names and the game is over, so the
+    // close did happen. For a game still in progress the second name proves nothing: both names
+    // stay and the recovery goes on (FIND-D4R-04); the close that follows the final commit
+    // finishes the move.
+    if prep.done == DoneState::SameFile && final_row && prep.file.is_some() {
+        let file = prep.file;
+        let jdir = jdir.clone();
+        join(
+            tokio::task::spawn_blocking(move || {
+                let removed = fs::remove_file(journal_path(&jdir, id))
+                    .and_then(|()| sync_dir(&jdir))
+                    .map_err(|e| io_err(&e));
+                drop(file);
+                removed
+            })
+            .await,
+        )??;
+        return Ok(Some(Done {
+            holder: Holder::None,
+            recovered: empty_recovered(),
+            fate: Fate::FinishedClose,
+        }));
+    }
+
+    // The `.rebase` windows (B-R05) are settled now that the row is known: for a game in
+    // progress, a `.rebase` that ends before the store's `journal_seq` was cut (FIND-D4R-05).
+    let Settle {
+        settled,
+        file,
+        bytes,
+    } = {
+        let (jdir, file) = (jdir.clone(), prep.file);
+        let floor = (!final_row).then_some(db_seq);
+        join(
+            tokio::task::spawn_blocking(move || {
+                settle_and_read(&jdir, id, store_uuid, floor, file)
+            })
+            .await,
+        )??
+    };
+    let incomplete_aside = matches!(settled, Settled::MovedAsideIncomplete { .. });
+
     // ---- no journal file ----
-    let Some(file) = prep.file else {
+    let Some(file) = file else {
         let view = View::empty();
         if final_row {
-            return Ok(Done {
+            return Ok(Some(Done {
                 holder: Holder::None,
                 recovered: recovered_from_row(&row, &view, RunSource::Store),
                 fate: Fate::NoJournalFinal,
-            });
+            }));
         }
         if nothing_stored {
             // 3.9.2: a row with no journal is a game with zero moves from `start_fen`.
             if intent == Intent::Startup {
-                return Ok(Done {
+                return Ok(Some(Done {
                     holder: Holder::None,
                     recovered: recovered_from_row(&row, &view, RunSource::Both),
                     fate: Fate::EmptyRow,
-                });
+                }));
             }
             let journal = MoveJournal::new(data, store_uuid);
-            let writer = join(tokio::task::spawn_blocking(move || journal.create(&game)).await)??;
+            let created = join(tokio::task::spawn_blocking(move || journal.create(&game)).await)?;
+            let writer = match created {
+                Ok(writer) => writer,
+                // The name appeared after our decision: someone else created it (FIND-D4R-01).
+                Err(JournalError::WriteFailed {
+                    cause: WriteCause::Io(io::ErrorKind::AlreadyExists),
+                }) => return Ok(None),
+                Err(other) => return Err(other.into()),
+            };
             let mut recovered = recovered_from_row(&row, &view, RunSource::Both);
             recovered.report.created_empty = true;
-            return Ok(Done {
+            return Ok(Some(Done {
                 holder: Holder::Writer(writer),
                 recovered,
                 fate: Fate::EmptyRow,
-            });
+            }));
         }
         // Rows or a `journal_seq` and no journal: the store is ahead of an empty journal (D-66).
         let mut view = View::empty();
         view.damaged = Some(DamagedInfo {
             kind: DamageKind::StoreAhead,
         });
-        let mut done = rebase(store, game, &row, &view, &[], None, Holder::None).await?;
+        let Some(mut done) =
+            rebase(store, game, &row, &view, &[], None, Holder::None, deadline).await?
+        else {
+            return Ok(None);
+        };
         if incomplete_aside {
             done.fate = Fate::IncompleteRebaseMovedAside;
         }
-        return Ok(done);
+        return Ok(Some(done));
     };
 
     // ---- a journal file, lock held ----
-    let bytes = prep.bytes.unwrap_or_default();
+    let bytes = bytes.unwrap_or_default();
     let path = journal_path(&jdir, id);
     let short = bytes.len() < HEADER_LEN;
     let mut view = if short {
@@ -596,7 +756,7 @@ pub(crate) async fn recover_game(
         let view = View::empty();
         let mut recovered = recovered_from_row(&row, &view, RunSource::Both);
         recovered.report.created_empty = true;
-        return Ok(Done {
+        return Ok(Some(Done {
             holder: Holder::File {
                 file,
                 path,
@@ -605,7 +765,7 @@ pub(crate) async fn recover_game(
             },
             recovered,
             fate: Fate::EmptyRow,
-        });
+        }));
     }
 
     // D-66: a store that holds a record the journal does not prove is damage, with or without a
@@ -631,17 +791,17 @@ pub(crate) async fn recover_game(
             )??;
             let mut recovered = recovered_from_row(&row, &view, RunSource::Store);
             recovered.report.moved_aside = Some(moved.damaged);
-            return Ok(Done {
+            return Ok(Some(Done {
                 holder: Holder::None,
                 recovered,
                 fate: Fate::MovedAside,
-            });
+            }));
         }
         let last_terminal = view.records.last().is_some_and(is_terminal);
         let mut recovered = recovered_from_row(&row, &view, RunSource::Journal);
         recovered.records.clone_from(&view.records);
         let acked = u64::try_from(view.intact_end).unwrap_or(0);
-        return Ok(Done {
+        return Ok(Some(Done {
             holder: Holder::File {
                 file,
                 path,
@@ -654,7 +814,7 @@ pub(crate) async fn recover_game(
             } else {
                 Fate::FinalNeedsRecord
             },
-        });
+        }));
     }
 
     let folded = fold(&view.records);
@@ -688,7 +848,7 @@ pub(crate) async fn recover_game(
             .get(HEADER_LEN..view.intact_end.max(HEADER_LEN))
             .unwrap_or_default()
             .to_vec();
-        let mut done = rebase(
+        let Some(mut done) = rebase(
             store,
             game,
             &row,
@@ -701,12 +861,16 @@ pub(crate) async fn recover_game(
                 acked_len: 0,
                 next_seq: 0,
             },
+            deadline,
         )
-        .await?;
+        .await?
+        else {
+            return Ok(None);
+        };
         if incomplete_aside {
             done.fate = Fate::IncompleteRebaseMovedAside;
         }
-        return Ok(done);
+        return Ok(Some(done));
     }
 
     // ---- intact journal, in-progress row ----
@@ -730,7 +894,9 @@ pub(crate) async fn recover_game(
     // so the plan is only needed for what that call cannot do: delete stored rows beyond the
     // journal's end. In the common case the resume is one transaction.
     if plan.rows_to_delete_from.is_some() {
-        store.apply_reconcile(game, plan.clone(), None).await?;
+        store
+            .apply_reconcile(game, plan.clone(), None, wait_left(deadline)?)
+            .await?;
     }
     // D3-10, D-87: the whole journal in ONE call. A batch that is not applied yet waits in the
     // backlog (`Queued`); a batch that is refused parks the game and comes back as the error.
@@ -742,7 +908,7 @@ pub(crate) async fn recover_game(
     let terminal = view.records.last().is_some_and(is_terminal);
     let mut report = report_of(&view, &rows, plan.source);
     report.damaged = None;
-    Ok(Done {
+    Ok(Some(Done {
         holder: Holder::File {
             file,
             path,
@@ -760,7 +926,7 @@ pub(crate) async fn recover_game(
         } else {
             Fate::Interrupted
         },
-    })
+    }))
 }
 
 fn empty_recovered() -> Recovered {
@@ -794,6 +960,10 @@ fn recovered_from_row(row: &ResumeRow, view: &View, source: RunSource) -> Recove
 /// The rebase (SDD 3.11.3, D-83, D-110): step 1 build and write the `.rebase`, step 2 one store
 /// transaction (plan and `journal_seq`), the failpoint `journal.rebase.db_committed`, step 3 the
 /// two moves. `old` is the damaged file's handle (its lock is dropped after the swap).
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the inputs of one rebase; a struct would only rename them"
+)]
 async fn rebase(
     store: &Store,
     game: GameId,
@@ -802,7 +972,8 @@ async fn rebase(
     intact_bytes: &[u8],
     planned: Option<(&Folded, Plan)>,
     old: Holder,
-) -> Result<Done, ResumeError> {
+    deadline: Option<Instant>,
+) -> Result<Option<Done>, ResumeError> {
     let id = game.as_uuid();
     let store_uuid = store.store_uuid()?;
     let jdir = store.data_dir().journal_dir();
@@ -847,11 +1018,25 @@ async fn rebase(
         let (jdir, bytes) = (jdir.clone(), rebased.clone());
         join(tokio::task::spawn_blocking(move || write_rebase_file(&jdir, id, &bytes)).await)??
     };
+    // FIND-D4R-01: with no journal file in our hands, the `.rebase` we just made (it is ours
+    // alone, `create_new`) is the only claim on this game. If a `<uuid>.jnl` exists now, another
+    // process built one between our decision and this point and may hold it: nothing of ours
+    // may move it. The attempt is undone and starts again, which finds the file and its lock.
+    if matches!(old, Holder::None) && exists(&journal_path(&jdir, id)) {
+        drop(rebase_file);
+        let _ = fs::remove_file(rebase_path(&jdir, id));
+        return Ok(None);
+    }
     // Step 2: one store transaction; `journal_seq` becomes the new file's last `seq`.
-    if let Err(error) = store
-        .apply_reconcile(game, plan.clone(), Some(rebased.last_seq))
-        .await
-    {
+    let step_two = match wait_left(deadline) {
+        Ok(wait) => {
+            store
+                .apply_reconcile(game, plan.clone(), Some(rebased.last_seq), wait)
+                .await
+        }
+        Err(error) => Err(error),
+    };
+    if let Err(error) = step_two {
         // The `.rebase` is derived data; the next recovery would remove it as stale anyway.
         let _ = fs::remove_file(rebase_path(&jdir, id));
         return Err(error.into());
@@ -859,14 +1044,14 @@ async fn rebase(
     let ctx = journal_path(&jdir, id);
     fault::check("journal.rebase.db_committed", &ctx).map_err(|e| io_err(&e))?;
     // Step 3: the old file aside, the new one into place.
+    let may_move_aside = !matches!(old, Holder::None);
     let (writer, moved) = {
         let jdir = jdir.clone();
         join(
             tokio::task::spawn_blocking(move || -> Result<_, JournalError> {
-                let had_old = exists(&journal_path(&jdir, id));
-                let writer = swap_in_rebased(&jdir, id, rebase_file)?;
+                let swapped = swap(&jdir, id, rebase_file, may_move_aside)?;
                 drop(old);
-                Ok((writer, had_old))
+                Ok(swapped)
             })
             .await,
         )??
@@ -876,9 +1061,8 @@ async fn rebase(
     let (rows, clocks) = apply_plan(&row.moves, stored_clocks, &plan);
     let mut report = report_of(view, &rows, plan.source);
     report.rebased = true;
-    if moved {
-        report.moved_aside = last_damaged_name(&jdir, id);
-    }
+    // The file the swap just made (not the highest `k` of the game, FIND-D4R-06).
+    report.moved_aside = moved.map(|aside| aside.damaged);
     // A rebased file that ends in a terminal record is a finished game whose end the store may
     // not hold yet: the whole file goes to the applier in one call.
     let terminal = scanned.records.last().is_some_and(is_terminal);
@@ -892,7 +1076,7 @@ async fn rebase(
             kind: DamageKind::StoreAhead,
         });
     }
-    Ok(Done {
+    Ok(Some(Done {
         holder: Holder::Writer(writer),
         recovered: Recovered {
             records: scanned.records,
@@ -901,28 +1085,7 @@ async fn rebase(
             report,
         },
         fate,
-    })
-}
-
-/// The highest `damaged/<uuid>.<k>.jnl` of the game (the one the swap just made).
-fn last_damaged_name(jdir: &Path, id: Uuid) -> Option<PathBuf> {
-    let dir = jdir.join("damaged");
-    let prefix = format!("{}.", id.hyphenated());
-    let mut best: Option<(u32, PathBuf)> = None;
-    for entry in fs::read_dir(dir).ok()?.flatten() {
-        let name = entry.file_name().to_string_lossy().into_owned();
-        let Some(k) = name
-            .strip_prefix(&prefix)
-            .and_then(|rest| rest.strip_suffix(".jnl"))
-            .and_then(|k| k.parse::<u32>().ok())
-        else {
-            continue;
-        };
-        if best.as_ref().is_none_or(|(b, _)| k > *b) {
-            best = Some((k, entry.path()));
-        }
-    }
-    best.map(|(_, path)| path)
+    }))
 }
 
 // ------------------------------------------------------------------------ open_for_resume
@@ -953,7 +1116,7 @@ impl MoveJournal {
         store: &Store,
         game: &GameId,
     ) -> Result<(Option<JournalWriter>, Recovered), ResumeError> {
-        let done = recover_game(store, *game, Intent::Resume).await?;
+        let done = recover_game(store, *game, Intent::Resume, None).await?;
         Ok((done.holder.into_writer(), done.recovered))
     }
 }
@@ -1001,6 +1164,13 @@ fn failed(error: &ResumeError) -> RecoveryOutcome {
     }
 }
 
+/// The most time the whole startup scan spends waiting for the database when another process
+/// holds its write lock (FIND-D4R-07, NFR-1). `ESTIMATE`: twice the connection's 5 s wait, so
+/// that one busy game does not use it up and many busy games do not add up to minutes. A game
+/// that needs the database after the budget is spent is reported `Failed` (busy) at once; its
+/// journal stays, and the next start or its resume retries.
+const RECOVERY_BUDGET: Duration = Duration::from_secs(10);
+
 /// The startup scan (DD-ST-019, SEQ-ST-01): every journal in `journal/` whose lock is free is
 /// brought to the store's state, in the order of D-72. One bad journal never stops the others.
 pub(crate) async fn startup(store: &Store) -> StartupReport {
@@ -1031,16 +1201,17 @@ pub(crate) async fn startup(store: &Store) -> StartupReport {
         };
     };
     let mut report = StartupReport::default();
+    let deadline = Instant::now() + RECOVERY_BUDGET;
     for (_, _, id) in order {
         let game = GameId::from_uuid(id);
-        let outcome = recover_one(store, game).await;
+        let outcome = recover_one(store, game, deadline).await;
         report.games.push(RecoveredGame { game, outcome });
     }
     report
 }
 
-async fn recover_one(store: &Store, game: GameId) -> RecoveryOutcome {
-    let done = match recover_game(store, game, Intent::Startup).await {
+async fn recover_one(store: &Store, game: GameId, deadline: Instant) -> RecoveryOutcome {
+    let done = match recover_game(store, game, Intent::Startup, Some(deadline)).await {
         Ok(done) => done,
         Err(ResumeError::Journal(JournalError::Locked { .. })) => return RecoveryOutcome::Held,
         Err(error) => return classify_error(store, game, &error).await,
@@ -1081,6 +1252,7 @@ async fn recover_one(store: &Store, game: GameId) -> RecoveryOutcome {
             }),
         },
         Fate::IncompleteRebaseMovedAside => RecoveryOutcome::IncompleteRebaseMovedAside,
+        Fate::DoneCollision => RecoveryOutcome::DoneNameCollision,
         Fate::MovedAside => RecoveryOutcome::MovedAside {
             damaged: recovered.report.damaged,
         },
@@ -1162,6 +1334,101 @@ mod tests {
         assert!(lock_open(&path).unwrap().is_none());
         fs::write(&path, b"x").unwrap();
         assert!(lock_open(&path).unwrap().is_some());
+    }
+
+    fn store_in(dir: &Path) -> Store {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
+        runtime
+            .block_on(Store::open(crate::store::StoreOptions::new(
+                crate::datadir::DataDir::new(dir),
+            )))
+            .unwrap()
+            .store
+    }
+
+    /// The classification of a failed scan step (mutant D45): `GameParked` is `Parked` with no
+    /// cause; any other error of an unparked game is `Failed` by category.
+    #[test]
+    fn a_failed_step_is_classified_by_its_error() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = store_in(dir.path());
+        let game = GameId::from_uuid(Uuid::from_u128(5));
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
+        let parked = ResumeError::Store(StoreError::GameParked { game });
+        assert_eq!(
+            runtime.block_on(classify_error(&store, game, &parked)),
+            RecoveryOutcome::Parked { cause: None }
+        );
+        let busy = ResumeError::Store(StoreError::Busy);
+        assert_eq!(
+            runtime.block_on(classify_error(&store, game, &busy)),
+            RecoveryOutcome::Failed {
+                error: "the store is busy".into()
+            }
+        );
+    }
+
+    /// The startup budget (FIND-D4R-07): no deadline is the normal wait, time left is passed on,
+    /// a spent budget is `Busy` at once.
+    #[test]
+    fn the_budget_is_passed_on_and_a_spent_one_is_busy() {
+        assert_eq!(wait_left(None).unwrap(), None);
+        let long = wait_left(Some(Instant::now() + Duration::from_secs(60)))
+            .unwrap()
+            .unwrap();
+        assert_eq!(long, NORMAL_WAIT, "never more than the normal wait");
+        let left = wait_left(Some(Instant::now() + Duration::from_secs(3)))
+            .unwrap()
+            .unwrap();
+        assert!(left > Duration::from_secs(2) && left <= Duration::from_secs(3));
+        let spent = Instant::now();
+        assert!(matches!(wait_left(Some(spent)), Err(StoreError::Busy)));
+    }
+
+    fn journal_dir_with_store() -> (tempfile::TempDir, PathBuf) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let jdir = dir.path().join("journal");
+        fs::create_dir_all(&jdir).unwrap();
+        (dir, jdir)
+    }
+
+    /// With no lock in our hands there is nothing to repair: a `.rebase` that shows up belongs
+    /// to the process that is building it and is left exactly as it is (FIND-D4R-01; mutant M03).
+    #[test]
+    fn settle_and_read_touches_nothing_without_a_lock() {
+        let (_dir, jdir) = journal_dir_with_store();
+        let (id, store) = (Uuid::from_u128(1), Uuid::from_u128(2));
+        let reb = rebase_path(&jdir, id);
+        fs::write(&reb, b"in flight").unwrap();
+        let settle = settle_and_read(&jdir, id, store, None, None).unwrap();
+        assert!(settle.file.is_none() && settle.bytes.is_none());
+        assert_eq!(settle.settled, Settled::Nothing);
+        assert_eq!(fs::read(&reb).unwrap(), b"in flight");
+        assert!(!jdir.join("damaged").exists());
+    }
+
+    /// A `.rebase` that we locked and that its creator then removed is no file at all, not a
+    /// failed read (mutant M06).
+    #[test]
+    fn settle_and_read_treats_a_locked_file_that_vanished_as_no_file() {
+        let (_dir, jdir) = journal_dir_with_store();
+        let (id, store) = (Uuid::from_u128(1), Uuid::from_u128(2));
+        let reb = rebase_path(&jdir, id);
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(&reb)
+            .unwrap();
+        file.try_lock().unwrap();
+        fs::remove_file(&reb).unwrap();
+        let settle = settle_and_read(&jdir, id, store, None, Some(file)).unwrap();
+        assert!(settle.file.is_none() && settle.bytes.is_none());
     }
 
     #[test]

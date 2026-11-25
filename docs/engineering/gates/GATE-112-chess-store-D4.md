@@ -45,3 +45,21 @@
 - **Open findings (Engineer's, none Major):** FIND-D4V-01 to FIND-D4V-06. FIND-D4V-03 (a `Voided` after an applied `GameEnd` is closed unapplied) and FIND-D4V-04 (the `GameParked` branch of the scan is unreachable) are questions for the Systems Engineer and the System Architect.
 - **Not done:** Reviewer pass; MC/DC; `cargo-mutants`; power-loss tests; Intel Macs.
 - Approved by: nobody.
+
+## Fixes 2026-11-25 (Engineer stance; answers `review-chess-store-D4.md`)
+
+- **Status: still OPEN. NOT APPROVED. PENDING Brian Prascher (G3; public surface G2).** No approval, desk review or sign-off has been received for these fixes. The Reviewer's verdict was PASS WITH CONDITIONS with FIND-D4R-01 (Major) open; this section records what was changed for those conditions. It closes nothing by itself: a fresh Reviewer pass over the fixes has **not** happened.
+- **Evidence:** `docs/engineering/step2-store-D4-evidence.md`, section "Fixes 2026-11-25" (per-item table F.1, baseline-fails list F.2, new findings F.3, mutants F.4, runs F.5).
+- **Scope of change:** `crates/chess-store` only (`src/journal/{recover,files,rebase,writer}.rs`, `src/store/d4.rs`, `src/repo/apply.rs`, `src/fault.rs`; new `tests/d4_fixes.rs`, `tests/d4_fixes_faults.rs`; `tests/recovery.rs` one expectation changed). No SDD, CI or root `Cargo.toml` edit; no dependency added.
+- **Conditions of the review, as handled:**
+
+| Review condition | Handled |
+|---|---|
+| 1. FIND-D4R-01 closed with a test that fails before the fix without a sleep in the library | **Done.** The window is widened by a test-only failpoint (`journal.resume.no_file_seen`, no-op without `test-support`) and by two real processes; both fail on the old code. The fix is a re-check under the exclusive `.rebase` plus a swap that never moves a journal it does not hold. Same-family windows found on the way: FIND-D4F-01 (fixed) |
+| 2. FIND-D4R-08: Brian decides the `open_for_resume` signature and the public surface | **Not touched, as instructed.** Added meanwhile, for the same decision: new variant `RecoveryOutcome::DoneNameCollision` (enum already `#[non_exhaustive]`); `settle_rebase_files` and `swap_in_rebased` keep their public signatures (the new forms are `pub(crate)`) |
+| 3. FIND-D4R-02, -03, -05, -06 fixed or deferred; -07 recorded | **Fixed** (all four); -07 fixed (10 s total budget `ESTIMATE`), so the NFR-1 risk is bounded rather than only recorded |
+| 4. FIND-D4R-09/-10: tests for W01/W03, R04/R05, F01, D23, D36 | **Done**; 46 of 48 new hand mutants killed, the 2 survivors argued (M10 equivalent, M29 state not reachable) |
+
+- **Needs Brian (decisions, not mine):** D4R-08 (signature and public surface, now with `DoneNameCollision`); FIND-D4R-11 semantics; D-72 across processes (left alone); the rule for a different file at `done/` (keep both, report `DoneNameCollision`, resume proceeds) and the `journal_seq` witness for `.rebase` completeness (FIND-D4F-03) are architect-level wording changes to SDD 3.11.3 and are **not** made here.
+- **Rollback:** a revert of the uncommitted diff (no stored format changed: file names and journal bytes are as before).
+- Approved by: nobody.

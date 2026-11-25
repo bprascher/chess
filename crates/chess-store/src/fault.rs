@@ -72,6 +72,15 @@ pub const CT_NAMED_FAILPOINTS: &[&str] = &[
     // D4 (B-R03, D-153): between `hard_link` and `remove_file` of `close_final`; the journal
     // exists under two names.
     "journal.close_final.linked",
+    // D4 review fix (FIND-D4R-01): a seam, not a fault. It sits in the file-only prologue of a
+    // resume or a startup recovery at the moment the prologue has decided that the game has no
+    // journal file and no `.rebase`. A `Delay` there widens the window between that decision and
+    // the rebase, which is what a busy store thread does in real life.
+    "journal.resume.no_file_seen",
+    // D4 review fix (FIND-D4R-09, B-R04): a seam in `MoveJournal::create` between the creation of
+    // the file and its lock, where a prober can take the lock of the new name. A `Delay` there
+    // makes the race of B-R04 certain instead of chance.
+    "journal.create.created",
 ];
 
 /// Names added by part D1 for the part A code (not in the SDD list; reported as an SDD gap).
